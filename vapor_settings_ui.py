@@ -31,6 +31,12 @@ import psutil  # For terminating the main process
 import win32gui  # From pywin32, for modifying window style
 import win32con  # From pywin32
 
+# NEW: Import version from updater
+try:
+    from updater import CURRENT_VERSION
+except ImportError:
+    CURRENT_VERSION = "Unknown"
+
 # Added base_dir for frozen executable compatibility
 base_dir = getattr(sys, '_MEIPASS', os.path.abspath(os.path.dirname(__file__)))
 
@@ -128,7 +134,7 @@ def save_settings(selected_apps, customs, selected_resource_apps, resource_custo
 # Create window
 root = ctk.CTk()
 root.withdraw()  # Hide the window initially to prevent flash
-root.title("Vapor Settings")
+root.title(f"Vapor Settings v{CURRENT_VERSION}")  # UPDATED: Added version number
 root.geometry("700x900")
 root.resizable(False, False)
 
