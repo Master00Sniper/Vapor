@@ -14,7 +14,7 @@ GITHUB_REPO = "Vapor"  # Your private repo name
 GITHUB_PAT = "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"  # Your PAT - obfuscate this in production (e.g., use base64 or env var)
 
 # Current app version - this is the single source of truth for the version
-CURRENT_VERSION = "0.1.3"
+CURRENT_VERSION = "0.1.1"
 
 # GitHub API endpoint for latest release
 LATEST_RELEASE_URL = f"https://api.github.com/repos/{GITHUB_OWNER}/{GITHUB_REPO}/releases/latest"
@@ -41,28 +41,41 @@ def check_for_updates(current_app_id=None, show_notification_func=None):
     global pending_update_path
 
     try:
+        print(f"[UPDATE] Checking for updates... Current version: {CURRENT_VERSION}")
+        print(f"[UPDATE] API URL: {LATEST_RELEASE_URL}")
+
         # Fetch latest release info
         response = requests.get(LATEST_RELEASE_URL, headers=HEADERS, timeout=10)
+        print(f"[UPDATE] Response status: {response.status_code}")
         response.raise_for_status()
         release_data = response.json()
+        print(f"[UPDATE] Release data received: {release_data.get('tag_name', 'No tag')}")
 
         latest_version = release_data.get("tag_name")
+        print(f"[UPDATE] Latest version on GitHub: {latest_version}")
+        print(
+            f"[UPDATE] Version comparison result: {compare_versions(latest_version, CURRENT_VERSION) if latest_version else 'N/A'}")
+
         if latest_version and compare_versions(latest_version, CURRENT_VERSION) > 0:
-            print(f"Update available: {latest_version} (current: {CURRENT_VERSION})")
+            print(f"[UPDATE] Update available: {latest_version} (current: {CURRENT_VERSION})")
 
             # Find the asset (assuming your EXE is named 'vapor.exe')
-            asset = next((a for a in release_data.get("assets", []) if a["name"] == "vapor.exe"), None)
+            assets = release_data.get("assets", [])
+            print(f"[UPDATE] Found {len(assets)} asset(s): {[a['name'] for a in assets]}")
+            asset = next((a for a in assets if a["name"] == "vapor.exe"), None)
             if asset:
+                print(f"[UPDATE] Found vapor.exe asset")
                 download_url = asset["url"]  # This is the API URL for the asset
 
                 # Check if game is running before downloading
                 if current_app_id and current_app_id != 0:
-                    print(f"Game is running (AppID: {current_app_id}) - postponing update download")
+                    print(f"[UPDATE] Game is running (AppID: {current_app_id}) - postponing update download")
                     if show_notification_func:
                         show_notification_func(
                             f"Update {latest_version} available! Will install after you finish gaming.")
                     return
 
+                print(f"[UPDATE] Starting download from {download_url}")
                 # Notify user that update is downloading
                 if show_notification_func:
                     show_notification_func(f"Downloading Vapor update {latest_version}...")
@@ -84,24 +97,28 @@ def check_for_updates(current_app_id=None, show_notification_func=None):
 
                 print(f"Downloaded update to {temp_exe_path}")
                 pending_update_path = temp_exe_path
+                print(f"[UPDATE] Pending update stored at: {pending_update_path}")
 
                 # Check if game is running before applying update
                 if current_app_id and current_app_id != 0:
-                    print(f"Game is running (AppID: {current_app_id}) - postponing update installation")
+                    print(f"[UPDATE] Game is running (AppID: {current_app_id}) - postponing update installation")
                     if show_notification_func:
                         show_notification_func(
                             f"Update {latest_version} downloaded! Will install after you finish gaming.")
                 else:
                     # No game running, apply update immediately
+                    print(f"[UPDATE] No game running - applying update immediately")
                     apply_pending_update(show_notification_func)
             else:
-                print("No matching asset found in release.")
+                print("[UPDATE] ERROR: No matching asset found in release (looking for 'vapor.exe')")
         else:
-            print("No update available.")
+            print(f"[UPDATE] No update available. Latest: {latest_version}, Current: {CURRENT_VERSION}")
     except requests.RequestException as e:
-        print(f"Update check failed: {e}")
+        print(f"[UPDATE] ERROR - Update check failed (network/API error): {e}")
     except Exception as e:
-        print(f"Unexpected error during update: {e}")
+        print(f"[UPDATE] ERROR - Unexpected error during update: {e}")
+        import traceback
+        traceback.print_exc()
 
 
 def apply_pending_update(show_notification_func=None):
@@ -173,18 +190,46 @@ def perform_update(new_exe_path):
     current_exe = sys.executable  # Path to current running EXE
     batch_path = os.path.join(tempfile.gettempdir(), "vapor_update.bat")
 
-    # Batch content
+    print(f"[UPDATE] Creating batch file at: {batch_path}")
+    print(f"[UPDATE] Current exe: {current_exe}")
+    print(f"[UPDATE] New exe: {new_exe_path}")
+
+    # Batch content - added echo statements for debugging
     batch_content = f"""@echo off
+echo Waiting for Vapor to close...
 timeout /t 3 /nobreak >nul
+echo Deleting old version...
 del "{current_exe}" >nul 2>&1
+echo Moving new version...
 move "{new_exe_path}" "{current_exe}" >nul 2>&1
+echo Starting updated Vapor...
 start "" "{current_exe}"
+echo Cleaning up...
 del "%~f0"
 """
 
-    with open(batch_path, "w") as batch_file:
-        batch_file.write(batch_content)
+    try:
+        with open(batch_path, "w") as batch_file:
+            batch_file.write(batch_content)
+        print(f"[UPDATE] Batch file created successfully")
 
-    # Run the batch and exit
-    subprocess.Popen(batch_path, shell=True)
-    sys.exit(0)  # Quit the app to allow replacement
+        # Verify batch file exists
+        if os.path.exists(batch_path):
+            print(f"[UPDATE] Batch file verified at: {batch_path}")
+        else:
+            print(f"[UPDATE] ERROR: Batch file not found after creation!")
+            return
+
+        # Run the batch file
+        print(f"[UPDATE] Starting batch file...")
+        subprocess.Popen(["cmd.exe", "/c", batch_path],
+                         creationflags=subprocess.CREATE_NEW_CONSOLE)
+
+        print(f"[UPDATE] Exiting application...")
+        # Force exit the entire process
+        os._exit(0)
+
+    except Exception as e:
+        print(f"[UPDATE] ERROR creating/running batch file: {e}")
+        import traceback
+        traceback.print_exc()
