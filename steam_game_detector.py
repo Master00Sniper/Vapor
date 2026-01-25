@@ -1,6 +1,11 @@
 # steam_game_detector.py
 
+__version__ = "0.1.0"
+
+# Keep these even if unused
+import win32gui
 import customtkinter
+
 import winreg
 import requests
 import time
@@ -53,6 +58,8 @@ TRAY_ICON_PATH = os.path.join(base_dir, 'Images', 'tray_icon.png')
 UI_SCRIPT_PATH = os.path.join(base_dir, 'vapor_settings_ui.py')
 STEAM_PATH = r"C:\Program Files (x86)\Steam\steamapps"
 
+from updater import check_for_updates  # Assuming updater.py is in the same directory
+__version__ = "1.0.0"  # Your current version - update this for each release
 
 def load_process_names_and_startup():
     if os.path.exists(SETTINGS_FILE):
@@ -610,6 +617,9 @@ if __name__ == '__main__':
 
         thread = threading.Thread(target=monitor_steam_games, args=(stop_event, killed_notification, killed_resource), daemon=True)
         thread.start()
+
+        update_thread = threading.Thread(target=check_for_updates, daemon=True)
+        update_thread.start()
 
         # Hide console window
         ctypes.windll.kernel32.GetConsoleWindow.restype = ctypes.c_void_p
