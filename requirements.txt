@@ -1,0 +1,11 @@
+customtkinter
+requests
+psutil
+pywin32
+keyboard
+pystray
+pillow
+comtypes
+pycaw
+watchdog
+win11toast

@@ -1,6 +1,6 @@
 # steam_game_detector.py
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 # Keep these even if unused
 import win32gui
