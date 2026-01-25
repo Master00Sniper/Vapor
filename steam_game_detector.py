@@ -449,7 +449,7 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource):
 
     show_notification("Vapor is now monitoring Steam games")
 
-    # Define a callback to reload settings (extracted from your polling logic)
+    # Define a callback to reload settings
     def reload_settings():
         nonlocal notification_processes, resource_processes, launch_at_startup, notification_close_on_startup, \
             resource_close_on_startup, notification_close_on_hotkey, resource_close_on_hotkey, \
@@ -541,6 +541,10 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource):
                         if enable_after_power:
                             set_power_plan(after_power_plan)
 
+                        # NEW: Check for pending updates when game exits
+                        from updater import apply_pending_update
+                        apply_pending_update(show_notification)
+
                         start_time = None
                         current_game_name = None
                 else:
@@ -612,17 +616,36 @@ if __name__ == '__main__':
         killed_resource = {}
         stop_event = threading.Event()
 
-        thread = threading.Thread(target=monitor_steam_games, args=(stop_event, killed_notification, killed_resource), daemon=True)
+        # Start the main monitoring thread
+        thread = threading.Thread(target=monitor_steam_games, args=(stop_event, killed_notification, killed_resource),
+                                  daemon=True)
         thread.start()
 
-        update_thread = threading.Thread(target=check_for_updates, daemon=True)
+        # NEW: Start periodic update checking (checks every hour)
+        from updater import periodic_update_check
+
+        # Helper function to get current app ID for update checker
+        current_app_id_holder = [0]  # Use list to allow modification from inner function
+
+
+        def get_current_app_id():
+            return current_app_id_holder[0]
+
+
+        # Update the current_app_id_holder in monitor loop (you'll need to modify monitor_steam_games)
+        # For now, it will use get_running_steam_app_id() directly
+        update_thread = threading.Thread(
+            target=periodic_update_check,
+            args=(stop_event, get_running_steam_app_id, show_notification, 3600),  # Check every hour
+            daemon=True
+        )
         update_thread.start()
 
         # Hide console window
-        ctypes.windll.kernel32.GetConsoleWindow.restype = ctypes.c_void_p
-        hwnd = ctypes.windll.kernel32.GetConsoleWindow()
-        if hwnd != 0:
-            ctypes.windll.user32.ShowWindow(hwnd, 0)
+        # ctypes.windll.kernel32.GetConsoleWindow.restype = ctypes.c_void_p
+        # hwnd = ctypes.windll.kernel32.GetConsoleWindow()
+        # if hwnd != 0:
+        #    ctypes.windll.user32.ShowWindow(hwnd, 0)
 
         menu = pystray.Menu(
             item('Settings', open_settings),

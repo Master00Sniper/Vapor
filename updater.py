@@ -10,7 +10,7 @@ import time
 
 # Replace these with your actual values
 GITHUB_OWNER = "Master00Sniper"  # e.g., "Master00Sniper"
-GITHUB_REPO = "Vapor"     # Your private repo name
+GITHUB_REPO = "Vapor"  # Your private repo name
 GITHUB_PAT = "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"  # Your PAT - obfuscate this in production (e.g., use base64 or env var)
 
 # Current app version - this is the single source of truth for the version
@@ -25,11 +25,21 @@ HEADERS = {
     "Accept": "application/vnd.github.v3+json"
 }
 
-def check_for_updates():
+# Global variable to track pending update
+pending_update_path = None
+
+
+def check_for_updates(current_app_id=None, show_notification_func=None):
     """
     Checks for updates, downloads if available, and handles replacement.
-    Runs in a background thread.
+    Only applies update when no game is running.
+
+    Args:
+        current_app_id: The currently running Steam game ID (0 if none)
+        show_notification_func: Function to show notifications to user
     """
+    global pending_update_path
+
     try:
         # Fetch latest release info
         response = requests.get(LATEST_RELEASE_URL, headers=HEADERS, timeout=10)
@@ -44,6 +54,19 @@ def check_for_updates():
             asset = next((a for a in release_data.get("assets", []) if a["name"] == "vapor.exe"), None)
             if asset:
                 download_url = asset["url"]  # This is the API URL for the asset
+
+                # Check if game is running before downloading
+                if current_app_id and current_app_id != 0:
+                    print(f"Game is running (AppID: {current_app_id}) - postponing update download")
+                    if show_notification_func:
+                        show_notification_func(
+                            f"Update {latest_version} available! Will install after you finish gaming.")
+                    return
+
+                # Notify user that update is downloading
+                if show_notification_func:
+                    show_notification_func(f"Downloading Vapor update {latest_version}...")
+
                 # Download with auth and Accept for binary
                 download_headers = {
                     **HEADERS,
@@ -60,9 +83,17 @@ def check_for_updates():
                         f.write(chunk)
 
                 print(f"Downloaded update to {temp_exe_path}")
+                pending_update_path = temp_exe_path
 
-                # Handle replacement and restart
-                perform_update(temp_exe_path)
+                # Check if game is running before applying update
+                if current_app_id and current_app_id != 0:
+                    print(f"Game is running (AppID: {current_app_id}) - postponing update installation")
+                    if show_notification_func:
+                        show_notification_func(
+                            f"Update {latest_version} downloaded! Will install after you finish gaming.")
+                else:
+                    # No game running, apply update immediately
+                    apply_pending_update(show_notification_func)
             else:
                 print("No matching asset found in release.")
         else:
@@ -71,6 +102,54 @@ def check_for_updates():
         print(f"Update check failed: {e}")
     except Exception as e:
         print(f"Unexpected error during update: {e}")
+
+
+def apply_pending_update(show_notification_func=None):
+    """
+    Applies a pending update if one exists.
+    Should only be called when no game is running.
+    """
+    global pending_update_path
+
+    if pending_update_path and os.path.exists(pending_update_path):
+        print(f"Applying pending update from {pending_update_path}")
+
+        # Notify user before updating
+        if show_notification_func:
+            show_notification_func("Update ready! Vapor will restart in 5 seconds...")
+
+        time.sleep(5)
+
+        # Handle replacement and restart
+        perform_update(pending_update_path)
+        pending_update_path = None
+
+
+def periodic_update_check(stop_event, get_current_app_id_func, show_notification_func, check_interval=3600):
+    """
+    Periodically checks for updates in the background.
+
+    Args:
+        stop_event: Threading event to stop the loop
+        get_current_app_id_func: Function that returns the current Steam game ID
+        show_notification_func: Function to show notifications
+        check_interval: How often to check (in seconds, default 1 hour)
+    """
+    # Wait a bit before first check to let app initialize
+    if stop_event.wait(60):  # Wait 60 seconds before first check
+        return
+
+    while not stop_event.is_set():
+        try:
+            current_app_id = get_current_app_id_func() if get_current_app_id_func else 0
+            check_for_updates(current_app_id, show_notification_func)
+        except Exception as e:
+            print(f"Error in periodic update check: {e}")
+
+        # Wait for the check interval or until stop_event is set
+        if stop_event.wait(check_interval):
+            break
+
 
 def compare_versions(version1, version2):
     """
@@ -85,6 +164,7 @@ def compare_versions(version1, version2):
         if a < b:
             return -1
     return 0 if len(v1) == len(v2) else (1 if len(v1) > len(v2) else -1)
+
 
 def perform_update(new_exe_path):
     """
