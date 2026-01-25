@@ -13,8 +13,8 @@ GITHUB_OWNER = "Master00Sniper"  # e.g., "Master00Sniper"
 GITHUB_REPO = "Vapor"     # Your private repo name
 GITHUB_PAT = "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"  # Your PAT - obfuscate this in production (e.g., use base64 or env var)
 
-# Current app version - sync this with steam_game_detector.py
-CURRENT_VERSION = "1.0.0"
+# Current app version - this is the single source of truth for the version
+CURRENT_VERSION = "0.1.1"
 
 # GitHub API endpoint for latest release
 LATEST_RELEASE_URL = f"https://api.github.com/repos/{GITHUB_OWNER}/{GITHUB_REPO}/releases/latest"
