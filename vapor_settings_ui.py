@@ -134,7 +134,7 @@ def save_settings(selected_apps, customs, selected_resource_apps, resource_custo
 # Create window
 root = ctk.CTk()
 root.withdraw()  # Hide the window initially to prevent flash
-root.title(f"Vapor Settings v{CURRENT_VERSION}")  # UPDATED: Added version number
+root.title(f"Vapor Settings - v{CURRENT_VERSION}")  # UPDATED: Added version number
 root.geometry("700x900")
 root.resizable(False, False)
 
