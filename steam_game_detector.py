@@ -56,10 +56,19 @@ TRAY_ICON_PATH = os.path.join(base_dir, 'Images', 'tray_icon.png')
 UI_SCRIPT_PATH = os.path.join(base_dir, 'vapor_settings_ui.py')
 STEAM_PATH = r"C:\Program Files (x86)\Steam\steamapps"
 
-from updater import check_for_updates, CURRENT_VERSION  # Import the version from updater.py
+from updater import check_for_updates, CURRENT_VERSION
+
+
+def log(message, category="INFO"):
+    """Centralized logging with timestamp and category"""
+    timestamp = time.strftime("%H:%M:%S")
+    print(f"[{timestamp}] [{category}] {message}")
+
 
 def load_process_names_and_startup():
+    log("Loading settings from file...", "SETTINGS")
     if os.path.exists(SETTINGS_FILE):
+        log(f"Settings file found: {SETTINGS_FILE}", "SETTINGS")
         with open(SETTINGS_FILE, 'r') as f:
             settings = json.load(f)
             notification_processes = settings.get('notification_processes', [])
@@ -80,11 +89,14 @@ def load_process_names_and_startup():
             during_power_plan = settings.get('during_power_plan', 'High Performance')
             enable_after_power = settings.get('enable_after_power', False)
             after_power_plan = settings.get('after_power_plan', 'Balanced')
+            log("Settings loaded successfully", "SETTINGS")
             return notification_processes, resource_processes, startup, notification_close_on_startup, resource_close_on_startup, notification_close_on_hotkey, resource_close_on_hotkey, notification_relaunch_on_exit, resource_relaunch_on_exit, enable_playtime_summary, enable_system_audio, system_audio_level, enable_game_audio, game_audio_level, enable_during_power, during_power_plan, enable_after_power, after_power_plan
     else:
-        print("No settings file found—using defaults.")
-        default_notification = ['WhatsApp.Root.exe', 'Telegram.exe', 'ms-teams.exe', 'Messenger.exe', 'slack.exe', 'Signal.exe', 'WeChat.exe']
-        default_resource = ['firefox.exe', 'msedge.exe', 'spotify.exe', 'OneDrive.exe', 'GoogleDriveFS.exe', 'Dropbox.exe', 'wallpaper64.exe']
+        log("No settings file found - using defaults", "SETTINGS")
+        default_notification = ['WhatsApp.Root.exe', 'Telegram.exe', 'ms-teams.exe', 'Messenger.exe', 'slack.exe',
+                                'Signal.exe', 'WeChat.exe']
+        default_resource = ['firefox.exe', 'msedge.exe', 'spotify.exe', 'OneDrive.exe', 'GoogleDriveFS.exe',
+                            'Dropbox.exe', 'wallpaper64.exe']
         return default_notification, default_resource, False, True, True, True, True, True, False, True, False, 33, False, 100, False, 'High Performance', False, 'Balanced'
 
 
@@ -92,6 +104,7 @@ def set_startup(enabled):
     """Improved Startup Registry Function"""
     key_path = r'Software\Microsoft\Windows\CurrentVersion\Run'
     app_name = 'Vapor'
+    log(f"Setting startup registry: enabled={enabled}", "STARTUP")
 
     try:
         key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path, 0, winreg.KEY_ALL_ACCESS)
@@ -103,16 +116,16 @@ def set_startup(enabled):
                 exe_path = os.path.abspath(__file__)
 
             winreg.SetValueEx(key, app_name, 0, winreg.REG_SZ, exe_path)
-            print("Vapor added to startup.")
+            log(f"Added to startup: {exe_path}", "STARTUP")
         else:
             try:
                 winreg.DeleteValue(key, app_name)
-                print("Vapor removed from startup.")
+                log("Removed from startup", "STARTUP")
             except FileNotFoundError:
-                print("Vapor was not in startup—no change needed.")
+                log("Not in startup - no change needed", "STARTUP")
         winreg.CloseKey(key)
     except Exception as e:
-        print(f"Startup registry error (Try running as Administrator): {e}")
+        log(f"Startup registry error: {e}", "ERROR")
 
 
 def get_running_steam_app_id():
@@ -128,18 +141,22 @@ def get_running_steam_app_id():
 def get_game_name(app_id):
     if app_id == 0:
         return "No game running"
+    log(f"Fetching game name for AppID {app_id} from Steam API...", "STEAM")
     try:
         url = f"http://store.steampowered.com/api/appdetails?appids={app_id}"
         response = requests.get(url, timeout=5)
         data = response.json()
         if response.status_code == 200 and str(app_id) in data and data[str(app_id)]["success"]:
-            return data[str(app_id)]["data"]["name"]
-    except:
-        pass
+            name = data[str(app_id)]["data"]["name"]
+            log(f"Game name resolved: {name}", "STEAM")
+            return name
+    except Exception as e:
+        log(f"Failed to fetch game name: {e}", "ERROR")
     return "Unknown"
 
 
 def kill_processes(process_names, killed_processes):
+    log(f"Attempting to close {len(process_names)} process type(s)...", "PROCESS")
     for name in process_names:
         killed_count = 0
         path_to_store = None
@@ -148,28 +165,33 @@ def kill_processes(process_names, killed_processes):
                 try:
                     path = proc.info['exe']
                     if path and os.path.exists(path):
+                        log(f"Terminating: {name} (PID: {proc.pid})", "PROCESS")
                         proc.terminate()
                         proc.wait(timeout=5)
                         killed_count += 1
                         if path_to_store is None:
                             path_to_store = path
                 except psutil.TimeoutExpired:
+                    log(f"Timeout waiting for {name} - force killing", "PROCESS")
                     proc.kill()
                 except Exception as e:
-                    print(f"Error closing {name}: {e}")
+                    log(f"Error closing {name}: {e}", "ERROR")
 
         if killed_count > 0:
             killed_processes[name] = path_to_store
-            print(f"Closed {killed_count} instance(s) of {name}")
+            log(f"Closed {killed_count} instance(s) of {name}", "PROCESS")
 
 
 def relaunch_processes(killed_processes, relaunch_on_exit):
     if not relaunch_on_exit:
+        log("Relaunch disabled - skipping", "RELAUNCH")
         return
 
+    log(f"Relaunching {len(killed_processes)} process(es)...", "RELAUNCH")
     for name, path in list(killed_processes.items()):
         is_running = any(p.info['name'].lower() == name.lower() for p in psutil.process_iter(['name']))
         if is_running:
+            log(f"{name} already running - skipping", "RELAUNCH")
             killed_processes.pop(name, None)
             continue
         try:
@@ -177,18 +199,21 @@ def relaunch_processes(killed_processes, relaunch_on_exit):
             startupinfo.dwFlags = subprocess.STARTF_USESHOWWINDOW
             startupinfo.wShowWindow = win32con.SW_SHOWMINIMIZED
             subprocess.Popen(path, startupinfo=startupinfo)
-            print(f"Relaunched {name} minimized")
+            log(f"Relaunched {name} (minimized)", "RELAUNCH")
             killed_processes.pop(name, None)
         except Exception as e:
-            print(f"Failed to relaunch {name}: {e}")
+            log(f"Failed to relaunch {name}: {e}", "ERROR")
 
 
 def show_notification(message):
+    log(f"Showing notification: {message}", "NOTIFY")
     icon_path = os.path.abspath(TRAY_ICON_PATH)
-    win11toast.notify(body=message, app_id='Vapor - Streamline Gaming', duration='short', icon=icon_path, audio={'silent': 'true'})
+    win11toast.notify(body=message, app_id='Vapor - Streamline Gaming', duration='short', icon=icon_path,
+                      audio={'silent': 'true'})
 
 
 def set_system_volume(level):
+    log(f"Setting system volume to {level}%...", "AUDIO")
     comtypes.CoInitializeEx(comtypes.COINIT_MULTITHREADED)
     try:
         level = max(0, min(100, level)) / 100.0
@@ -208,9 +233,9 @@ def set_system_volume(level):
         volume = interface.QueryInterface(IAudioEndpointVolume)
 
         volume.SetMasterVolumeLevelScalar(level, None)
-        print(f"✅ Set system volume to {int(level * 100)}% on active device")
+        log(f"System volume set to {int(level * 100)}%", "AUDIO")
     except Exception as e:
-        print(f"❌ Failed to set system volume: {e}")
+        log(f"Failed to set system volume: {e}", "ERROR")
     finally:
         comtypes.CoUninitialize()
 
@@ -225,29 +250,34 @@ def get_power_plan_guid(plan_name):
 
 
 def set_power_plan(plan_name):
+    log(f"Setting power plan to: {plan_name}", "POWER")
     guid = get_power_plan_guid(plan_name)
     if guid:
         try:
             subprocess.run(['powercfg', '/setactive', guid], check=True)
-            print(f"Set power plan to {plan_name}")
+            log(f"Power plan set to {plan_name}", "POWER")
         except Exception as e:
-            print(f"Failed to set power plan to {plan_name}: {e}")
+            log(f"Failed to set power plan: {e}", "ERROR")
     else:
-        print(f"Unknown power plan: {plan_name}")
+        log(f"Unknown power plan: {plan_name}", "ERROR")
 
 
 def get_steam_path():
+    log("Detecting Steam installation path...", "STEAM")
     try:
         key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Valve\Steam")
         path, _ = winreg.QueryValueEx(key, "SteamPath")
         winreg.CloseKey(key)
-        return os.path.join(path, "steamapps")
+        steamapps = os.path.join(path, "steamapps")
+        log(f"Steam path detected: {steamapps}", "STEAM")
+        return steamapps
     except Exception as e:
-        print(f"Failed to auto-detect Steam path: {e}. Falling back to default.")
+        log(f"Failed to auto-detect Steam path: {e} - using default", "STEAM")
         return STEAM_PATH
 
 
 def get_library_folders():
+    log("Scanning for Steam library folders...", "STEAM")
     main_steamapps = get_steam_path()
     steam_install_dir = os.path.dirname(main_steamapps)
     vdf_paths = [
@@ -255,11 +285,10 @@ def get_library_folders():
         os.path.join(steam_install_dir, 'config', 'libraryfolders.vdf')
     ]
 
-    libraries = set()  # Use set to avoid duplicates
+    libraries = set()
     for vdf_path in vdf_paths:
-        print(f"Looking for VDF at: {vdf_path}")
         if os.path.exists(vdf_path):
-            print(f"VDF found at {vdf_path}.")
+            log(f"Found VDF: {vdf_path}", "STEAM")
             try:
                 with open(vdf_path, 'r', encoding='utf-8') as f:
                     content = f.read()
@@ -270,54 +299,46 @@ def get_library_folders():
                     if os.path.exists(steamapps):
                         libraries.add(steamapps)
             except Exception as e:
-                print(f"Error parsing VDF at {vdf_path}: {e}")
-        else:
-            print(f"VDF not found at {vdf_path}.")
+                log(f"Error parsing VDF: {e}", "ERROR")
 
     if os.path.exists(main_steamapps):
         libraries.add(main_steamapps)
 
     libraries = list(libraries)
-    print(f"Library folders found: {libraries}")
+    log(f"Found {len(libraries)} library folder(s)", "STEAM")
     return libraries
 
 
 def get_game_folder(app_id):
+    log(f"Locating game folder for AppID {app_id}...", "STEAM")
     libraries = get_library_folders()
     for lib in libraries:
         manifest_path = os.path.join(lib, f"appmanifest_{app_id}.acf")
-        print(f"Checking manifest in {lib}: {manifest_path}")
         if os.path.exists(manifest_path):
-            print(f"Manifest found in {lib}.")
+            log(f"Found manifest: {manifest_path}", "STEAM")
             try:
                 with open(manifest_path, 'r', encoding='utf-8') as f:
                     content = f.read()
                 installdir_match = re.search(r'"installdir"\s+"(.*?)"', content)
                 if installdir_match:
                     installdir = installdir_match.group(1).replace('\\\\', '\\')
-                    print(f"Parsed installdir: {installdir}")
                     game_folder = os.path.join(lib, "common", installdir)
                     if os.path.exists(game_folder):
-                        print(f"Found game folder for AppID {app_id}: {game_folder}")
+                        log(f"Game folder found: {game_folder}", "STEAM")
                         return game_folder
-                    else:
-                        print(f"Game folder not found: {game_folder}")
-                else:
-                    print(f"No 'installdir' found in manifest for AppID {app_id}")
             except Exception as e:
-                print(f"Error parsing manifest {manifest_path}: {e}")
-        else:
-            print(f"Manifest not found in {lib}")
-    print(f"Couldn't find manifest for AppID {app_id} across libraries: {libraries}")
+                log(f"Error parsing manifest: {e}", "ERROR")
+    log(f"Could not find game folder for AppID {app_id}", "STEAM")
     return None
 
 
 def find_game_pids(game_folder):
     if not game_folder:
         return []
+    log(f"Scanning for game processes in: {game_folder}", "PROCESS")
     pids = []
     base_procs = []
-    for _ in range(10):
+    for attempt in range(10):
         for proc in psutil.process_iter(['pid', 'exe']):
             try:
                 exe = proc.info['exe']
@@ -331,9 +352,8 @@ def find_game_pids(game_folder):
                 pass
         if base_procs:
             break
+        log(f"No game processes found yet (attempt {attempt + 1}/10)...", "PROCESS")
         time.sleep(3)
-    else:
-        print(f"Couldn't find any base processes in {game_folder} after waiting")
 
     for proc in base_procs:
         pids.append(proc.pid)
@@ -346,55 +366,43 @@ def find_game_pids(game_folder):
 
     pids = list(set(pids))
     if pids:
-        print(f"Found {len(pids)} game PIDs (including children) in {game_folder}: {pids}")
-        return pids
-    print(f"Couldn't find any PIDs in {game_folder} after waiting")
-    return []
+        log(f"Found {len(pids)} game process(es)", "PROCESS")
+    else:
+        log("No game processes found", "PROCESS")
+    return pids
 
 
 def set_game_volume(game_pids, level):
     if not game_pids:
         return
+    log(f"Setting game volume to {level}% for {len(game_pids)} PID(s)...", "AUDIO")
     comtypes.CoInitializeEx(comtypes.COINIT_MULTITHREADED)
     try:
         level = max(0, min(100, level)) / 100.0
-        max_attempts = 30  # Number of retry attempts
-        retry_delay = 1  # Seconds to wait between retries
+        max_attempts = 30
+        retry_delay = 1
 
         for attempt in range(max_attempts):
             sessions = AudioUtilities.GetAllSessions()
-            print(f"Attempt {attempt + 1}: All active audio sessions:")
             set_count = 0
             for session in sessions:
-                pid = session.ProcessId
-                try:
-                    proc = psutil.Process(pid)
-                    name = proc.name()
-                    exe = proc.exe()
-                except Exception as e:
-                    name = "Unknown"
-                    exe = "N/A"
-                current_vol = session.SimpleAudioVolume.GetMasterVolume() if hasattr(session, 'SimpleAudioVolume') else 'N/A'
-                print(f"Session PID: {pid}, Process Name: {name}, Exe: {exe}, Current Volume: {current_vol}")
-
                 if session.ProcessId in game_pids:
                     if hasattr(session, 'SimpleAudioVolume'):
                         volume = session.SimpleAudioVolume
                         volume.SetMasterVolume(level, None)
                         set_count += 1
-                        print(f"Set volume for session PID: {session.ProcessId} (Process Name: {name}) to {int(level * 100)}%")
 
             if set_count > 0:
-                print(f"✅ Set game volume to {int(level * 100)}% for {set_count} session(s)")
-                break  # Success, no need to retry
+                log(f"Game volume set for {set_count} audio session(s)", "AUDIO")
+                break
             else:
                 if attempt < max_attempts - 1:
-                    print(f"No audio sessions found for game PIDs on attempt {attempt + 1}—retrying in {retry_delay} seconds.")
+                    log(f"No audio sessions found (attempt {attempt + 1}/{max_attempts})...", "AUDIO")
                     time.sleep(retry_delay)
                 else:
-                    print("❌ Failed to find audio sessions for game PIDs after all attempts—might not be playing sound.")
+                    log("No audio sessions found after all attempts", "AUDIO")
     except Exception as e:
-        print(f"❌ Failed to set game volume: {e}")
+        log(f"Failed to set game volume: {e}", "ERROR")
     finally:
         comtypes.CoUninitialize()
 
@@ -405,14 +413,16 @@ class SettingsFileHandler(FileSystemEventHandler):
 
     def on_modified(self, event):
         if event.src_path.endswith(SETTINGS_FILE):
-            print(f"Settings file modified: {event.src_path}")
+            log("Settings file changed - triggering reload", "SETTINGS")
             self.callback()
 
 
 def monitor_steam_games(stop_event, killed_notification, killed_resource):
+    log("=" * 50, "INIT")
+    log(f"Vapor v{CURRENT_VERSION} starting...", "INIT")
+    log("=" * 50, "INIT")
+
     notification_processes, resource_processes, launch_at_startup, notification_close_on_startup, resource_close_on_startup, notification_close_on_hotkey, resource_close_on_hotkey, notification_relaunch_on_exit, resource_relaunch_on_exit, enable_playtime_summary, enable_system_audio, system_audio_level, enable_game_audio, game_audio_level, enable_during_power, during_power_plan, enable_after_power, after_power_plan = load_process_names_and_startup()
-    print(f"Loaded notification processes: {notification_processes}")
-    print(f"Loaded resource processes: {resource_processes}")
 
     set_startup(launch_at_startup)
 
@@ -422,14 +432,15 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource):
             kill_processes(notification_processes, killed_notification) if notification_close_on_hotkey else None,
             kill_processes(resource_processes, killed_resource) if resource_close_on_hotkey else None
         ))
-        print("Hotkey ctrl+alt+k enabled.")
+        log("Hotkey registered: Ctrl+Alt+K", "INIT")
 
     previous_app_id = get_running_steam_app_id()
     start_time = None
     current_game_name = None
+
     if previous_app_id != 0:
         game_name = get_game_name(previous_app_id)
-        print(f"Game already running at startup: {game_name} (AppID {previous_app_id})")
+        log(f"Game already running at startup: {game_name} (AppID {previous_app_id})", "GAME")
         start_time = time.time()
         current_game_name = game_name
         if notification_close_on_startup:
@@ -444,12 +455,12 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource):
             set_game_volume(game_pids, game_audio_level)
         if enable_during_power:
             set_power_plan(during_power_plan)
+    else:
+        log("No game running at startup", "GAME")
 
-    print("Vapor is now monitoring Steam games...")
-
+    log("Vapor is now monitoring Steam games", "INIT")
     show_notification("Vapor is now monitoring Steam games")
 
-    # Define a callback to reload settings
     def reload_settings():
         nonlocal notification_processes, resource_processes, launch_at_startup, notification_close_on_startup, \
             resource_close_on_startup, notification_close_on_hotkey, resource_close_on_hotkey, \
@@ -457,7 +468,7 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource):
             enable_system_audio, system_audio_level, enable_game_audio, game_audio_level, is_hotkey_registered, \
             enable_during_power, during_power_plan, enable_after_power, after_power_plan
 
-        print("Settings file changed → reloading...")
+        log("Reloading settings...", "SETTINGS")
         new_notification_processes, new_resource_processes, new_startup, new_notification_close_startup, \
             new_resource_close_startup, new_notification_close_hotkey, new_resource_close_hotkey, \
             new_notification_relaunch, new_resource_relaunch, new_enable_playtime_summary, \
@@ -476,16 +487,17 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource):
         if new_is_hotkey_registered != is_hotkey_registered:
             if new_is_hotkey_registered:
                 keyboard.add_hotkey('ctrl+alt+k', lambda: (
-                    kill_processes(notification_processes, killed_notification) if new_notification_close_hotkey else None,
+                    kill_processes(notification_processes,
+                                   killed_notification) if new_notification_close_hotkey else None,
                     kill_processes(resource_processes, killed_resource) if new_resource_close_hotkey else None
                 ))
-                print("Hotkey enabled.")
+                log("Hotkey enabled", "SETTINGS")
             else:
                 try:
                     keyboard.remove_hotkey('ctrl+alt+k')
                 except:
                     pass
-                print("Hotkey disabled.")
+                log("Hotkey disabled", "SETTINGS")
             is_hotkey_registered = new_is_hotkey_registered
 
         notification_close_on_startup = new_notification_close_startup
@@ -503,21 +515,33 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource):
         during_power_plan = new_during_power_plan
         enable_after_power = new_enable_after_power
         after_power_plan = new_after_power_plan
-        print("Settings reloaded successfully.")
+        log("Settings reloaded successfully", "SETTINGS")
 
-    # Set up file watcher
     event_handler = SettingsFileHandler(reload_settings)
     observer = Observer()
     observer.schedule(event_handler, path=os.path.dirname(os.path.abspath(SETTINGS_FILE)) or '.', recursive=False)
     observer.start()
+    log("Settings file watcher started", "INIT")
 
+    poll_count = 0
     try:
         while True:
             current_app_id = get_running_steam_app_id()
+            poll_count += 1
+
+            # Log polling status every 20 polls (~60 seconds)
+            if poll_count % 20 == 0:
+                if current_app_id == 0:
+                    log("Polling... No game detected", "MONITOR")
+                else:
+                    log(f"Polling... Game running: AppID {current_app_id}", "MONITOR")
 
             if current_app_id != previous_app_id:
                 if current_app_id == 0:
-                    print("No Steam game running.")
+                    log("=" * 40, "GAME")
+                    log("GAME ENDED", "GAME")
+                    log("=" * 40, "GAME")
+
                     if previous_app_id != 0:
                         if enable_playtime_summary and start_time is not None:
                             end_time = time.time()
@@ -525,6 +549,9 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource):
                             hours = int(duration // 3600)
                             minutes = int((duration % 3600) // 60)
                             closed_apps_count = len(killed_notification) + len(killed_resource)
+                            log(f"Session duration: {hours}h {minutes}m", "GAME")
+                            log(f"Apps closed during session: {closed_apps_count}", "GAME")
+
                             if hours == 0:
                                 message = f"You played {current_game_name} for {minutes} minutes. Vapor closed {closed_apps_count} apps when you started."
                             elif hours == 1:
@@ -541,7 +568,7 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource):
                         if enable_after_power:
                             set_power_plan(after_power_plan)
 
-                        # NEW: Check for pending updates when game exits
+                        log("Checking for pending updates...", "UPDATE")
                         from updater import apply_pending_update
                         apply_pending_update(show_notification)
 
@@ -549,22 +576,31 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource):
                         current_game_name = None
                 else:
                     game_name = get_game_name(current_app_id)
-                    print(f"Steam game started: {game_name} (AppID {current_app_id})")
+                    log("=" * 40, "GAME")
+                    log(f"GAME STARTED: {game_name} (AppID {current_app_id})", "GAME")
+                    log("=" * 40, "GAME")
+
                     if previous_app_id == 0:
                         start_time = time.time()
                         current_game_name = game_name
+
                         if notification_close_on_startup:
+                            log("Closing notification apps...", "GAME")
                             kill_processes(notification_processes, killed_notification)
                         if resource_close_on_startup:
+                            log("Closing resource apps...", "GAME")
                             kill_processes(resource_processes, killed_resource)
                         if enable_system_audio:
                             set_system_volume(system_audio_level)
                         if enable_game_audio:
+                            log("Configuring game audio...", "GAME")
                             game_folder = get_game_folder(current_app_id)
                             game_pids = find_game_pids(game_folder)
                             set_game_volume(game_pids, game_audio_level)
                         if enable_during_power:
                             set_power_plan(during_power_plan)
+
+                        log(f"Game session started for: {game_name}", "GAME")
 
                 previous_app_id = current_app_id
 
@@ -572,24 +608,25 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource):
                 break
 
     finally:
+        log("Stopping settings file watcher...", "SHUTDOWN")
         observer.stop()
         observer.join()
 
 
 def open_settings(icon, query):
+    log("Opening settings UI...", "UI")
     try:
         if getattr(sys, 'frozen', False):
             subprocess.Popen([sys.executable, '--ui', str(os.getpid())])
         else:
             subprocess.Popen([sys.executable, __file__, '--ui', str(os.getpid())])
-
-        print("Opened Vapor Settings UI")
+        log("Settings UI launched", "UI")
     except Exception as e:
-        print(f"Could not open settings: {e}")
+        log(f"Could not open settings: {e}", "ERROR")
 
 
 def quit_app(icon, query):
-    print("Quitting Vapor...")
+    log("Quit requested - shutting down...", "SHUTDOWN")
     stop_event.set()
     try:
         keyboard.unhook_all()
@@ -621,31 +658,22 @@ if __name__ == '__main__':
                                   daemon=True)
         thread.start()
 
-        # NEW: Start periodic update checking (checks every hour)
+        # Start periodic update checking
         from updater import periodic_update_check
 
-        # Helper function to get current app ID for update checker
-        current_app_id_holder = [0]  # Use list to allow modification from inner function
+        current_app_id_holder = [0]
 
 
         def get_current_app_id():
             return current_app_id_holder[0]
 
 
-        # Update the current_app_id_holder in monitor loop (you'll need to modify monitor_steam_games)
-        # For now, it will use get_running_steam_app_id() directly
         update_thread = threading.Thread(
             target=periodic_update_check,
-            args=(stop_event, get_running_steam_app_id, show_notification, 3600),  # Check every hour
+            args=(stop_event, get_running_steam_app_id, show_notification, 3600),
             daemon=True
         )
         update_thread.start()
-
-        # Hide console window
-        # ctypes.windll.kernel32.GetConsoleWindow.restype = ctypes.c_void_p
-        # hwnd = ctypes.windll.kernel32.GetConsoleWindow()
-        # if hwnd != 0:
-        #    ctypes.windll.user32.ShowWindow(hwnd, 0)
 
         menu = pystray.Menu(
             item('Settings', open_settings),
@@ -654,7 +682,8 @@ if __name__ == '__main__':
 
         icon_image = Image.open(TRAY_ICON_PATH) if os.path.exists(TRAY_ICON_PATH) else None
         icon = pystray.Icon("Vapor", icon_image, "Vapor - Streamline Gaming", menu)
+        log("System tray icon created", "INIT")
         icon.run()
 
         thread.join()
-        print("Vapor has stopped.")
+        log("Vapor has stopped.", "SHUTDOWN")

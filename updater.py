@@ -9,12 +9,12 @@ import tempfile
 import time
 
 # Replace these with your actual values
-GITHUB_OWNER = "Master00Sniper"  # e.g., "Master00Sniper"
-GITHUB_REPO = "Vapor"  # Your private repo name
-GITHUB_PAT = "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"  # Your PAT - obfuscate this in production (e.g., use base64 or env var)
+GITHUB_OWNER = "Master00Sniper"
+GITHUB_REPO = "Vapor"
+GITHUB_PAT = "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"
 
 # Current app version - this is the single source of truth for the version
-CURRENT_VERSION = "0.1.1"
+CURRENT_VERSION = "0.1.2"
 
 # GitHub API endpoint for latest release
 LATEST_RELEASE_URL = f"https://api.github.com/repos/{GITHUB_OWNER}/{GITHUB_REPO}/releases/latest"
@@ -29,94 +29,99 @@ HEADERS = {
 pending_update_path = None
 
 
+def log(message, category="UPDATE"):
+    """Centralized logging with timestamp"""
+    timestamp = time.strftime("%H:%M:%S")
+    print(f"[{timestamp}] [{category}] {message}")
+
+
 def check_for_updates(current_app_id=None, show_notification_func=None):
     """
     Checks for updates, downloads if available, and handles replacement.
     Only applies update when no game is running.
-
-    Args:
-        current_app_id: The currently running Steam game ID (0 if none)
-        show_notification_func: Function to show notifications to user
     """
     global pending_update_path
 
     try:
-        print(f"[UPDATE] Checking for updates... Current version: {CURRENT_VERSION}")
-        print(f"[UPDATE] API URL: {LATEST_RELEASE_URL}")
+        log(f"Checking for updates (current: v{CURRENT_VERSION})...")
 
-        # Fetch latest release info
         response = requests.get(LATEST_RELEASE_URL, headers=HEADERS, timeout=10)
-        print(f"[UPDATE] Response status: {response.status_code}")
+
+        if response.status_code != 200:
+            log(f"GitHub API returned status {response.status_code}", "ERROR")
+            return
+
         response.raise_for_status()
         release_data = response.json()
-        print(f"[UPDATE] Release data received: {release_data.get('tag_name', 'No tag')}")
 
         latest_version = release_data.get("tag_name")
-        print(f"[UPDATE] Latest version on GitHub: {latest_version}")
-        print(
-            f"[UPDATE] Version comparison result: {compare_versions(latest_version, CURRENT_VERSION) if latest_version else 'N/A'}")
 
-        if latest_version and compare_versions(latest_version, CURRENT_VERSION) > 0:
-            print(f"[UPDATE] Update available: {latest_version} (current: {CURRENT_VERSION})")
+        if not latest_version:
+            log("No version tag found in release", "ERROR")
+            return
 
-            # Find the asset (assuming your EXE is named 'vapor.exe')
+        comparison = compare_versions(latest_version, CURRENT_VERSION)
+
+        if comparison > 0:
+            log(f"Update available: v{latest_version}")
+
             assets = release_data.get("assets", [])
-            print(f"[UPDATE] Found {len(assets)} asset(s): {[a['name'] for a in assets]}")
-            asset = next((a for a in assets if a["name"] == "vapor.exe"), None)
-            if asset:
-                print(f"[UPDATE] Found vapor.exe asset")
-                download_url = asset["url"]  # This is the API URL for the asset
+            asset = next((a for a in assets if a["name"].lower() == "vapor.exe"), None)
 
-                # Check if game is running before downloading
-                if current_app_id and current_app_id != 0:
-                    print(f"[UPDATE] Game is running (AppID: {current_app_id}) - postponing update download")
-                    if show_notification_func:
-                        show_notification_func(
-                            f"Update {latest_version} available! Will install after you finish gaming.")
-                    return
+            if not asset:
+                log("No vapor.exe found in release assets", "ERROR")
+                return
 
-                print(f"[UPDATE] Starting download from {download_url}")
-                # Notify user that update is downloading
+            download_url = asset["url"]
+
+            if current_app_id and current_app_id != 0:
+                log(f"Game running (AppID: {current_app_id}) - postponing download")
                 if show_notification_func:
-                    show_notification_func(f"Downloading Vapor update {latest_version}...")
+                    show_notification_func(f"Update {latest_version} available! Will install after gaming.")
+                return
 
-                # Download with auth and Accept for binary
-                download_headers = {
-                    **HEADERS,
-                    "Accept": "application/octet-stream"
-                }
-                download_response = requests.get(download_url, headers=download_headers, stream=True, timeout=30)
-                download_response.raise_for_status()
+            log("Starting download...")
+            if show_notification_func:
+                show_notification_func(f"Downloading Vapor update {latest_version}...")
 
-                # Save to temp file
-                temp_dir = tempfile.gettempdir()
-                temp_exe_path = os.path.join(temp_dir, "vapor_new.exe")
-                with open(temp_exe_path, "wb") as f:
-                    for chunk in download_response.iter_content(chunk_size=8192):
-                        f.write(chunk)
+            download_headers = {
+                **HEADERS,
+                "Accept": "application/octet-stream"
+            }
+            download_response = requests.get(download_url, headers=download_headers, stream=True, timeout=30)
+            download_response.raise_for_status()
 
-                print(f"Downloaded update to {temp_exe_path}")
-                pending_update_path = temp_exe_path
-                print(f"[UPDATE] Pending update stored at: {pending_update_path}")
+            temp_dir = tempfile.gettempdir()
+            temp_exe_path = os.path.join(temp_dir, "vapor_new.exe")
 
-                # Check if game is running before applying update
-                if current_app_id and current_app_id != 0:
-                    print(f"[UPDATE] Game is running (AppID: {current_app_id}) - postponing update installation")
-                    if show_notification_func:
-                        show_notification_func(
-                            f"Update {latest_version} downloaded! Will install after you finish gaming.")
-                else:
-                    # No game running, apply update immediately
-                    print(f"[UPDATE] No game running - applying update immediately")
-                    apply_pending_update(show_notification_func)
+            total_size = 0
+            with open(temp_exe_path, "wb") as f:
+                for chunk in download_response.iter_content(chunk_size=8192):
+                    f.write(chunk)
+                    total_size += len(chunk)
+
+            if os.path.exists(temp_exe_path) and os.path.getsize(temp_exe_path) > 0:
+                log(f"Download complete: {total_size / 1024 / 1024:.2f} MB")
             else:
-                print("[UPDATE] ERROR: No matching asset found in release (looking for 'vapor.exe')")
+                log("Download failed - empty file", "ERROR")
+                return
+
+            pending_update_path = temp_exe_path
+
+            if current_app_id and current_app_id != 0:
+                log("Game running - update will apply after gaming session")
+                if show_notification_func:
+                    show_notification_func(f"Update {latest_version} ready! Will install after gaming.")
+            else:
+                log("Applying update immediately...")
+                apply_pending_update(show_notification_func)
         else:
-            print(f"[UPDATE] No update available. Latest: {latest_version}, Current: {CURRENT_VERSION}")
+            log(f"Already up to date (v{CURRENT_VERSION})")
+
     except requests.RequestException as e:
-        print(f"[UPDATE] ERROR - Update check failed (network/API error): {e}")
+        log(f"Network error: {e}", "ERROR")
     except Exception as e:
-        print(f"[UPDATE] ERROR - Unexpected error during update: {e}")
+        log(f"Unexpected error: {e}", "ERROR")
         import traceback
         traceback.print_exc()
 
@@ -124,54 +129,57 @@ def check_for_updates(current_app_id=None, show_notification_func=None):
 def apply_pending_update(show_notification_func=None):
     """
     Applies a pending update if one exists.
-    Should only be called when no game is running.
     """
     global pending_update_path
 
     if pending_update_path and os.path.exists(pending_update_path):
-        print(f"Applying pending update from {pending_update_path}")
+        log(f"Applying pending update from: {pending_update_path}")
 
-        # Notify user before updating
         if show_notification_func:
             show_notification_func("Update ready! Vapor will restart in 5 seconds...")
 
         time.sleep(5)
-
-        # Handle replacement and restart
         perform_update(pending_update_path)
+        pending_update_path = None
+    else:
+        if pending_update_path:
+            log("Pending update file not found - cleaning up")
+            try:
+                os.remove(pending_update_path)
+            except:
+                pass
         pending_update_path = None
 
 
 def periodic_update_check(stop_event, get_current_app_id_func, show_notification_func, check_interval=3600):
     """
     Periodically checks for updates in the background.
-
-    Args:
-        stop_event: Threading event to stop the loop
-        get_current_app_id_func: Function that returns the current Steam game ID
-        show_notification_func: Function to show notifications
-        check_interval: How often to check (in seconds, default 1 hour)
     """
-    # Wait a bit before first check to let app initialize
-    if stop_event.wait(60):  # Wait 60 seconds before first check
+    log("Update checker starting (first check in 30 seconds)...")
+
+    if stop_event.wait(30):
         return
 
+    check_count = 0
     while not stop_event.is_set():
         try:
+            check_count += 1
+            log(f"Periodic check #{check_count}")
             current_app_id = get_current_app_id_func() if get_current_app_id_func else 0
             check_for_updates(current_app_id, show_notification_func)
         except Exception as e:
-            print(f"Error in periodic update check: {e}")
+            log(f"Error in periodic check: {e}", "ERROR")
 
-        # Wait for the check interval or until stop_event is set
+        log(f"Next check in {check_interval // 60} minutes")
         if stop_event.wait(check_interval):
             break
+
+    log("Update checker stopped")
 
 
 def compare_versions(version1, version2):
     """
     Compare two semantic versions (e.g., '1.2.3' > '1.2.2' returns 1)
-    Returns: 1 if v1 > v2, -1 if v1 < v2, 0 if equal
     """
     v1 = list(map(int, version1.lstrip('v').split('.')))
     v2 = list(map(int, version2.lstrip('v').split('.')))
@@ -185,51 +193,124 @@ def compare_versions(version1, version2):
 
 def perform_update(new_exe_path):
     """
-    Creates a batch file to replace the current EXE and restart.
+    Creates a VBScript wrapper to run batch file completely hidden,
+    then executes the update process.
     """
-    current_exe = sys.executable  # Path to current running EXE
-    batch_path = os.path.join(tempfile.gettempdir(), "vapor_update.bat")
+    current_exe = sys.executable
+    current_exe_dir = os.path.dirname(current_exe)
+    temp_dir = tempfile.gettempdir()
+    batch_path = os.path.join(temp_dir, "vapor_update.bat")
+    vbs_path = os.path.join(temp_dir, "vapor_update.vbs")
+    log_path = os.path.join(temp_dir, "vapor_update_log.txt")
 
-    print(f"[UPDATE] Creating batch file at: {batch_path}")
-    print(f"[UPDATE] Current exe: {current_exe}")
-    print(f"[UPDATE] New exe: {new_exe_path}")
+    log(f"Creating update scripts...")
+    log(f"Current exe: {current_exe}")
+    log(f"Current exe dir: {current_exe_dir}")
+    log(f"New exe: {new_exe_path}")
 
-    # Batch content - added echo statements for debugging
-    batch_content = f"""@echo off
-echo Waiting for Vapor to close...
-timeout /t 3 /nobreak >nul
-echo Deleting old version...
-del "{current_exe}" >nul 2>&1
-echo Moving new version...
-move "{new_exe_path}" "{current_exe}" >nul 2>&1
-echo Starting updated Vapor...
-start "" "{current_exe}"
-echo Cleaning up...
-del "%~f0"
-"""
+    # Batch file content - NO LEADING SPACES (critical for batch files)
+    batch_content = f'''@echo off
+set attempts=0
+set max_attempts=30
+echo %date% %time% - Starting update process... > "{log_path}"
+echo Waiting for Vapor to close... >> "{log_path}"
+ping 127.0.0.1 -n 3 > nul
+
+echo Force-killing any lingering Vapor processes... >> "{log_path}"
+taskkill /f /im vapor.exe >> "{log_path}" 2>&1
+ping 127.0.0.1 -n 3 > nul
+
+echo Cleaning up old PyInstaller temp folders... >> "{log_path}"
+for /d %%i in ("%TEMP%\\_MEI*") do (
+    rmdir /s /q "%%i" 2>nul
+)
+echo Cleanup complete. >> "{log_path}"
+
+:delete_loop
+set /a attempts+=1
+echo Attempt %attempts%: Deleting old version... >> "{log_path}"
+del /F /Q "{current_exe}" 2>> "{log_path}"
+if exist "{current_exe}" (
+    if %attempts% geq %max_attempts% (
+        echo ERROR: Failed to delete after %max_attempts% attempts. >> "{log_path}"
+        goto cleanup
+    )
+    echo Old exe still exists - retrying... >> "{log_path}"
+    ping 127.0.0.1 -n 2 > nul
+    goto delete_loop
+)
+echo Old version deleted after %attempts% attempt(s). >> "{log_path}"
+
+echo Moving new version into place... >> "{log_path}"
+move /Y "{new_exe_path}" "{current_exe}" >> "{log_path}" 2>&1
+if not exist "{current_exe}" (
+    echo ERROR: Move failed! >> "{log_path}"
+    goto cleanup
+)
+echo Move successful. >> "{log_path}"
+ping 127.0.0.1 -n 3 > nul
+
+echo Starting updated Vapor... >> "{log_path}"
+cd /d "{current_exe_dir}"
+echo Working directory: %CD% >> "{log_path}"
+echo Launching via explorer: "{current_exe}" >> "{log_path}"
+explorer.exe "{current_exe}"
+echo Launch complete. >> "{log_path}"
+echo Start command issued. >> "{log_path}"
+
+:cleanup
+echo Cleaning up batch file... >> "{log_path}"
+del /F /Q "{vbs_path}" 2>nul
+del /F /Q "%~f0"
+'''
+
+    # VBScript to run batch file completely hidden (no window flash at all)
+    vbs_content = f'''Set WshShell = CreateObject("WScript.Shell")
+WshShell.Run chr(34) & "{batch_path}" & chr(34), 0, False
+Set WshShell = Nothing
+'''
 
     try:
-        with open(batch_path, "w") as batch_file:
-            batch_file.write(batch_content)
-        print(f"[UPDATE] Batch file created successfully")
+        # Write batch file
+        with open(batch_path, "w", encoding="ascii", errors="replace") as f:
+            f.write(batch_content)
+        log("Batch file created")
 
-        # Verify batch file exists
-        if os.path.exists(batch_path):
-            print(f"[UPDATE] Batch file verified at: {batch_path}")
-        else:
-            print(f"[UPDATE] ERROR: Batch file not found after creation!")
+        # Write VBScript wrapper
+        with open(vbs_path, "w", encoding="ascii", errors="replace") as f:
+            f.write(vbs_content)
+        log("VBScript wrapper created")
+
+        # Verify files exist
+        if not os.path.exists(batch_path):
+            log("Batch file creation failed!", "ERROR")
+            return
+        if not os.path.exists(vbs_path):
+            log("VBScript creation failed!", "ERROR")
             return
 
-        # Run the batch file
-        print(f"[UPDATE] Starting batch file...")
-        subprocess.Popen(["cmd.exe", "/c", batch_path],
-                         creationflags=subprocess.CREATE_NEW_CONSOLE)
+        log("Executing update via VBScript (fully hidden)...")
 
-        print(f"[UPDATE] Exiting application...")
-        # Force exit the entire process
+        # Run VBScript with wscript (not cscript) for no console
+        # CREATE_NO_WINDOW flag ensures absolutely no window
+        CREATE_NO_WINDOW = 0x08000000
+        subprocess.Popen(
+            ["wscript.exe", "//nologo", vbs_path],
+            creationflags=subprocess.DETACHED_PROCESS | CREATE_NO_WINDOW,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            stdin=subprocess.DEVNULL
+        )
+
+        log("Update process launched - exiting Vapor...")
+
+        # Give a tiny moment for the process to start
+        time.sleep(0.5)
+
+        # Force exit
         os._exit(0)
 
     except Exception as e:
-        print(f"[UPDATE] ERROR creating/running batch file: {e}")
+        log(f"Update execution failed: {e}", "ERROR")
         import traceback
         traceback.print_exc()
