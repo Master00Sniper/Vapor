@@ -15,10 +15,13 @@ GITHUB_REPO = "Vapor"
 # Current app version - this is the single source of truth for the version
 CURRENT_VERSION = "0.2.0"
 
-# GitHub API endpoint for latest release (public, no auth needed)
-LATEST_RELEASE_URL = f"https://api.github.com/repos/{GITHUB_OWNER}/{GITHUB_REPO}/releases/latest"
+# Cloudflare Worker proxy base URL
+PROXY_BASE_URL = "https://vapor-githup-proxy.gkmorton1-b51.workers.dev"
 
-# Headers (no auth needed for public repos)
+# Proxy paths for GitHub API
+LATEST_RELEASE_PROXY_PATH = f"/repos/{GITHUB_OWNER}/{GITHUB_REPO}/releases/latest"
+
+# Headers (no auth needed; handled by proxy)
 HEADERS = {
     "Accept": "application/vnd.github.v3+json"
 }
@@ -56,10 +59,12 @@ def check_for_updates(current_app_id=None, show_notification_func=None):
     try:
         log(f"Checking for updates (current: v{CURRENT_VERSION})...")
 
-        response = requests.get(LATEST_RELEASE_URL, headers=HEADERS, timeout=10)
+        # Use proxy for release info
+        proxy_url = f"{PROXY_BASE_URL}{LATEST_RELEASE_PROXY_PATH}"
+        response = requests.get(proxy_url, headers=HEADERS, timeout=10)
 
         if response.status_code != 200:
-            log(f"GitHub API returned status {response.status_code}", "ERROR")
+            log(f"Proxy returned status {response.status_code}", "ERROR")
             return
 
         response.raise_for_status()
@@ -83,8 +88,9 @@ def check_for_updates(current_app_id=None, show_notification_func=None):
                 log("No vapor.exe found in release assets", "ERROR")
                 return
 
-            # Use browser_download_url for public downloads (no auth needed)
-            download_url = asset["browser_download_url"]
+            # For private repos, use the API asset URL (not browser_download_url) to ensure auth via proxy
+            asset_api_path = asset["url"].replace("https://api.github.com", "")  # Strip base to append to proxy
+            download_proxy_url = f"{PROXY_BASE_URL}{asset_api_path}"
 
             if current_app_id and current_app_id != 0:
                 log(f"Game running (AppID: {current_app_id}) - postponing download")
@@ -96,8 +102,13 @@ def check_for_updates(current_app_id=None, show_notification_func=None):
             if show_notification_func:
                 show_notification_func(f"Downloading Vapor update {latest_version}...")
 
-            # No auth headers needed for public release downloads
-            download_response = requests.get(download_url, stream=True, timeout=30)
+            # Headers for binary download
+            download_headers = {
+                **HEADERS,
+                "Accept": "application/octet-stream"
+            }
+
+            download_response = requests.get(download_proxy_url, headers=download_headers, stream=True, timeout=30)
             download_response.raise_for_status()
 
             temp_dir = tempfile.gettempdir()
