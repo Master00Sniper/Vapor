@@ -162,7 +162,6 @@ def set_console_visibility(visible):
             kernel32.AllocConsole()
 
             # Redirect stdout/stderr to the new console
-            import sys
             sys.stdout = open('CONOUT$', 'w')
             sys.stderr = open('CONOUT$', 'w')
 
@@ -187,11 +186,16 @@ def set_console_visibility(visible):
 
             log("Debug console opened", "DEBUG")
         else:
-            # Free the console
+            # Check if there's a console to free
             hwnd = kernel32.GetConsoleWindow()
             if hwnd:
+                # Redirect stdout/stderr to null device before freeing console
+                # This prevents errors when trying to write after console is freed
+                sys.stdout = open(os.devnull, 'w')
+                sys.stderr = open(os.devnull, 'w')
+
+                # Free the console
                 kernel32.FreeConsole()
-                log("Debug console closed", "DEBUG")
     except Exception as e:
         # Can't log here if console is being freed
         pass
@@ -652,7 +656,8 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
     is_hotkey_registered = notification_close_on_hotkey or resource_close_on_hotkey
     if is_hotkey_registered:
         keyboard.add_hotkey('ctrl+alt+k', lambda: (
-            kill_processes(notification_processes, killed_notification, "notification") if notification_close_on_hotkey else None,
+            kill_processes(notification_processes, killed_notification,
+                           "notification") if notification_close_on_hotkey else None,
             kill_processes(resource_processes, killed_resource, "resource") if resource_close_on_hotkey else None
         ))
         log("Hotkey registered: Ctrl+Alt+K", "INIT")
@@ -718,7 +723,8 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
                 keyboard.add_hotkey('ctrl+alt+k', lambda: (
                     kill_processes(notification_processes,
                                    killed_notification, "notification") if new_notification_close_hotkey else None,
-                    kill_processes(resource_processes, killed_resource, "resource") if new_resource_close_hotkey else None
+                    kill_processes(resource_processes, killed_resource,
+                                   "resource") if new_resource_close_hotkey else None
                 ))
                 log("Hotkey enabled", "SETTINGS")
             else:
@@ -893,7 +899,6 @@ def manual_check_updates(icon, query):
             response = requests.get(
                 f"https://api.github.com/repos/Master00Sniper/Vapor/releases/latest",
                 headers={
-                    "Authorization": f"token ghp_XqiiRlqh2PTUL08pqg3HzXlcC1ZCDoQ",
                     "Accept": "application/vnd.github.v3+json"
                 },
                 timeout=10

@@ -8,20 +8,18 @@ import subprocess
 import tempfile
 import time
 
-# Replace these with your actual values
+# GitHub repository info
 GITHUB_OWNER = "Master00Sniper"
 GITHUB_REPO = "Vapor"
-GITHUB_PAT = "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"
 
 # Current app version - this is the single source of truth for the version
-CURRENT_VERSION = "0.1.7"
+CURRENT_VERSION = "0.2.0"
 
-# GitHub API endpoint for latest release
+# GitHub API endpoint for latest release (public, no auth needed)
 LATEST_RELEASE_URL = f"https://api.github.com/repos/{GITHUB_OWNER}/{GITHUB_REPO}/releases/latest"
 
-# Headers for authentication
+# Headers (no auth needed for public repos)
 HEADERS = {
-    "Authorization": f"token {GITHUB_PAT}",
     "Accept": "application/vnd.github.v3+json"
 }
 
@@ -85,7 +83,8 @@ def check_for_updates(current_app_id=None, show_notification_func=None):
                 log("No vapor.exe found in release assets", "ERROR")
                 return
 
-            download_url = asset["url"]
+            # Use browser_download_url for public downloads (no auth needed)
+            download_url = asset["browser_download_url"]
 
             if current_app_id and current_app_id != 0:
                 log(f"Game running (AppID: {current_app_id}) - postponing download")
@@ -97,11 +96,8 @@ def check_for_updates(current_app_id=None, show_notification_func=None):
             if show_notification_func:
                 show_notification_func(f"Downloading Vapor update {latest_version}...")
 
-            download_headers = {
-                **HEADERS,
-                "Accept": "application/octet-stream"
-            }
-            download_response = requests.get(download_url, headers=download_headers, stream=True, timeout=30)
+            # No auth headers needed for public release downloads
+            download_response = requests.get(download_url, stream=True, timeout=30)
             download_response.raise_for_status()
 
             temp_dir = tempfile.gettempdir()
