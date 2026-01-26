@@ -14,7 +14,7 @@ GITHUB_REPO = "Vapor"
 GITHUB_PAT = "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"
 
 # Current app version - this is the single source of truth for the version
-CURRENT_VERSION = "0.1.2"
+CURRENT_VERSION = "0.1.5"
 
 # GitHub API endpoint for latest release
 LATEST_RELEASE_URL = f"https://api.github.com/repos/{GITHUB_OWNER}/{GITHUB_REPO}/releases/latest"
