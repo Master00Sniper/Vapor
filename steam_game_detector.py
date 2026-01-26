@@ -178,6 +178,44 @@ def set_console_visibility(visible):
         pass
 
 
+def create_default_settings():
+    """Create a default settings file with all default values"""
+    log("Creating default settings file...", "SETTINGS")
+    default_settings = {
+        'notification_processes': ['WhatsApp.Root.exe', 'Telegram.exe', 'ms-teams.exe', 'Messenger.exe', 'slack.exe',
+                                   'Signal.exe', 'WeChat.exe'],
+        'selected_notification_apps': ['WhatsApp', 'Telegram', 'Microsoft Teams', 'Facebook Messenger', 'Slack',
+                                       'Signal', 'WeChat'],
+        'custom_processes': [],
+        'resource_processes': ['spotify.exe', 'OneDrive.exe', 'GoogleDriveFS.exe', 'Dropbox.exe', 'wallpaper64.exe'],
+        'selected_resource_apps': ['Spotify', 'OneDrive', 'Google Drive', 'Dropbox', 'Wallpaper Engine'],
+        'custom_resource_processes': [],
+        'launch_at_startup': False,
+        'launch_settings_on_start': True,
+        'close_on_startup': True,
+        'close_on_hotkey': True,
+        'relaunch_on_exit': True,
+        'resource_close_on_startup': True,
+        'resource_close_on_hotkey': True,
+        'resource_relaunch_on_exit': False,
+        'enable_playtime_summary': True,
+        'enable_debug_mode': False,
+        'system_audio_level': 33,
+        'enable_system_audio': False,
+        'game_audio_level': 100,
+        'enable_game_audio': False,
+        'enable_during_power': False,
+        'during_power_plan': 'High Performance',
+        'enable_after_power': False,
+        'after_power_plan': 'Balanced',
+        'enable_game_mode_start': True,
+        'enable_game_mode_end': False
+    }
+    with open(SETTINGS_FILE, 'w') as f:
+        json.dump(default_settings, f)
+    log("Default settings file created", "SETTINGS")
+
+
 def load_process_names_and_startup():
     log("Loading settings from file...", "SETTINGS")
     if os.path.exists(SETTINGS_FILE):
@@ -187,6 +225,7 @@ def load_process_names_and_startup():
             notification_processes = settings.get('notification_processes', [])
             resource_processes = settings.get('resource_processes', [])
             startup = settings.get('launch_at_startup', False)
+            launch_settings_on_start = settings.get('launch_settings_on_start', True)
             notification_close_on_startup = settings.get('close_on_startup', True)
             resource_close_on_startup = settings.get('resource_close_on_startup', True)
             notification_close_on_hotkey = settings.get('close_on_hotkey', False)
@@ -206,20 +245,19 @@ def load_process_names_and_startup():
             enable_game_mode_end = settings.get('enable_game_mode_end', False)
             enable_debug_mode = settings.get('enable_debug_mode', False)
             log("Settings loaded successfully", "SETTINGS")
-            return (notification_processes, resource_processes, startup, notification_close_on_startup,
-                    resource_close_on_startup, notification_close_on_hotkey, resource_close_on_hotkey,
-                    notification_relaunch_on_exit, resource_relaunch_on_exit, enable_playtime_summary,
-                    enable_system_audio, system_audio_level, enable_game_audio, game_audio_level,
-                    enable_during_power, during_power_plan, enable_after_power, after_power_plan,
-                    enable_game_mode_start, enable_game_mode_end, enable_debug_mode)
+            return (notification_processes, resource_processes, startup, launch_settings_on_start,
+                    notification_close_on_startup, resource_close_on_startup, notification_close_on_hotkey,
+                    resource_close_on_hotkey, notification_relaunch_on_exit, resource_relaunch_on_exit,
+                    enable_playtime_summary, enable_system_audio, system_audio_level, enable_game_audio,
+                    game_audio_level, enable_during_power, during_power_plan, enable_after_power,
+                    after_power_plan, enable_game_mode_start, enable_game_mode_end, enable_debug_mode)
     else:
         log("No settings file found - using defaults", "SETTINGS")
         default_notification = ['WhatsApp.Root.exe', 'Telegram.exe', 'ms-teams.exe', 'Messenger.exe', 'slack.exe',
                                 'Signal.exe', 'WeChat.exe']
-        default_resource = ['firefox.exe', 'msedge.exe', 'spotify.exe', 'OneDrive.exe', 'GoogleDriveFS.exe',
-                            'Dropbox.exe', 'wallpaper64.exe']
-        return (default_notification, default_resource, False, True, True, True, True, True, False,
-                True, False, 33, False, 100, False, 'High Performance', False, 'Balanced', False, False, False)
+        default_resource = ['spotify.exe', 'OneDrive.exe', 'GoogleDriveFS.exe', 'Dropbox.exe', 'wallpaper64.exe']
+        return (default_notification, default_resource, False, True, True, True, True, True, True, False,
+                True, False, 33, False, 100, False, 'High Performance', False, 'Balanced', True, False, False)
 
 
 def set_startup(enabled):
@@ -277,8 +315,9 @@ def get_game_name(app_id):
     return "Unknown"
 
 
-def kill_processes(process_names, killed_processes):
-    log(f"Attempting to close {len(process_names)} process type(s)...", "PROCESS")
+def kill_processes(process_names, killed_processes, purpose=""):
+    purpose_str = f" ({purpose})" if purpose else ""
+    log(f"Attempting to close {len(process_names)} {purpose} process type(s)...", "PROCESS")
     for name in process_names:
         killed_count = 0
         path_to_store = None
@@ -287,7 +326,7 @@ def kill_processes(process_names, killed_processes):
                 try:
                     path = proc.info['exe']
                     if path and os.path.exists(path):
-                        log(f"Terminating: {name} (PID: {proc.pid})", "PROCESS")
+                        log(f"Terminating{purpose_str}: {name} (PID: {proc.pid})", "PROCESS")
                         proc.terminate()
                         proc.wait(timeout=5)
                         killed_count += 1
@@ -301,15 +340,16 @@ def kill_processes(process_names, killed_processes):
 
         if killed_count > 0:
             killed_processes[name] = path_to_store
-            log(f"Closed {killed_count} instance(s) of {name}", "PROCESS")
+            log(f"Closed {killed_count} instance(s) of {name}{purpose_str}", "PROCESS")
 
 
-def relaunch_processes(killed_processes, relaunch_on_exit):
+def relaunch_processes(killed_processes, relaunch_on_exit, purpose=""):
+    purpose_str = f" ({purpose})" if purpose else ""
     if not relaunch_on_exit:
-        log("Relaunch disabled - skipping", "RELAUNCH")
+        log(f"Relaunch disabled for {purpose} apps - skipping", "RELAUNCH")
         return
 
-    log(f"Relaunching {len(killed_processes)} process(es)...", "RELAUNCH")
+    log(f"Relaunching {len(killed_processes)} {purpose} process(es)...", "RELAUNCH")
     for name, path in list(killed_processes.items()):
         is_running = any(p.info['name'].lower() == name.lower() for p in psutil.process_iter(['name']))
         if is_running:
@@ -321,7 +361,7 @@ def relaunch_processes(killed_processes, relaunch_on_exit):
             startupinfo.dwFlags = subprocess.STARTF_USESHOWWINDOW
             startupinfo.wShowWindow = win32con.SW_SHOWMINIMIZED
             subprocess.Popen(path, startupinfo=startupinfo)
-            log(f"Relaunched {name} (minimized)", "RELAUNCH")
+            log(f"Relaunched {name}{purpose_str} (minimized)", "RELAUNCH")
             killed_processes.pop(name, None)
         except Exception as e:
             log(f"Failed to relaunch {name}: {e}", "ERROR")
@@ -561,28 +601,40 @@ class SettingsFileHandler(FileSystemEventHandler):
             self.callback()
 
 
-def monitor_steam_games(stop_event, killed_notification, killed_resource):
+def monitor_steam_games(stop_event, killed_notification, killed_resource, is_first_run=False):
     log("=" * 50, "INIT")
     log(f"Vapor v{CURRENT_VERSION} starting...", "INIT")
     log("=" * 50, "INIT")
 
-    (notification_processes, resource_processes, launch_at_startup, notification_close_on_startup,
-     resource_close_on_startup, notification_close_on_hotkey, resource_close_on_hotkey,
-     notification_relaunch_on_exit, resource_relaunch_on_exit, enable_playtime_summary,
-     enable_system_audio, system_audio_level, enable_game_audio, game_audio_level,
-     enable_during_power, during_power_plan, enable_after_power, after_power_plan,
-     enable_game_mode_start, enable_game_mode_end, enable_debug_mode) = load_process_names_and_startup()
+    (notification_processes, resource_processes, launch_at_startup, launch_settings_on_start,
+     notification_close_on_startup, resource_close_on_startup, notification_close_on_hotkey,
+     resource_close_on_hotkey, notification_relaunch_on_exit, resource_relaunch_on_exit,
+     enable_playtime_summary, enable_system_audio, system_audio_level, enable_game_audio,
+     game_audio_level, enable_during_power, during_power_plan, enable_after_power,
+     after_power_plan, enable_game_mode_start, enable_game_mode_end,
+     enable_debug_mode) = load_process_names_and_startup()
 
     # Set console visibility based on debug mode
     set_console_visibility(enable_debug_mode)
 
     set_startup(launch_at_startup)
 
+    # Launch settings on start if enabled or if first run
+    if is_first_run or launch_settings_on_start:
+        log("Launching settings window on startup...", "INIT")
+        try:
+            if getattr(sys, 'frozen', False):
+                subprocess.Popen([sys.executable, '--ui', str(os.getpid())])
+            else:
+                subprocess.Popen([sys.executable, __file__, '--ui', str(os.getpid())])
+        except Exception as e:
+            log(f"Failed to launch settings: {e}", "ERROR")
+
     is_hotkey_registered = notification_close_on_hotkey or resource_close_on_hotkey
     if is_hotkey_registered:
         keyboard.add_hotkey('ctrl+alt+k', lambda: (
-            kill_processes(notification_processes, killed_notification) if notification_close_on_hotkey else None,
-            kill_processes(resource_processes, killed_resource) if resource_close_on_hotkey else None
+            kill_processes(notification_processes, killed_notification, "notification") if notification_close_on_hotkey else None,
+            kill_processes(resource_processes, killed_resource, "resource") if resource_close_on_hotkey else None
         ))
         log("Hotkey registered: Ctrl+Alt+K", "INIT")
 
@@ -596,9 +648,9 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource):
         start_time = time.time()
         current_game_name = game_name
         if notification_close_on_startup:
-            kill_processes(notification_processes, killed_notification)
+            kill_processes(notification_processes, killed_notification, "notification")
         if resource_close_on_startup:
-            kill_processes(resource_processes, killed_resource)
+            kill_processes(resource_processes, killed_resource, "resource")
         if enable_system_audio:
             set_system_volume(system_audio_level)
         if enable_game_audio:
@@ -616,21 +668,21 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource):
     show_notification("Vapor is now monitoring Steam games")
 
     def reload_settings():
-        nonlocal notification_processes, resource_processes, launch_at_startup, notification_close_on_startup, \
-            resource_close_on_startup, notification_close_on_hotkey, resource_close_on_hotkey, \
-            notification_relaunch_on_exit, resource_relaunch_on_exit, enable_playtime_summary, \
-            enable_system_audio, system_audio_level, enable_game_audio, game_audio_level, is_hotkey_registered, \
-            enable_during_power, during_power_plan, enable_after_power, after_power_plan, \
-            enable_game_mode_start, enable_game_mode_end, enable_debug_mode
+        nonlocal notification_processes, resource_processes, launch_at_startup, launch_settings_on_start, \
+            notification_close_on_startup, resource_close_on_startup, notification_close_on_hotkey, \
+            resource_close_on_hotkey, notification_relaunch_on_exit, resource_relaunch_on_exit, \
+            enable_playtime_summary, enable_system_audio, system_audio_level, enable_game_audio, \
+            game_audio_level, is_hotkey_registered, enable_during_power, during_power_plan, \
+            enable_after_power, after_power_plan, enable_game_mode_start, enable_game_mode_end, enable_debug_mode
 
         log("Reloading settings...", "SETTINGS")
-        (new_notification_processes, new_resource_processes, new_startup, new_notification_close_startup,
-         new_resource_close_startup, new_notification_close_hotkey, new_resource_close_hotkey,
-         new_notification_relaunch, new_resource_relaunch, new_enable_playtime_summary,
-         new_enable_system_audio, new_system_audio_level, new_enable_game_audio,
-         new_game_audio_level, new_enable_during_power, new_during_power_plan,
-         new_enable_after_power, new_after_power_plan,
-         new_enable_game_mode_start, new_enable_game_mode_end, new_enable_debug_mode) = load_process_names_and_startup()
+        (new_notification_processes, new_resource_processes, new_startup, new_launch_settings_on_start,
+         new_notification_close_startup, new_resource_close_startup, new_notification_close_hotkey,
+         new_resource_close_hotkey, new_notification_relaunch, new_resource_relaunch,
+         new_enable_playtime_summary, new_enable_system_audio, new_system_audio_level,
+         new_enable_game_audio, new_game_audio_level, new_enable_during_power, new_during_power_plan,
+         new_enable_after_power, new_after_power_plan, new_enable_game_mode_start,
+         new_enable_game_mode_end, new_enable_debug_mode) = load_process_names_and_startup()
 
         notification_processes[:] = new_notification_processes
         resource_processes[:] = new_resource_processes
@@ -639,13 +691,15 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource):
             launch_at_startup = new_startup
             set_startup(launch_at_startup)
 
+        launch_settings_on_start = new_launch_settings_on_start
+
         new_is_hotkey_registered = new_notification_close_hotkey or new_resource_close_hotkey
         if new_is_hotkey_registered != is_hotkey_registered:
             if new_is_hotkey_registered:
                 keyboard.add_hotkey('ctrl+alt+k', lambda: (
                     kill_processes(notification_processes,
-                                   killed_notification) if new_notification_close_hotkey else None,
-                    kill_processes(resource_processes, killed_resource) if new_resource_close_hotkey else None
+                                   killed_notification, "notification") if new_notification_close_hotkey else None,
+                    kill_processes(resource_processes, killed_resource, "resource") if new_resource_close_hotkey else None
                 ))
                 log("Hotkey enabled", "SETTINGS")
             else:
@@ -725,9 +779,9 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource):
                             show_notification(message)
 
                         if notification_relaunch_on_exit:
-                            relaunch_processes(killed_notification, notification_relaunch_on_exit)
+                            relaunch_processes(killed_notification, notification_relaunch_on_exit, "notification")
                         if resource_relaunch_on_exit:
-                            relaunch_processes(killed_resource, resource_relaunch_on_exit)
+                            relaunch_processes(killed_resource, resource_relaunch_on_exit, "resource")
 
                         if enable_after_power:
                             set_power_plan(after_power_plan)
@@ -753,10 +807,10 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource):
 
                         if notification_close_on_startup:
                             log("Closing notification apps...", "GAME")
-                            kill_processes(notification_processes, killed_notification)
+                            kill_processes(notification_processes, killed_notification, "notification")
                         if resource_close_on_startup:
                             log("Closing resource apps...", "GAME")
-                            kill_processes(resource_processes, killed_resource)
+                            kill_processes(resource_processes, killed_resource, "resource")
                         if enable_system_audio:
                             set_system_volume(system_audio_level)
                         if enable_game_audio:
@@ -811,6 +865,45 @@ def quit_app(icon, query):
     icon.stop()
 
 
+def manual_check_updates(icon, query):
+    """Manual update check triggered from tray menu"""
+    log("Manual update check requested", "UPDATE")
+
+    def check_thread():
+        try:
+            response = requests.get(
+                f"https://api.github.com/repos/Master00Sniper/Vapor/releases/latest",
+                headers={
+                    "Authorization": f"token ghp_XqiiRlqh2PTUL08pqg3HzXlcC1ZCDoQ",
+                    "Accept": "application/vnd.github.v3+json"
+                },
+                timeout=10
+            )
+
+            if response.status_code != 200:
+                show_notification("Failed to check for updates. Please try again later.")
+                return
+
+            release_data = response.json()
+            latest_version = release_data.get("tag_name", "").lstrip('v')
+
+            from updater import compare_versions
+            comparison = compare_versions(latest_version, CURRENT_VERSION)
+
+            if comparison > 0:
+                show_notification(f"Update available: v{latest_version}. Will download automatically.")
+                check_for_updates(get_running_steam_app_id(), show_notification)
+            else:
+                show_notification(f"Vapor is running the latest version (v{CURRENT_VERSION}).")
+                log(f"Already on latest version: v{CURRENT_VERSION}", "UPDATE")
+
+        except Exception as e:
+            log(f"Manual update check failed: {e}", "ERROR")
+            show_notification("Failed to check for updates. Please try again later.")
+
+    threading.Thread(target=check_thread, daemon=True).start()
+
+
 if __name__ == '__main__':
     if len(sys.argv) > 1 and sys.argv[1] == '--ui':
         # === UI MODE ===
@@ -829,8 +922,15 @@ if __name__ == '__main__':
         killed_resource = {}
         stop_event = threading.Event()
 
+        # Check if this is the first run (no settings file exists)
+        is_first_run = not os.path.exists(SETTINGS_FILE)
+        if is_first_run:
+            log("First run detected - creating default settings file", "INIT")
+            create_default_settings()
+
         # Start the main monitoring thread
-        thread = threading.Thread(target=monitor_steam_games, args=(stop_event, killed_notification, killed_resource),
+        thread = threading.Thread(target=monitor_steam_games,
+                                  args=(stop_event, killed_notification, killed_resource, is_first_run),
                                   daemon=True)
         thread.start()
 
@@ -852,7 +952,9 @@ if __name__ == '__main__':
         update_thread.start()
 
         menu = pystray.Menu(
-            item('Settings', open_settings),
+            item('Launch Settings', open_settings),
+            item('Check Updates', manual_check_updates),
+            pystray.Menu.SEPARATOR,
             item('Quit', quit_app)
         )
 

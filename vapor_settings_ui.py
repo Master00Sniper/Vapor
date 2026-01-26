@@ -30,6 +30,7 @@ from PIL import Image, ImageTk  # From Pillow (already installed, for icons)
 import psutil  # For terminating the main process
 import win32gui  # From pywin32, for modifying window style
 import win32con  # From pywin32
+import win11toast  # For notifications
 
 # NEW: Import version from updater
 try:
@@ -49,26 +50,42 @@ TRAY_ICON_PATH = os.path.join(base_dir, 'Images', 'tray_icon.png')
 
 # Built-in messaging apps (for Notifications tab)
 BUILT_IN_APPS = [
-    {'display_name': 'WhatsApp', 'processes': ['WhatsApp.Root.exe'], 'icon_path': os.path.join(base_dir, 'Images', 'whatsapp_icon.png')},
-    {'display_name': 'Discord', 'processes': ['Discord.exe'], 'icon_path': os.path.join(base_dir, 'Images', 'discord_icon.png')},
-    {'display_name': 'Telegram', 'processes': ['Telegram.exe'], 'icon_path': os.path.join(base_dir, 'Images', 'telegram_icon.png')},
-    {'display_name': 'Microsoft Teams', 'processes': ['ms-teams.exe'], 'icon_path': os.path.join(base_dir, 'Images', 'teams_icon.png')},
-    {'display_name': 'Facebook Messenger', 'processes': ['Messenger.exe'], 'icon_path': os.path.join(base_dir, 'Images', 'messenger_icon.png')},
-    {'display_name': 'Slack', 'processes': ['slack.exe'], 'icon_path': os.path.join(base_dir, 'Images', 'slack_icon.png')},
-    {'display_name': 'Signal', 'processes': ['Signal.exe'], 'icon_path': os.path.join(base_dir, 'Images', 'signal_icon.png')},
-    {'display_name': 'WeChat', 'processes': ['WeChat.exe'], 'icon_path': os.path.join(base_dir, 'Images', 'wechat_icon.png')}
+    {'display_name': 'WhatsApp', 'processes': ['WhatsApp.Root.exe'],
+     'icon_path': os.path.join(base_dir, 'Images', 'whatsapp_icon.png')},
+    {'display_name': 'Discord', 'processes': ['Discord.exe'],
+     'icon_path': os.path.join(base_dir, 'Images', 'discord_icon.png')},
+    {'display_name': 'Telegram', 'processes': ['Telegram.exe'],
+     'icon_path': os.path.join(base_dir, 'Images', 'telegram_icon.png')},
+    {'display_name': 'Microsoft Teams', 'processes': ['ms-teams.exe'],
+     'icon_path': os.path.join(base_dir, 'Images', 'teams_icon.png')},
+    {'display_name': 'Facebook Messenger', 'processes': ['Messenger.exe'],
+     'icon_path': os.path.join(base_dir, 'Images', 'messenger_icon.png')},
+    {'display_name': 'Slack', 'processes': ['slack.exe'],
+     'icon_path': os.path.join(base_dir, 'Images', 'slack_icon.png')},
+    {'display_name': 'Signal', 'processes': ['Signal.exe'],
+     'icon_path': os.path.join(base_dir, 'Images', 'signal_icon.png')},
+    {'display_name': 'WeChat', 'processes': ['WeChat.exe'],
+     'icon_path': os.path.join(base_dir, 'Images', 'wechat_icon.png')}
 ]
 
 # Built-in resource-heavy apps (for Resources tab) - these are examples; change if needed
 BUILT_IN_RESOURCE_APPS = [
-    {'display_name': 'Chrome', 'processes': ['chrome.exe'], 'icon_path': os.path.join(base_dir, 'Images', 'chrome_icon.png')},
-    {'display_name': 'Firefox', 'processes': ['firefox.exe'], 'icon_path': os.path.join(base_dir, 'Images', 'firefox_icon.png')},
-    {'display_name': 'Edge', 'processes': ['msedge.exe'], 'icon_path': os.path.join(base_dir, 'Images', 'edge_icon.png')},
-    {'display_name': 'Spotify', 'processes': ['spotify.exe'], 'icon_path': os.path.join(base_dir, 'Images', 'spotify_icon.png')},
-    {'display_name': 'OneDrive', 'processes': ['OneDrive.exe'], 'icon_path': os.path.join(base_dir, 'Images', 'onedrive_icon.png')},
-    {'display_name': 'Google Drive', 'processes': ['GoogleDriveFS.exe'], 'icon_path': os.path.join(base_dir, 'Images', 'googledrive_icon.png')},
-    {'display_name': 'Dropbox', 'processes': ['Dropbox.exe'], 'icon_path': os.path.join(base_dir, 'Images', 'dropbox_icon.png')},
-    {'display_name': 'Wallpaper Engine', 'processes': ['wallpaper64.exe'], 'icon_path': os.path.join(base_dir, 'Images', 'wallpaperengine_icon.png')}
+    {'display_name': 'Chrome', 'processes': ['chrome.exe'],
+     'icon_path': os.path.join(base_dir, 'Images', 'chrome_icon.png')},
+    {'display_name': 'Firefox', 'processes': ['firefox.exe'],
+     'icon_path': os.path.join(base_dir, 'Images', 'firefox_icon.png')},
+    {'display_name': 'Edge', 'processes': ['msedge.exe'],
+     'icon_path': os.path.join(base_dir, 'Images', 'edge_icon.png')},
+    {'display_name': 'Spotify', 'processes': ['spotify.exe'],
+     'icon_path': os.path.join(base_dir, 'Images', 'spotify_icon.png')},
+    {'display_name': 'OneDrive', 'processes': ['OneDrive.exe'],
+     'icon_path': os.path.join(base_dir, 'Images', 'onedrive_icon.png')},
+    {'display_name': 'Google Drive', 'processes': ['GoogleDriveFS.exe'],
+     'icon_path': os.path.join(base_dir, 'Images', 'googledrive_icon.png')},
+    {'display_name': 'Dropbox', 'processes': ['Dropbox.exe'],
+     'icon_path': os.path.join(base_dir, 'Images', 'dropbox_icon.png')},
+    {'display_name': 'Wallpaper Engine', 'processes': ['wallpaper64.exe'],
+     'icon_path': os.path.join(base_dir, 'Images', 'wallpaperengine_icon.png')}
 ]
 
 
@@ -77,24 +94,32 @@ def load_settings():
         with open(SETTINGS_FILE, 'r') as f:
             return json.load(f)
     else:
-        default_selected = ["WhatsApp", "Telegram", "Microsoft Teams", "Facebook Messenger", "Slack", "Signal", "WeChat"]
-        default_resource_selected = ["Firefox", "Edge", "Spotify", "OneDrive", "Google Drive", "Dropbox", "Wallpaper Engine"]
-        return {'selected_apps': default_selected, 'custom_processes': [],
+        default_selected = ["WhatsApp", "Telegram", "Microsoft Teams", "Facebook Messenger", "Slack", "Signal",
+                            "WeChat"]
+        default_resource_selected = ["Spotify", "OneDrive", "Google Drive", "Dropbox", "Wallpaper Engine"]
+        return {'selected_notification_apps': default_selected, 'custom_processes': [],
                 'selected_resource_apps': default_resource_selected, 'custom_resource_processes': [],
-                'launch_at_startup': False,
+                'launch_at_startup': False, 'launch_settings_on_start': True,
                 'close_on_startup': True, 'close_on_hotkey': True, 'relaunch_on_exit': True,
                 'resource_close_on_startup': True, 'resource_close_on_hotkey': True, 'resource_relaunch_on_exit': False,
-                'enable_playtime_summary': True, 'enable_debug_mode': False, 'system_audio_level': 33, 'enable_system_audio': False,
+                'enable_playtime_summary': True, 'enable_debug_mode': False, 'system_audio_level': 33,
+                'enable_system_audio': False,
                 'game_audio_level': 100, 'enable_game_audio': False,
                 'enable_during_power': False, 'during_power_plan': 'High Performance',
                 'enable_after_power': False, 'after_power_plan': 'Balanced',
-                'enable_game_mode_start': False, 'enable_game_mode_end': False}
+                'enable_game_mode_start': True, 'enable_game_mode_end': False}
 
-def save_settings(selected_apps, customs, selected_resource_apps, resource_customs, launch_startup, close_on_startup, close_on_hotkey, relaunch_on_exit, resource_close_on_startup, resource_close_on_hotkey, resource_relaunch_on_exit, enable_playtime_summary, enable_debug_mode, system_audio_level, enable_system_audio, game_audio_level, enable_game_audio, enable_during_power, during_power_plan, enable_after_power, after_power_plan, enable_game_mode_start, enable_game_mode_end):
+
+def save_settings(selected_notification_apps, customs, selected_resource_apps, resource_customs, launch_startup,
+                  launch_settings_on_start, close_on_startup, close_on_hotkey, relaunch_on_exit,
+                  resource_close_on_startup, resource_close_on_hotkey, resource_relaunch_on_exit,
+                  enable_playtime_summary, enable_debug_mode, system_audio_level, enable_system_audio,
+                  game_audio_level, enable_game_audio, enable_during_power, during_power_plan,
+                  enable_after_power, after_power_plan, enable_game_mode_start, enable_game_mode_end):
     # Flatten processes for Notifications (messaging)
     notification_processes = []
     for app in BUILT_IN_APPS:
-        if app['display_name'] in selected_apps:
+        if app['display_name'] in selected_notification_apps:
             notification_processes.extend(app['processes'])
     notification_processes.extend(customs)
 
@@ -107,12 +132,13 @@ def save_settings(selected_apps, customs, selected_resource_apps, resource_custo
 
     settings = {
         'notification_processes': notification_processes,
-        'selected_apps': selected_apps,  # For UI preload
+        'selected_notification_apps': selected_notification_apps,  # For UI preload
         'custom_processes': customs,  # For UI preload
         'resource_processes': resource_processes,
         'selected_resource_apps': selected_resource_apps,
         'custom_resource_processes': resource_customs,
         'launch_at_startup': launch_startup,
+        'launch_settings_on_start': launch_settings_on_start,
         'close_on_startup': close_on_startup,
         'close_on_hotkey': close_on_hotkey,
         'relaunch_on_exit': relaunch_on_exit,
@@ -135,15 +161,16 @@ def save_settings(selected_apps, customs, selected_resource_apps, resource_custo
     with open(SETTINGS_FILE, 'w') as f:
         json.dump(settings, f)
 
+
 # Create window
 root = ctk.CTk()
 root.withdraw()  # Hide the window initially to prevent flash
-root.title(f"Vapor Settings v{CURRENT_VERSION}")  # UPDATED: Added version number
+root.title("Vapor Settings")
 root.geometry("700x900")
 root.resizable(False, False)
 
 # Set the window icon (using ICO for better taskbar support on Windows)
-icon_path = os.path.join(base_dir, 'Images', 'tray_icon.ico')
+icon_path = os.path.join(base_dir, 'Images', 'exe_icon.ico')
 if os.path.exists(icon_path):
     root.iconbitmap(icon_path)
 
@@ -168,11 +195,13 @@ root.deiconify()
 
 # Load settings
 current_settings = load_settings()
-selected_apps = current_settings.get('selected_apps', [])
+# Support both old 'selected_apps' and new 'selected_notification_apps' key names
+selected_notification_apps = current_settings.get('selected_notification_apps', current_settings.get('selected_apps', []))
 custom_processes = current_settings.get('custom_processes', [])
 selected_resource_apps = current_settings.get('selected_resource_apps', [])
 custom_resource_processes = current_settings.get('custom_resource_processes', [])
 launch_at_startup = current_settings.get('launch_at_startup', False)
+launch_settings_on_start = current_settings.get('launch_settings_on_start', True)
 close_on_startup = current_settings.get('close_on_startup', True)
 close_on_hotkey = current_settings.get('close_on_hotkey', False)
 relaunch_on_exit = current_settings.get('relaunch_on_exit', True)
@@ -214,14 +243,17 @@ resource_switch_vars = {}
 tabview = ctk.CTkTabview(master=root)
 tabview.pack(pady=10, padx=10, fill="both", expand=True)  # Fills the window space
 
-# Add the three tabs
+# Add the tabs with padded text for approximately equal width
 notifications_tab = tabview.add("Notifications")
-preferences_tab = tabview.add("Preferences")
-resources_tab = tabview.add("Resources")
+preferences_tab = tabview.add("Preferences ")
+resources_tab = tabview.add(" Resources ")
+help_tab = tabview.add("   Help   ")
+about_tab = tabview.add("  About  ")
 
 # ===== Content for Notifications Tab =====
 # Title
-notification_title = ctk.CTkLabel(master=notifications_tab, text="Notification Management Settings", font=("Calibri", 20, "bold"))
+notification_title = ctk.CTkLabel(master=notifications_tab, text="Notification Management Settings",
+                                  font=("Calibri", 20, "bold"))
 notification_title.pack(pady=20, anchor='center')
 
 # Options frame for the 3 radiobutton groups
@@ -229,28 +261,37 @@ options_frame = ctk.CTkFrame(master=notifications_tab, fg_color="transparent")
 options_frame.pack(pady=10, padx=10, anchor='w')
 
 # First option: Automatically Close Selected Apps When Game Starts
-close_startup_label = ctk.CTkLabel(master=options_frame, text="Automatically Close Selected Apps When Game Starts:", font=("Calibri", 14))
+close_startup_label = ctk.CTkLabel(master=options_frame, text="Automatically Close Selected Apps When Game Starts:",
+                                   font=("Calibri", 14))
 close_startup_label.grid(row=0, column=0, pady=5, padx=10, sticky='w')
 
 close_startup_var = tk.StringVar(value="Enabled" if close_on_startup else "Disabled")
-ctk.CTkRadioButton(master=options_frame, text="Enabled", variable=close_startup_var, value="Enabled", font=("Calibri", 14)).grid(row=0, column=1, pady=5, padx=20)
-ctk.CTkRadioButton(master=options_frame, text="Disabled", variable=close_startup_var, value="Disabled", font=("Calibri", 14)).grid(row=0, column=2, pady=5, padx=20)
+ctk.CTkRadioButton(master=options_frame, text="Enabled", variable=close_startup_var, value="Enabled",
+                   font=("Calibri", 14)).grid(row=0, column=1, pady=5, padx=20)
+ctk.CTkRadioButton(master=options_frame, text="Disabled", variable=close_startup_var, value="Disabled",
+                   font=("Calibri", 14)).grid(row=0, column=2, pady=5, padx=20)
 
 # Second option: Close Selected Apps With Hotkey (Ctrl-Alt-k)
-close_hotkey_label = ctk.CTkLabel(master=options_frame, text="Close Selected Apps With Hotkey (Ctrl-Alt-k):", font=("Calibri", 14))
+close_hotkey_label = ctk.CTkLabel(master=options_frame, text="Close Selected Apps With Hotkey (Ctrl-Alt-k):",
+                                  font=("Calibri", 14))
 close_hotkey_label.grid(row=1, column=0, pady=5, padx=10, sticky='w')
 
 close_hotkey_var = tk.StringVar(value="Enabled" if close_on_hotkey else "Disabled")
-ctk.CTkRadioButton(master=options_frame, text="Enabled", variable=close_hotkey_var, value="Enabled", font=("Calibri", 14)).grid(row=1, column=1, pady=5, padx=20)
-ctk.CTkRadioButton(master=options_frame, text="Disabled", variable=close_hotkey_var, value="Disabled", font=("Calibri", 14)).grid(row=1, column=2, pady=5, padx=20)
+ctk.CTkRadioButton(master=options_frame, text="Enabled", variable=close_hotkey_var, value="Enabled",
+                   font=("Calibri", 14)).grid(row=1, column=1, pady=5, padx=20)
+ctk.CTkRadioButton(master=options_frame, text="Disabled", variable=close_hotkey_var, value="Disabled",
+                   font=("Calibri", 14)).grid(row=1, column=2, pady=5, padx=20)
 
 # Third option: Automatically Relaunch Closed Apps When Game Ends
-relaunch_exit_label = ctk.CTkLabel(master=options_frame, text="Automatically Relaunch Closed Apps When Game Ends:", font=("Calibri", 14))
+relaunch_exit_label = ctk.CTkLabel(master=options_frame, text="Automatically Relaunch Closed Apps When Game Ends:",
+                                   font=("Calibri", 14))
 relaunch_exit_label.grid(row=2, column=0, pady=5, padx=10, sticky='w')
 
 relaunch_exit_var = tk.StringVar(value="Enabled" if relaunch_on_exit else "Disabled")
-ctk.CTkRadioButton(master=options_frame, text="Enabled", variable=relaunch_exit_var, value="Enabled", font=("Calibri", 14)).grid(row=2, column=1, pady=5, padx=20)
-ctk.CTkRadioButton(master=options_frame, text="Disabled", variable=relaunch_exit_var, value="Disabled", font=("Calibri", 14)).grid(row=2, column=2, pady=5, padx=20)
+ctk.CTkRadioButton(master=options_frame, text="Enabled", variable=relaunch_exit_var, value="Enabled",
+                   font=("Calibri", 14)).grid(row=2, column=1, pady=5, padx=20)
+ctk.CTkRadioButton(master=options_frame, text="Disabled", variable=relaunch_exit_var, value="Disabled",
+                   font=("Calibri", 14)).grid(row=2, column=2, pady=5, padx=20)
 
 # Apps subtitle
 apps_subtitle = ctk.CTkLabel(master=notifications_tab, text="Select Apps to Close", font=("Calibri", 16, "bold"))
@@ -285,7 +326,7 @@ for i in range(4):
     else:
         ctk.CTkLabel(master=row_frame, text="Icon", font=("Calibri", 14)).pack(side="left", padx=5)
 
-    var = tk.BooleanVar(value=display_name in selected_apps)
+    var = tk.BooleanVar(value=display_name in selected_notification_apps)
     switch_vars[display_name] = var
     switch = ctk.CTkSwitch(master=row_frame, text=display_name, variable=var, font=("Calibri", 14))
     switch.pack(side="left")
@@ -309,10 +350,11 @@ for i in range(4, 8):
     else:
         ctk.CTkLabel(master=row_frame, text="Icon", font=("Calibri", 14)).pack(side="left", padx=5)
 
-    var = tk.BooleanVar(value=display_name in selected_apps)
+    var = tk.BooleanVar(value=display_name in selected_notification_apps)
     switch_vars[display_name] = var
     switch = ctk.CTkSwitch(master=row_frame, text=display_name, variable=var, font=("Calibri", 14))
     switch.pack(side="left")
+
 
 # All Apps toggle - under the app list, centered
 def on_all_apps_toggle():
@@ -320,10 +362,12 @@ def on_all_apps_toggle():
     for var in switch_vars.values():
         var.set(state)
 
-all_apps_var = tk.BooleanVar(value=all(display_name in selected_apps for display_name in
-                                        [app['display_name'] for app in BUILT_IN_APPS]))
 
-all_apps_switch = ctk.CTkSwitch(master=notifications_tab, text="Toggle All Apps", variable=all_apps_var, command=on_all_apps_toggle, font=("Calibri", 14))
+all_apps_var = tk.BooleanVar(value=all(display_name in selected_notification_apps for display_name in
+                                       [app['display_name'] for app in BUILT_IN_APPS]))
+
+all_apps_switch = ctk.CTkSwitch(master=notifications_tab, text="Toggle All Apps", variable=all_apps_var,
+                                command=on_all_apps_toggle, font=("Calibri", 14))
 all_apps_switch.pack(pady=15, anchor='center')
 
 # Custom processes
@@ -335,38 +379,213 @@ custom_entry = ctk.CTkEntry(master=notifications_tab, width=660, font=("Calibri"
 custom_entry.insert(0, ','.join(custom_processes))
 custom_entry.pack(padx=20, anchor='w')
 
+# ===== Content for Preferences Tab =====
+# Preferences title
+preferences_title = ctk.CTkLabel(master=preferences_tab, text="Vapor Preferences", font=("Calibri", 16, "bold"))
+preferences_title.pack(pady=10, anchor='center')
+
+# Launch settings on start toggle (at very top)
+launch_settings_on_start_var = tk.BooleanVar(value=launch_settings_on_start)
+launch_settings_on_start_switch = ctk.CTkSwitch(master=preferences_tab, text="Launch Vapor Settings On Start",
+                                                variable=launch_settings_on_start_var, font=("Calibri", 14))
+launch_settings_on_start_switch.pack(padx=20, pady=5, anchor='w')
+
+# Playtime summary toggle
+playtime_summary_var = tk.BooleanVar(value=enable_playtime_summary)
+playtime_summary_switch = ctk.CTkSwitch(master=preferences_tab, text="Enable Playtime Summary Report",
+                                        variable=playtime_summary_var, font=("Calibri", 14))
+playtime_summary_switch.pack(padx=20, pady=5, anchor='w')
+
+# Startup toggle
+startup_var = tk.BooleanVar(value=launch_at_startup)
+startup_switch = ctk.CTkSwitch(master=preferences_tab, text="Launch Vapor at System Startup", variable=startup_var,
+                               font=("Calibri", 14))
+startup_switch.pack(padx=20, pady=5, anchor='w')
+
+# Debug mode toggle
+debug_mode_var = tk.BooleanVar(value=enable_debug_mode)
+debug_mode_switch = ctk.CTkSwitch(master=preferences_tab, text="Enable Debug Mode (Show Console Window)",
+                                  variable=debug_mode_var, font=("Calibri", 14))
+debug_mode_switch.pack(padx=20, pady=5, anchor='w')
+
+# Audio subtitle
+audio_subtitle = ctk.CTkLabel(master=preferences_tab, text="Audio Settings - Applied At Game Start",
+                              font=("Calibri", 16, "bold"))
+audio_subtitle.pack(pady=10, anchor='center')
+
+# Audio settings frame to hold system and game audio side by side
+audio_frame = ctk.CTkFrame(master=preferences_tab, fg_color="transparent")
+audio_frame.pack(padx=20, pady=10, anchor='w')
+
+# System audio column
+system_audio_column = ctk.CTkFrame(master=audio_frame, fg_color="transparent")
+system_audio_column.pack(side="left", padx=50)
+
+system_audio_label = ctk.CTkLabel(master=system_audio_column, text="Set System Audio Level:", font=("Calibri", 14))
+system_audio_label.pack(anchor='w')
+
+system_audio_slider_var = tk.IntVar(value=system_audio_level)
+system_audio_slider = ctk.CTkSlider(master=system_audio_column, from_=0, to=100, number_of_steps=100,
+                                    variable=system_audio_slider_var)
+system_audio_slider.pack(anchor='w')
+
+system_current_value_label = ctk.CTkLabel(master=system_audio_column, text=f"{system_audio_level}%",
+                                          font=("Calibri", 14))
+system_current_value_label.pack(anchor='w')
+
+
+def update_system_audio_label(value):
+    system_current_value_label.configure(text=f"{int(value)}%")
+
+
+system_audio_slider.configure(command=update_system_audio_label)
+
+enable_system_audio_var = tk.BooleanVar(value=enable_system_audio)
+enable_system_audio_switch = ctk.CTkSwitch(master=system_audio_column, text="Enable", variable=enable_system_audio_var,
+                                           font=("Calibri", 14))
+enable_system_audio_switch.pack(anchor='w')
+
+# Game audio column (moved to right)
+game_audio_column = ctk.CTkFrame(master=audio_frame, fg_color="transparent")
+game_audio_column.pack(side="left", padx=30)
+
+game_audio_label = ctk.CTkLabel(master=game_audio_column, text="Set Game Audio Level:", font=("Calibri", 14))
+game_audio_label.pack(anchor='w')
+
+game_audio_slider_var = tk.IntVar(value=game_audio_level)
+game_audio_slider = ctk.CTkSlider(master=game_audio_column, from_=0, to=100, number_of_steps=100,
+                                  variable=game_audio_slider_var)
+game_audio_slider.pack(anchor='w')
+
+game_current_value_label = ctk.CTkLabel(master=game_audio_column, text=f"{game_audio_level}%", font=("Calibri", 14))
+game_current_value_label.pack(anchor='w')
+
+
+def update_game_audio_label(value):
+    game_current_value_label.configure(text=f"{int(value)}%")
+
+
+game_audio_slider.configure(command=update_game_audio_label)
+
+enable_game_audio_var = tk.BooleanVar(value=enable_game_audio)
+enable_game_audio_switch = ctk.CTkSwitch(master=game_audio_column, text="Enable", variable=enable_game_audio_var,
+                                         font=("Calibri", 14))
+enable_game_audio_switch.pack(anchor='w')
+
+# Power subtitle
+power_subtitle = ctk.CTkLabel(master=preferences_tab, text="Power Settings - Applied at Game Start and Exit",
+                              font=("Calibri", 16, "bold"))
+power_subtitle.pack(pady=10, anchor='center')
+
+# Power plan settings frame
+power_frame = ctk.CTkFrame(master=preferences_tab, fg_color="transparent")
+power_frame.pack(padx=20, pady=10, anchor='w')
+
+# During gaming power plan column
+during_power_column = ctk.CTkFrame(master=power_frame, fg_color="transparent")
+during_power_column.pack(side="left", padx=50)
+
+during_power_label = ctk.CTkLabel(master=during_power_column, text="Power Profile During Gaming:", font=("Calibri", 14))
+during_power_label.pack(anchor='w')
+
+during_power_var = tk.StringVar(value=during_power_plan)
+during_power_combobox = ctk.CTkComboBox(master=during_power_column,
+                                        values=["High Performance", "Balanced", "Power saver"],
+                                        variable=during_power_var)
+during_power_combobox.pack(anchor='w')
+
+enable_during_power_var = tk.BooleanVar(value=enable_during_power)
+enable_during_power_switch = ctk.CTkSwitch(master=during_power_column, text="Enable", variable=enable_during_power_var,
+                                           font=("Calibri", 14))
+enable_during_power_switch.pack(anchor='w', pady=10)
+
+# After gaming power plan column
+after_power_column = ctk.CTkFrame(master=power_frame, fg_color="transparent")
+after_power_column.pack(side="left", padx=62)
+
+after_power_label = ctk.CTkLabel(master=after_power_column, text="Power Profile After Gaming:", font=("Calibri", 14))
+after_power_label.pack(anchor='w')
+
+after_power_var = tk.StringVar(value=after_power_plan)
+after_power_combobox = ctk.CTkComboBox(master=after_power_column,
+                                       values=["High Performance", "Balanced", "Power saver"], variable=after_power_var)
+after_power_combobox.pack(anchor='w')
+
+enable_after_power_var = tk.BooleanVar(value=enable_after_power)
+enable_after_power_switch = ctk.CTkSwitch(master=after_power_column, text="Enable", variable=enable_after_power_var,
+                                          font=("Calibri", 14))
+enable_after_power_switch.pack(anchor='w', pady=10)
+
+# Game Mode subtitle
+game_mode_subtitle = ctk.CTkLabel(master=preferences_tab, text="Windows Game Mode Settings",
+                                  font=("Calibri", 16, "bold"))
+game_mode_subtitle.pack(pady=10, anchor='center')
+
+# Game Mode settings frame
+game_mode_frame = ctk.CTkFrame(master=preferences_tab, fg_color="transparent")
+game_mode_frame.pack(padx=20, pady=10, anchor='w')
+
+# Game Mode at game start column
+game_mode_start_column = ctk.CTkFrame(master=game_mode_frame, fg_color="transparent")
+game_mode_start_column.pack(side="left", padx=50)
+
+enable_game_mode_start_var = tk.BooleanVar(value=enable_game_mode_start)
+enable_game_mode_start_switch = ctk.CTkSwitch(master=game_mode_start_column, text="Enable Game Mode at Game Start",
+                                              variable=enable_game_mode_start_var, font=("Calibri", 14))
+enable_game_mode_start_switch.pack(anchor='w')
+
+# Game Mode at game end column
+game_mode_end_column = ctk.CTkFrame(master=game_mode_frame, fg_color="transparent")
+game_mode_end_column.pack(side="left", padx=30)
+
+enable_game_mode_end_var = tk.BooleanVar(value=enable_game_mode_end)
+enable_game_mode_end_switch = ctk.CTkSwitch(master=game_mode_end_column, text="Disable Game Mode at Game End",
+                                            variable=enable_game_mode_end_var, font=("Calibri", 14))
+enable_game_mode_end_switch.pack(anchor='w')
+
 # ===== Content for Resources Tab =====
 # Title
 resource_title = ctk.CTkLabel(master=resources_tab, text="Resource Management Settings", font=("Calibri", 20, "bold"))
 resource_title.pack(pady=20, anchor='center')
 
-# Options frame for Resources
+# Options frame for the 3 radiobutton groups
 resource_options_frame = ctk.CTkFrame(master=resources_tab, fg_color="transparent")
 resource_options_frame.pack(pady=10, padx=10, anchor='w')
 
 # First option: Automatically Close Selected Apps When Game Starts
-resource_close_startup_label = ctk.CTkLabel(master=resource_options_frame, text="Automatically Close Selected Apps When Game Starts:", font=("Calibri", 14))
+resource_close_startup_label = ctk.CTkLabel(master=resource_options_frame,
+                                            text="Automatically Close Selected Apps When Game Starts:",
+                                            font=("Calibri", 14))
 resource_close_startup_label.grid(row=0, column=0, pady=5, padx=10, sticky='w')
 
 resource_close_startup_var = tk.StringVar(value="Enabled" if resource_close_on_startup else "Disabled")
-ctk.CTkRadioButton(master=resource_options_frame, text="Enabled", variable=resource_close_startup_var, value="Enabled", font=("Calibri", 14)).grid(row=0, column=1, pady=5, padx=20)
-ctk.CTkRadioButton(master=resource_options_frame, text="Disabled", variable=resource_close_startup_var, value="Disabled", font=("Calibri", 14)).grid(row=0, column=2, pady=5, padx=20)
+ctk.CTkRadioButton(master=resource_options_frame, text="Enabled", variable=resource_close_startup_var, value="Enabled",
+                   font=("Calibri", 14)).grid(row=0, column=1, pady=5, padx=20)
+ctk.CTkRadioButton(master=resource_options_frame, text="Disabled", variable=resource_close_startup_var,
+                   value="Disabled", font=("Calibri", 14)).grid(row=0, column=2, pady=5, padx=20)
 
 # Second option: Close Selected Apps With Hotkey (Ctrl-Alt-k)
-resource_close_hotkey_label = ctk.CTkLabel(master=resource_options_frame, text="Close Selected Apps With Hotkey (Ctrl-Alt-k):", font=("Calibri", 14))
+resource_close_hotkey_label = ctk.CTkLabel(master=resource_options_frame,
+                                           text="Close Selected Apps With Hotkey (Ctrl-Alt-k):", font=("Calibri", 14))
 resource_close_hotkey_label.grid(row=1, column=0, pady=5, padx=10, sticky='w')
 
 resource_close_hotkey_var = tk.StringVar(value="Enabled" if resource_close_on_hotkey else "Disabled")
-ctk.CTkRadioButton(master=resource_options_frame, text="Enabled", variable=resource_close_hotkey_var, value="Enabled", font=("Calibri", 14)).grid(row=1, column=1, pady=5, padx=20)
-ctk.CTkRadioButton(master=resource_options_frame, text="Disabled", variable=resource_close_hotkey_var, value="Disabled", font=("Calibri", 14)).grid(row=1, column=2, pady=5, padx=20)
+ctk.CTkRadioButton(master=resource_options_frame, text="Enabled", variable=resource_close_hotkey_var, value="Enabled",
+                   font=("Calibri", 14)).grid(row=1, column=1, pady=5, padx=20)
+ctk.CTkRadioButton(master=resource_options_frame, text="Disabled", variable=resource_close_hotkey_var, value="Disabled",
+                   font=("Calibri", 14)).grid(row=1, column=2, pady=5, padx=20)
 
 # Third option: Automatically Relaunch Closed Apps When Game Ends
-resource_relaunch_exit_label = ctk.CTkLabel(master=resource_options_frame, text="Automatically Relaunch Closed Apps When Game Ends:", font=("Calibri", 14))
+resource_relaunch_exit_label = ctk.CTkLabel(master=resource_options_frame,
+                                            text="Automatically Relaunch Closed Apps When Game Ends:",
+                                            font=("Calibri", 14))
 resource_relaunch_exit_label.grid(row=2, column=0, pady=5, padx=10, sticky='w')
 
 resource_relaunch_exit_var = tk.StringVar(value="Enabled" if resource_relaunch_on_exit else "Disabled")
-ctk.CTkRadioButton(master=resource_options_frame, text="Enabled", variable=resource_relaunch_exit_var, value="Enabled", font=("Calibri", 14)).grid(row=2, column=1, pady=5, padx=20)
-ctk.CTkRadioButton(master=resource_options_frame, text="Disabled", variable=resource_relaunch_exit_var, value="Disabled", font=("Calibri", 14)).grid(row=2, column=2, pady=5, padx=20)
+ctk.CTkRadioButton(master=resource_options_frame, text="Enabled", variable=resource_relaunch_exit_var, value="Enabled",
+                   font=("Calibri", 14)).grid(row=2, column=1, pady=5, padx=20)
+ctk.CTkRadioButton(master=resource_options_frame, text="Disabled", variable=resource_relaunch_exit_var,
+                   value="Disabled", font=("Calibri", 14)).grid(row=2, column=2, pady=5, padx=20)
 
 # Apps subtitle for Resources
 resource_apps_subtitle = ctk.CTkLabel(master=resources_tab, text="Select Apps to Close", font=("Calibri", 16, "bold"))
@@ -430,16 +649,19 @@ for i in range(4, 8):
     switch = ctk.CTkSwitch(master=row_frame, text=display_name, variable=var, font=("Calibri", 14))
     switch.pack(side="left")
 
+
 # All Apps toggle for Resources - under the app list, centered
 def on_resource_all_apps_toggle():
     state = resource_all_apps_var.get()
     for var in resource_switch_vars.values():
         var.set(state)
 
+
 resource_all_apps_var = tk.BooleanVar(value=all(display_name in selected_resource_apps for display_name in
                                                 [app['display_name'] for app in BUILT_IN_RESOURCE_APPS]))
 
-resource_all_apps_switch = ctk.CTkSwitch(master=resources_tab, text="Toggle All Apps", variable=resource_all_apps_var, command=on_resource_all_apps_toggle, font=("Calibri", 14))
+resource_all_apps_switch = ctk.CTkSwitch(master=resources_tab, text="Toggle All Apps", variable=resource_all_apps_var,
+                                         command=on_resource_all_apps_toggle, font=("Calibri", 14))
 resource_all_apps_switch.pack(pady=15, anchor='center')
 
 # Custom processes for Resources
@@ -451,158 +673,89 @@ custom_resource_entry = ctk.CTkEntry(master=resources_tab, width=660, font=("Cal
 custom_resource_entry.insert(0, ','.join(custom_resource_processes))
 custom_resource_entry.pack(padx=20, anchor='w')
 
-# ===== Content for Preferences Tab =====
-# Preferences title
-preferences_title = ctk.CTkLabel(master=preferences_tab, text="Vapor Preferences", font=("Calibri", 16, "bold"))
-preferences_title.pack(pady=10, anchor='center')
+# ===== Content for Help Tab =====
+help_title = ctk.CTkLabel(master=help_tab, text="Help", font=("Calibri", 20, "bold"))
+help_title.pack(pady=20, anchor='center')
 
-# Playtime summary toggle (at top)
-playtime_summary_var = tk.BooleanVar(value=enable_playtime_summary)
-playtime_summary_switch = ctk.CTkSwitch(master=preferences_tab, text="Enable Playtime Summary Report", variable=playtime_summary_var, font=("Calibri", 14))
-playtime_summary_switch.pack(padx=20, pady=5, anchor='w')
 
-# Startup toggle
-startup_var = tk.BooleanVar(value=launch_at_startup)
-startup_switch = ctk.CTkSwitch(master=preferences_tab, text="Launch Vapor at System Startup", variable=startup_var, font=("Calibri", 14))
-startup_switch.pack(padx=20, pady=5, anchor='w')
+def rebuild_settings():
+    # Reset all UI elements to defaults
+    default_selected = ["WhatsApp", "Telegram", "Microsoft Teams", "Facebook Messenger", "Slack", "Signal", "WeChat"]
+    default_resource_selected = ["Spotify", "OneDrive", "Google Drive", "Dropbox", "Wallpaper Engine"]
 
-# Debug mode toggle
-debug_mode_var = tk.BooleanVar(value=enable_debug_mode)
-debug_mode_switch = ctk.CTkSwitch(master=preferences_tab, text="Enable Debug Mode (Show Console Window)", variable=debug_mode_var, font=("Calibri", 14))
-debug_mode_switch.pack(padx=20, pady=5, anchor='w')
+    for display_name in switch_vars:
+        switch_vars[display_name].set(display_name in default_selected)
+    custom_entry.delete(0, 'end')
 
-# Audio subtitle
-audio_subtitle = ctk.CTkLabel(master=preferences_tab, text="Audio Settings - Applied At Game Start", font=("Calibri", 16, "bold"))
-audio_subtitle.pack(pady=10, anchor='center')
+    for display_name in resource_switch_vars:
+        resource_switch_vars[display_name].set(display_name in default_resource_selected)
+    custom_resource_entry.delete(0, 'end')
 
-# Audio settings frame to hold system and game audio side by side
-audio_frame = ctk.CTkFrame(master=preferences_tab, fg_color="transparent")
-audio_frame.pack(padx=20, pady=10, anchor='w')
+    startup_var.set(False)
+    launch_settings_on_start_var.set(True)
+    close_startup_var.set("Enabled")
+    close_hotkey_var.set("Enabled")
+    relaunch_exit_var.set("Enabled")
+    resource_close_startup_var.set("Enabled")
+    resource_close_hotkey_var.set("Enabled")
+    resource_relaunch_exit_var.set("Disabled")
+    playtime_summary_var.set(True)
+    debug_mode_var.set(False)
+    system_audio_slider_var.set(33)
+    update_system_audio_label(33)
+    enable_system_audio_var.set(False)
+    game_audio_slider_var.set(100)
+    update_game_audio_label(100)
+    enable_game_audio_var.set(False)
+    enable_during_power_var.set(False)
+    during_power_var.set("High Performance")
+    enable_after_power_var.set(False)
+    after_power_var.set("Balanced")
+    enable_game_mode_start_var.set(True)
+    enable_game_mode_end_var.set(False)
 
-# System audio column
-system_audio_column = ctk.CTkFrame(master=audio_frame, fg_color="transparent")
-system_audio_column.pack(side="left", padx=50)
+    # Save the defaults (this overwrites/recreates the file with valid JSON)
+    on_save()
 
-system_audio_label = ctk.CTkLabel(master=system_audio_column, text="Set System Audio Level:", font=("Calibri", 14))
-system_audio_label.pack(anchor='w')
+    win11toast.notify(body="Settings have been reset to defaults.", app_id='Vapor - Streamline Gaming',
+                      duration='short', icon=TRAY_ICON_PATH, audio={'silent': 'true'})
 
-system_audio_slider_var = tk.IntVar(value=system_audio_level)
-system_audio_slider = ctk.CTkSlider(master=system_audio_column, from_=0, to=100, number_of_steps=100, variable=system_audio_slider_var)
-system_audio_slider.pack(anchor='w')
 
-system_current_value_label = ctk.CTkLabel(master=system_audio_column, text=f"{system_audio_level}%", font=("Calibri", 14))
-system_current_value_label.pack(anchor='w')
+rebuild_button = ctk.CTkButton(master=help_tab, text="Rebuild Settings", command=rebuild_settings, corner_radius=10,
+                               fg_color="blue", text_color="white", width=200, font=("Calibri", 14))
+rebuild_button.pack(pady=20, anchor='center')
 
-def update_system_audio_label(value):
-    system_current_value_label.configure(text=f"{int(value)}%")
+# ===== Content for About Tab =====
+# Keep empty for now
+about_title = ctk.CTkLabel(master=about_tab, text="About", font=("Calibri", 20, "bold"))
+about_title.pack(pady=20, anchor='center')
 
-system_audio_slider.configure(command=update_system_audio_label)
+version_label = ctk.CTkLabel(master=about_tab, text=f"Version: {CURRENT_VERSION}", font=("Calibri", 14))
+version_label.pack(pady=10, anchor='center')
 
-enable_system_audio_var = tk.BooleanVar(value=enable_system_audio)
-enable_system_audio_switch = ctk.CTkSwitch(master=system_audio_column, text="Enable", variable=enable_system_audio_var, font=("Calibri", 14))
-enable_system_audio_switch.pack(anchor='w')
-
-# Game audio column (moved to right)
-game_audio_column = ctk.CTkFrame(master=audio_frame, fg_color="transparent")
-game_audio_column.pack(side="left", padx=30)
-
-game_audio_label = ctk.CTkLabel(master=game_audio_column, text="Set Game Audio Level:", font=("Calibri", 14))
-game_audio_label.pack(anchor='w')
-
-game_audio_slider_var = tk.IntVar(value=game_audio_level)
-game_audio_slider = ctk.CTkSlider(master=game_audio_column, from_=0, to=100, number_of_steps=100, variable=game_audio_slider_var)
-game_audio_slider.pack(anchor='w')
-
-game_current_value_label = ctk.CTkLabel(master=game_audio_column, text=f"{game_audio_level}%", font=("Calibri", 14))
-game_current_value_label.pack(anchor='w')
-
-def update_game_audio_label(value):
-    game_current_value_label.configure(text=f"{int(value)}%")
-
-game_audio_slider.configure(command=update_game_audio_label)
-
-enable_game_audio_var = tk.BooleanVar(value=enable_game_audio)
-enable_game_audio_switch = ctk.CTkSwitch(master=game_audio_column, text="Enable", variable=enable_game_audio_var, font=("Calibri", 14))
-enable_game_audio_switch.pack(anchor='w')
-
-# Power subtitle
-power_subtitle = ctk.CTkLabel(master=preferences_tab, text="Power Settings - Applied at Game Start and Exit", font=("Calibri", 16, "bold"))
-power_subtitle.pack(pady=10, anchor='center')
-
-# Power plan settings frame
-power_frame = ctk.CTkFrame(master=preferences_tab, fg_color="transparent")
-power_frame.pack(padx=20, pady=10, anchor='w')
-
-# During gaming power plan column
-during_power_column = ctk.CTkFrame(master=power_frame, fg_color="transparent")
-during_power_column.pack(side="left", padx=50)
-
-during_power_label = ctk.CTkLabel(master=during_power_column, text="Power Profile During Gaming:", font=("Calibri", 14))
-during_power_label.pack(anchor='w')
-
-during_power_var = tk.StringVar(value=during_power_plan)
-during_power_combobox = ctk.CTkComboBox(master=during_power_column, values=["High Performance", "Balanced", "Power saver"], variable=during_power_var)
-during_power_combobox.pack(anchor='w')
-
-enable_during_power_var = tk.BooleanVar(value=enable_during_power)
-enable_during_power_switch = ctk.CTkSwitch(master=during_power_column, text="Enable", variable=enable_during_power_var, font=("Calibri", 14))
-enable_during_power_switch.pack(anchor='w', pady=10)
-
-# After gaming power plan column
-after_power_column = ctk.CTkFrame(master=power_frame, fg_color="transparent")
-after_power_column.pack(side="left", padx=62)
-
-after_power_label = ctk.CTkLabel(master=after_power_column, text="Power Profile After Gaming:", font=("Calibri", 14))
-after_power_label.pack(anchor='w')
-
-after_power_var = tk.StringVar(value=after_power_plan)
-after_power_combobox = ctk.CTkComboBox(master=after_power_column, values=["High Performance", "Balanced", "Power saver"], variable=after_power_var)
-after_power_combobox.pack(anchor='w')
-
-enable_after_power_var = tk.BooleanVar(value=enable_after_power)
-enable_after_power_switch = ctk.CTkSwitch(master=after_power_column, text="Enable", variable=enable_after_power_var, font=("Calibri", 14))
-enable_after_power_switch.pack(anchor='w', pady=10)
-
-# Game Mode subtitle
-game_mode_subtitle = ctk.CTkLabel(master=preferences_tab, text="Windows Game Mode Settings", font=("Calibri", 16, "bold"))
-game_mode_subtitle.pack(pady=10, anchor='center')
-
-# Game Mode settings frame
-game_mode_frame = ctk.CTkFrame(master=preferences_tab, fg_color="transparent")
-game_mode_frame.pack(padx=20, pady=10, anchor='w')
-
-# Game Mode at game start column
-game_mode_start_column = ctk.CTkFrame(master=game_mode_frame, fg_color="transparent")
-game_mode_start_column.pack(side="left", padx=50)
-
-enable_game_mode_start_var = tk.BooleanVar(value=enable_game_mode_start)
-enable_game_mode_start_switch = ctk.CTkSwitch(master=game_mode_start_column, text="Enable Game Mode at Game Start", variable=enable_game_mode_start_var, font=("Calibri", 14))
-enable_game_mode_start_switch.pack(anchor='w')
-
-# Game Mode at game end column
-game_mode_end_column = ctk.CTkFrame(master=game_mode_frame, fg_color="transparent")
-game_mode_end_column.pack(side="left", padx=30)
-
-enable_game_mode_end_var = tk.BooleanVar(value=enable_game_mode_end)
-enable_game_mode_end_switch = ctk.CTkSwitch(master=game_mode_end_column, text="Disable Game Mode at Game End", variable=enable_game_mode_end_var, font=("Calibri", 14))
-enable_game_mode_end_switch.pack(anchor='w')
+copyright_label = ctk.CTkLabel(master=about_tab, text="Copyright Â© 2024 Gregory (@Master00Sniper)",
+                               font=("Calibri", 14))
+copyright_label.pack(pady=10, anchor='center')
 
 # Bottom buttons frame (outside tabs, always at bottom)
 button_frame = ctk.CTkFrame(master=root, fg_color="transparent")
 button_frame.pack(pady=20, fill='x', padx=40)  # Pushed to bottom with padding
 
-# Grid layout for centered buttons with cushion
+# Grid layout for centered buttons
 button_frame.grid_columnconfigure(0, weight=1)
 button_frame.grid_columnconfigure(1, weight=0)
 button_frame.grid_columnconfigure(2, weight=0)
-button_frame.grid_columnconfigure(3, weight=1)
+button_frame.grid_columnconfigure(3, weight=0)
+button_frame.grid_columnconfigure(4, weight=1)
+
 
 def on_save():
-    new_selected_apps = [name for name, var in switch_vars.items() if var.get()]
+    new_selected_notification_apps = [name for name, var in switch_vars.items() if var.get()]
     new_customs = [c.strip() for c in custom_entry.get().split(',') if c.strip()]
     new_selected_resource_apps = [name for name, var in resource_switch_vars.items() if var.get()]
     new_resource_customs = [c.strip() for c in custom_resource_entry.get().split(',') if c.strip()]
     new_launch_startup = startup_var.get()
+    new_launch_settings_on_start = launch_settings_on_start_var.get()
     new_close_on_startup = close_startup_var.get() == "Enabled"
     new_close_on_hotkey = close_hotkey_var.get() == "Enabled"
     new_relaunch_on_exit = relaunch_exit_var.get() == "Enabled"
@@ -621,16 +774,47 @@ def on_save():
     new_after_power_plan = after_power_var.get()
     new_enable_game_mode_start = enable_game_mode_start_var.get()
     new_enable_game_mode_end = enable_game_mode_end_var.get()
-    save_settings(new_selected_apps, new_customs, new_selected_resource_apps, new_resource_customs, new_launch_startup, new_close_on_startup, new_close_on_hotkey, new_relaunch_on_exit, new_resource_close_on_startup, new_resource_close_on_hotkey, new_resource_relaunch_on_exit, new_enable_playtime_summary, new_enable_debug_mode, new_system_audio_level, new_enable_system_audio, new_game_audio_level, new_enable_game_audio, new_enable_during_power, new_during_power_plan, new_enable_after_power, new_after_power_plan, new_enable_game_mode_start, new_enable_game_mode_end)
+    save_settings(new_selected_notification_apps, new_customs, new_selected_resource_apps, new_resource_customs,
+                  new_launch_startup, new_launch_settings_on_start, new_close_on_startup, new_close_on_hotkey,
+                  new_relaunch_on_exit, new_resource_close_on_startup, new_resource_close_on_hotkey,
+                  new_resource_relaunch_on_exit, new_enable_playtime_summary, new_enable_debug_mode,
+                  new_system_audio_level, new_enable_system_audio, new_game_audio_level, new_enable_game_audio,
+                  new_enable_during_power, new_during_power_plan, new_enable_after_power, new_after_power_plan,
+                  new_enable_game_mode_start, new_enable_game_mode_end)
 
-save_button = ctk.CTkButton(master=button_frame, text="Save Settings", command=on_save, corner_radius=10, fg_color="blue", text_color="white", width=150, font=("Calibri", 14))
-save_button.grid(row=0, column=1, padx=30, sticky='ew')
 
-def on_close():
+def on_save_and_close():
+    on_save()
     root.destroy()
 
-close_button = ctk.CTkButton(master=button_frame, text="Close", command=on_close, corner_radius=10, fg_color="red", text_color="white", width=150, font=("Calibri", 14))
-close_button.grid(row=0, column=2, padx=30, sticky='ew')
+
+def on_discard_and_close():
+    root.destroy()
+
+
+def on_stop_vapor():
+    # Terminate the main Vapor process if we have its PID
+    if main_pid:
+        try:
+            main_process = psutil.Process(main_pid)
+            main_process.terminate()
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            pass
+    root.destroy()
+
+
+save_button = ctk.CTkButton(master=button_frame, text="Save & Close", command=on_save_and_close, corner_radius=10,
+                            fg_color="green", text_color="white", width=150, font=("Calibri", 14))
+save_button.grid(row=0, column=1, padx=15, sticky='ew')
+
+discard_button = ctk.CTkButton(master=button_frame, text="Discard & Close", command=on_discard_and_close, corner_radius=10,
+                               fg_color="gray", text_color="white", width=150, font=("Calibri", 14))
+discard_button.grid(row=0, column=2, padx=15, sticky='ew')
+
+stop_button = ctk.CTkButton(master=button_frame, text="Stop Vapor", command=on_stop_vapor, corner_radius=10,
+                            fg_color="red", text_color="white", width=150, font=("Calibri", 14))
+stop_button.grid(row=0, column=3, padx=15, sticky='ew')
+
 
 # Function to check if main process is running
 def check_main_process():
@@ -642,6 +826,7 @@ def check_main_process():
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             root.destroy()
     root.after(1000, check_main_process)  # Check every second
+
 
 # Start checking if main_pid is provided
 if main_pid:
