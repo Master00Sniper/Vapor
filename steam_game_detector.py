@@ -65,6 +65,18 @@ def log(message, category="INFO"):
     print(f"[{timestamp}] [{category}] {message}")
 
 
+def set_console_visibility(visible):
+    """Show or hide the console window"""
+    hwnd = ctypes.windll.kernel32.GetConsoleWindow()
+    if hwnd:
+        if visible:
+            ctypes.windll.user32.ShowWindow(hwnd, win32con.SW_SHOW)
+            log("Console window shown", "DEBUG")
+        else:
+            ctypes.windll.user32.ShowWindow(hwnd, win32con.SW_HIDE)
+            log("Console window hidden", "DEBUG")
+
+
 def load_process_names_and_startup():
     log("Loading settings from file...", "SETTINGS")
     if os.path.exists(SETTINGS_FILE):
@@ -89,15 +101,24 @@ def load_process_names_and_startup():
             during_power_plan = settings.get('during_power_plan', 'High Performance')
             enable_after_power = settings.get('enable_after_power', False)
             after_power_plan = settings.get('after_power_plan', 'Balanced')
+            enable_game_mode_start = settings.get('enable_game_mode_start', False)
+            enable_game_mode_end = settings.get('enable_game_mode_end', False)
+            enable_debug_mode = settings.get('enable_debug_mode', False)
             log("Settings loaded successfully", "SETTINGS")
-            return notification_processes, resource_processes, startup, notification_close_on_startup, resource_close_on_startup, notification_close_on_hotkey, resource_close_on_hotkey, notification_relaunch_on_exit, resource_relaunch_on_exit, enable_playtime_summary, enable_system_audio, system_audio_level, enable_game_audio, game_audio_level, enable_during_power, during_power_plan, enable_after_power, after_power_plan
+            return (notification_processes, resource_processes, startup, notification_close_on_startup,
+                    resource_close_on_startup, notification_close_on_hotkey, resource_close_on_hotkey,
+                    notification_relaunch_on_exit, resource_relaunch_on_exit, enable_playtime_summary,
+                    enable_system_audio, system_audio_level, enable_game_audio, game_audio_level,
+                    enable_during_power, during_power_plan, enable_after_power, after_power_plan,
+                    enable_game_mode_start, enable_game_mode_end, enable_debug_mode)
     else:
         log("No settings file found - using defaults", "SETTINGS")
         default_notification = ['WhatsApp.Root.exe', 'Telegram.exe', 'ms-teams.exe', 'Messenger.exe', 'slack.exe',
                                 'Signal.exe', 'WeChat.exe']
         default_resource = ['firefox.exe', 'msedge.exe', 'spotify.exe', 'OneDrive.exe', 'GoogleDriveFS.exe',
                             'Dropbox.exe', 'wallpaper64.exe']
-        return default_notification, default_resource, False, True, True, True, True, True, False, True, False, 33, False, 100, False, 'High Performance', False, 'Balanced'
+        return (default_notification, default_resource, False, True, True, True, True, True, False,
+                True, False, 33, False, 100, False, 'High Performance', False, 'Balanced', False, False, False)
 
 
 def set_startup(enabled):
@@ -262,6 +283,28 @@ def set_power_plan(plan_name):
         log(f"Unknown power plan: {plan_name}", "ERROR")
 
 
+def set_game_mode(enabled):
+    """Enable or disable Windows Game Mode via registry"""
+    log(f"Setting Windows Game Mode to: {'Enabled' if enabled else 'Disabled'}", "GAMEMODE")
+    try:
+        key_path = r"Software\Microsoft\GameBar"
+        key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path, 0, winreg.KEY_ALL_ACCESS)
+        winreg.SetValueEx(key, "AutoGameModeEnabled", 0, winreg.REG_DWORD, 1 if enabled else 0)
+        winreg.CloseKey(key)
+        log(f"Windows Game Mode {'enabled' if enabled else 'disabled'}", "GAMEMODE")
+    except FileNotFoundError:
+        # Key doesn't exist, try to create it
+        try:
+            key = winreg.CreateKey(winreg.HKEY_CURRENT_USER, key_path)
+            winreg.SetValueEx(key, "AutoGameModeEnabled", 0, winreg.REG_DWORD, 1 if enabled else 0)
+            winreg.CloseKey(key)
+            log(f"Windows Game Mode {'enabled' if enabled else 'disabled'} (created key)", "GAMEMODE")
+        except Exception as e:
+            log(f"Failed to create Game Mode registry key: {e}", "ERROR")
+    except Exception as e:
+        log(f"Failed to set Game Mode: {e}", "ERROR")
+
+
 def get_steam_path():
     log("Detecting Steam installation path...", "STEAM")
     try:
@@ -422,7 +465,15 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource):
     log(f"Vapor v{CURRENT_VERSION} starting...", "INIT")
     log("=" * 50, "INIT")
 
-    notification_processes, resource_processes, launch_at_startup, notification_close_on_startup, resource_close_on_startup, notification_close_on_hotkey, resource_close_on_hotkey, notification_relaunch_on_exit, resource_relaunch_on_exit, enable_playtime_summary, enable_system_audio, system_audio_level, enable_game_audio, game_audio_level, enable_during_power, during_power_plan, enable_after_power, after_power_plan = load_process_names_and_startup()
+    (notification_processes, resource_processes, launch_at_startup, notification_close_on_startup,
+     resource_close_on_startup, notification_close_on_hotkey, resource_close_on_hotkey,
+     notification_relaunch_on_exit, resource_relaunch_on_exit, enable_playtime_summary,
+     enable_system_audio, system_audio_level, enable_game_audio, game_audio_level,
+     enable_during_power, during_power_plan, enable_after_power, after_power_plan,
+     enable_game_mode_start, enable_game_mode_end, enable_debug_mode) = load_process_names_and_startup()
+
+    # Set console visibility based on debug mode
+    set_console_visibility(enable_debug_mode)
 
     set_startup(launch_at_startup)
 
@@ -455,6 +506,8 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource):
             set_game_volume(game_pids, game_audio_level)
         if enable_during_power:
             set_power_plan(during_power_plan)
+        if enable_game_mode_start:
+            set_game_mode(True)
     else:
         log("No game running at startup", "GAME")
 
@@ -466,15 +519,17 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource):
             resource_close_on_startup, notification_close_on_hotkey, resource_close_on_hotkey, \
             notification_relaunch_on_exit, resource_relaunch_on_exit, enable_playtime_summary, \
             enable_system_audio, system_audio_level, enable_game_audio, game_audio_level, is_hotkey_registered, \
-            enable_during_power, during_power_plan, enable_after_power, after_power_plan
+            enable_during_power, during_power_plan, enable_after_power, after_power_plan, \
+            enable_game_mode_start, enable_game_mode_end, enable_debug_mode
 
         log("Reloading settings...", "SETTINGS")
-        new_notification_processes, new_resource_processes, new_startup, new_notification_close_startup, \
-            new_resource_close_startup, new_notification_close_hotkey, new_resource_close_hotkey, \
-            new_notification_relaunch, new_resource_relaunch, new_enable_playtime_summary, \
-            new_enable_system_audio, new_system_audio_level, new_enable_game_audio, \
-            new_game_audio_level, new_enable_during_power, new_during_power_plan, \
-            new_enable_after_power, new_after_power_plan = load_process_names_and_startup()
+        (new_notification_processes, new_resource_processes, new_startup, new_notification_close_startup,
+         new_resource_close_startup, new_notification_close_hotkey, new_resource_close_hotkey,
+         new_notification_relaunch, new_resource_relaunch, new_enable_playtime_summary,
+         new_enable_system_audio, new_system_audio_level, new_enable_game_audio,
+         new_game_audio_level, new_enable_during_power, new_during_power_plan,
+         new_enable_after_power, new_after_power_plan,
+         new_enable_game_mode_start, new_enable_game_mode_end, new_enable_debug_mode) = load_process_names_and_startup()
 
         notification_processes[:] = new_notification_processes
         resource_processes[:] = new_resource_processes
@@ -515,6 +570,14 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource):
         during_power_plan = new_during_power_plan
         enable_after_power = new_enable_after_power
         after_power_plan = new_after_power_plan
+        enable_game_mode_start = new_enable_game_mode_start
+        enable_game_mode_end = new_enable_game_mode_end
+
+        # Update console visibility if debug mode changed
+        if new_enable_debug_mode != enable_debug_mode:
+            set_console_visibility(new_enable_debug_mode)
+        enable_debug_mode = new_enable_debug_mode
+
         log("Settings reloaded successfully", "SETTINGS")
 
     event_handler = SettingsFileHandler(reload_settings)
@@ -568,6 +631,9 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource):
                         if enable_after_power:
                             set_power_plan(after_power_plan)
 
+                        if enable_game_mode_end:
+                            set_game_mode(False)
+
                         log("Checking for pending updates...", "UPDATE")
                         from updater import apply_pending_update
                         apply_pending_update(show_notification)
@@ -599,6 +665,8 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource):
                             set_game_volume(game_pids, game_audio_level)
                         if enable_during_power:
                             set_power_plan(during_power_plan)
+                        if enable_game_mode_start:
+                            set_game_mode(True)
 
                         log(f"Game session started for: {game_name}", "GAME")
 

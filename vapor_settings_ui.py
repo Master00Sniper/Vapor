@@ -84,12 +84,13 @@ def load_settings():
                 'launch_at_startup': False,
                 'close_on_startup': True, 'close_on_hotkey': True, 'relaunch_on_exit': True,
                 'resource_close_on_startup': True, 'resource_close_on_hotkey': True, 'resource_relaunch_on_exit': False,
-                'enable_playtime_summary': True, 'system_audio_level': 33, 'enable_system_audio': False,
+                'enable_playtime_summary': True, 'enable_debug_mode': False, 'system_audio_level': 33, 'enable_system_audio': False,
                 'game_audio_level': 100, 'enable_game_audio': False,
                 'enable_during_power': False, 'during_power_plan': 'High Performance',
-                'enable_after_power': False, 'after_power_plan': 'Balanced'}
+                'enable_after_power': False, 'after_power_plan': 'Balanced',
+                'enable_game_mode_start': False, 'enable_game_mode_end': False}
 
-def save_settings(selected_apps, customs, selected_resource_apps, resource_customs, launch_startup, close_on_startup, close_on_hotkey, relaunch_on_exit, resource_close_on_startup, resource_close_on_hotkey, resource_relaunch_on_exit, enable_playtime_summary, system_audio_level, enable_system_audio, game_audio_level, enable_game_audio, enable_during_power, during_power_plan, enable_after_power, after_power_plan):
+def save_settings(selected_apps, customs, selected_resource_apps, resource_customs, launch_startup, close_on_startup, close_on_hotkey, relaunch_on_exit, resource_close_on_startup, resource_close_on_hotkey, resource_relaunch_on_exit, enable_playtime_summary, enable_debug_mode, system_audio_level, enable_system_audio, game_audio_level, enable_game_audio, enable_during_power, during_power_plan, enable_after_power, after_power_plan, enable_game_mode_start, enable_game_mode_end):
     # Flatten processes for Notifications (messaging)
     notification_processes = []
     for app in BUILT_IN_APPS:
@@ -119,6 +120,7 @@ def save_settings(selected_apps, customs, selected_resource_apps, resource_custo
         'resource_close_on_hotkey': resource_close_on_hotkey,
         'resource_relaunch_on_exit': resource_relaunch_on_exit,
         'enable_playtime_summary': enable_playtime_summary,
+        'enable_debug_mode': enable_debug_mode,
         'system_audio_level': system_audio_level,
         'enable_system_audio': enable_system_audio,
         'game_audio_level': game_audio_level,
@@ -126,7 +128,9 @@ def save_settings(selected_apps, customs, selected_resource_apps, resource_custo
         'enable_during_power': enable_during_power,
         'during_power_plan': during_power_plan,
         'enable_after_power': enable_after_power,
-        'after_power_plan': after_power_plan
+        'after_power_plan': after_power_plan,
+        'enable_game_mode_start': enable_game_mode_start,
+        'enable_game_mode_end': enable_game_mode_end
     }
     with open(SETTINGS_FILE, 'w') as f:
         json.dump(settings, f)
@@ -134,7 +138,7 @@ def save_settings(selected_apps, customs, selected_resource_apps, resource_custo
 # Create window
 root = ctk.CTk()
 root.withdraw()  # Hide the window initially to prevent flash
-root.title(f"Vapor Settings - v{CURRENT_VERSION}")  # UPDATED: Added version number
+root.title(f"Vapor Settings v{CURRENT_VERSION}")  # UPDATED: Added version number
 root.geometry("700x900")
 root.resizable(False, False)
 
@@ -176,6 +180,7 @@ resource_close_on_startup = current_settings.get('resource_close_on_startup', Tr
 resource_close_on_hotkey = current_settings.get('resource_close_on_hotkey', False)
 resource_relaunch_on_exit = current_settings.get('resource_relaunch_on_exit', True)
 enable_playtime_summary = current_settings.get('enable_playtime_summary', True)
+enable_debug_mode = current_settings.get('enable_debug_mode', False)
 system_audio_level = current_settings.get('system_audio_level', 50)
 enable_system_audio = current_settings.get('enable_system_audio', False)
 game_audio_level = current_settings.get('game_audio_level', 50)
@@ -184,6 +189,8 @@ enable_during_power = current_settings.get('enable_during_power', False)
 during_power_plan = current_settings.get('during_power_plan', 'High Performance')
 enable_after_power = current_settings.get('enable_after_power', False)
 after_power_plan = current_settings.get('after_power_plan', 'Balanced')
+enable_game_mode_start = current_settings.get('enable_game_mode_start', False)
+enable_game_mode_end = current_settings.get('enable_game_mode_end', False)
 
 # Get main process PID for Close button
 main_pid = None
@@ -454,6 +461,11 @@ playtime_summary_var = tk.BooleanVar(value=enable_playtime_summary)
 playtime_summary_switch = ctk.CTkSwitch(master=preferences_tab, text="Enable Playtime Summary Report", variable=playtime_summary_var, font=("Calibri", 14))
 playtime_summary_switch.pack(padx=20, pady=5, anchor='w')
 
+# Debug mode toggle
+debug_mode_var = tk.BooleanVar(value=enable_debug_mode)
+debug_mode_switch = ctk.CTkSwitch(master=preferences_tab, text="Enable Debug Mode (Show Console Window)", variable=debug_mode_var, font=("Calibri", 14))
+debug_mode_switch.pack(padx=20, pady=5, anchor='w')
+
 # Audio subtitle
 audio_subtitle = ctk.CTkLabel(master=preferences_tab, text="Audio Settings - Applied At Game Start", font=("Calibri", 16, "bold"))
 audio_subtitle.pack(pady=10, anchor='center')
@@ -546,6 +558,30 @@ enable_after_power_var = tk.BooleanVar(value=enable_after_power)
 enable_after_power_switch = ctk.CTkSwitch(master=after_power_column, text="Enable", variable=enable_after_power_var, font=("Calibri", 14))
 enable_after_power_switch.pack(anchor='w', pady=10)
 
+# Game Mode subtitle
+game_mode_subtitle = ctk.CTkLabel(master=preferences_tab, text="Windows Game Mode Settings", font=("Calibri", 16, "bold"))
+game_mode_subtitle.pack(pady=10, anchor='center')
+
+# Game Mode settings frame
+game_mode_frame = ctk.CTkFrame(master=preferences_tab, fg_color="transparent")
+game_mode_frame.pack(padx=20, pady=10, anchor='w')
+
+# Game Mode at game start column
+game_mode_start_column = ctk.CTkFrame(master=game_mode_frame, fg_color="transparent")
+game_mode_start_column.pack(side="left", padx=50)
+
+enable_game_mode_start_var = tk.BooleanVar(value=enable_game_mode_start)
+enable_game_mode_start_switch = ctk.CTkSwitch(master=game_mode_start_column, text="Enable Game Mode at Game Start", variable=enable_game_mode_start_var, font=("Calibri", 14))
+enable_game_mode_start_switch.pack(anchor='w')
+
+# Game Mode at game end column
+game_mode_end_column = ctk.CTkFrame(master=game_mode_frame, fg_color="transparent")
+game_mode_end_column.pack(side="left", padx=30)
+
+enable_game_mode_end_var = tk.BooleanVar(value=enable_game_mode_end)
+enable_game_mode_end_switch = ctk.CTkSwitch(master=game_mode_end_column, text="Disable Game Mode at Game End", variable=enable_game_mode_end_var, font=("Calibri", 14))
+enable_game_mode_end_switch.pack(anchor='w')
+
 # Startup toggle (moved to bottom)
 startup_var = tk.BooleanVar(value=launch_at_startup)
 startup_switch = ctk.CTkSwitch(master=preferences_tab, text="Launch Vapor at System Startup", variable=startup_var, font=("Calibri", 14))
@@ -574,6 +610,7 @@ def on_save():
     new_resource_close_on_hotkey = resource_close_hotkey_var.get() == "Enabled"
     new_resource_relaunch_on_exit = resource_relaunch_exit_var.get() == "Enabled"
     new_enable_playtime_summary = playtime_summary_var.get()
+    new_enable_debug_mode = debug_mode_var.get()
     new_system_audio_level = system_audio_slider_var.get()
     new_enable_system_audio = enable_system_audio_var.get()
     new_game_audio_level = game_audio_slider_var.get()
@@ -582,7 +619,9 @@ def on_save():
     new_during_power_plan = during_power_var.get()
     new_enable_after_power = enable_after_power_var.get()
     new_after_power_plan = after_power_var.get()
-    save_settings(new_selected_apps, new_customs, new_selected_resource_apps, new_resource_customs, new_launch_startup, new_close_on_startup, new_close_on_hotkey, new_relaunch_on_exit, new_resource_close_on_startup, new_resource_close_on_hotkey, new_resource_relaunch_on_exit, new_enable_playtime_summary, new_system_audio_level, new_enable_system_audio, new_game_audio_level, new_enable_game_audio, new_enable_during_power, new_during_power_plan, new_enable_after_power, new_after_power_plan)
+    new_enable_game_mode_start = enable_game_mode_start_var.get()
+    new_enable_game_mode_end = enable_game_mode_end_var.get()
+    save_settings(new_selected_apps, new_customs, new_selected_resource_apps, new_resource_customs, new_launch_startup, new_close_on_startup, new_close_on_hotkey, new_relaunch_on_exit, new_resource_close_on_startup, new_resource_close_on_hotkey, new_resource_relaunch_on_exit, new_enable_playtime_summary, new_enable_debug_mode, new_system_audio_level, new_enable_system_audio, new_game_audio_level, new_enable_game_audio, new_enable_during_power, new_during_power_plan, new_enable_after_power, new_after_power_plan, new_enable_game_mode_start, new_enable_game_mode_end)
 
 save_button = ctk.CTkButton(master=button_frame, text="Save Settings", command=on_save, corner_radius=10, fg_color="blue", text_color="white", width=150, font=("Calibri", 14))
 save_button.grid(row=0, column=1, padx=30, sticky='ew')

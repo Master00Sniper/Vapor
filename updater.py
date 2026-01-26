@@ -14,7 +14,7 @@ GITHUB_REPO = "Vapor"
 GITHUB_PAT = "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"
 
 # Current app version - this is the single source of truth for the version
-CURRENT_VERSION = "0.1.4"
+CURRENT_VERSION = "0.1.2"
 
 # GitHub API endpoint for latest release
 LATEST_RELEASE_URL = f"https://api.github.com/repos/{GITHUB_OWNER}/{GITHUB_REPO}/releases/latest"
@@ -35,12 +35,31 @@ def log(message, category="UPDATE"):
     print(f"[{timestamp}] [{category}] {message}")
 
 
+def is_development_mode():
+    """Check if running from PyCharm or development environment"""
+    # Not frozen = running as .py file, not .exe
+    if not getattr(sys, 'frozen', False):
+        return True
+    # Check if running from a .venv folder
+    if '.venv' in sys.executable.lower():
+        return True
+    # Check if running from a PycharmProjects folder
+    if 'pycharmprojects' in sys.executable.lower():
+        return True
+    return False
+
+
 def check_for_updates(current_app_id=None, show_notification_func=None):
     """
     Checks for updates, downloads if available, and handles replacement.
     Only applies update when no game is running.
     """
     global pending_update_path
+
+    # Skip updates in development mode
+    if is_development_mode():
+        log("Development mode detected - skipping update check", "UPDATE")
+        return
 
     try:
         log(f"Checking for updates (current: v{CURRENT_VERSION})...")
