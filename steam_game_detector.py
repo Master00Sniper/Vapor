@@ -1,5 +1,58 @@
 # steam_game_detector.py
 
+# Show splash screen immediately on startup (only for main app, not settings UI)
+import os
+import sys
+
+
+def show_splash_screen():
+    """Display a 2-second splash screen if splash_screen.png exists"""
+    try:
+        import tkinter as tk
+        from PIL import Image, ImageTk
+
+        # Determine base directory
+        if getattr(sys, 'frozen', False):
+            base_dir = sys._MEIPASS
+        else:
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+
+        splash_path = os.path.join(base_dir, 'Images', 'splash_screen.png')
+
+        if not os.path.exists(splash_path):
+            return  # Skip if no splash image
+
+        # Create splash window
+        splash = tk.Tk()
+        splash.overrideredirect(True)  # Remove window decorations
+
+        # Load image
+        img = Image.open(splash_path)
+        photo = ImageTk.PhotoImage(img)
+
+        # Get screen dimensions and center the splash
+        screen_width = splash.winfo_screenwidth()
+        screen_height = splash.winfo_screenheight()
+        x = (screen_width - img.width) // 2
+        y = (screen_height - img.height) // 2
+
+        splash.geometry(f"{img.width}x{img.height}+{x}+{y}")
+
+        # Display image
+        label = tk.Label(splash, image=photo)
+        label.pack()
+
+        # Close after 2 seconds
+        splash.after(2000, splash.destroy)
+        splash.mainloop()
+    except Exception:
+        pass  # Skip splash on any error
+
+
+# Only show splash for main app, not settings UI
+if '--ui' not in sys.argv:
+    show_splash_screen()
+
 # Keep these even if unused
 import win32gui
 import customtkinter
@@ -18,6 +71,7 @@ from pystray import MenuItem as item
 from PIL import Image
 import threading
 import ctypes
+import ctypes.wintypes
 import sys
 import re
 
@@ -34,6 +88,20 @@ from watchdog.events import FileSystemEventHandler
 
 # For notifications
 import win11toast
+import atexit
+
+
+def _cleanup_console():
+    """Ensure console is freed on exit"""
+    try:
+        hwnd = ctypes.windll.kernel32.GetConsoleWindow()
+        if hwnd:
+            ctypes.windll.kernel32.FreeConsole()
+    except:
+        pass
+
+
+atexit.register(_cleanup_console)
 
 # Path fix for frozen executable
 application_path = ''
@@ -66,15 +134,48 @@ def log(message, category="INFO"):
 
 
 def set_console_visibility(visible):
-    """Show or hide the console window"""
-    hwnd = ctypes.windll.kernel32.GetConsoleWindow()
-    if hwnd:
+    """Show or hide the console window by allocating/freeing a console"""
+    try:
+        kernel32 = ctypes.windll.kernel32
+
         if visible:
-            ctypes.windll.user32.ShowWindow(hwnd, win32con.SW_SHOW)
-            log("Console window shown", "DEBUG")
+            # Allocate a new console window
+            kernel32.AllocConsole()
+
+            # Redirect stdout/stderr to the new console
+            import sys
+            sys.stdout = open('CONOUT$', 'w')
+            sys.stderr = open('CONOUT$', 'w')
+
+            # Set console title
+            kernel32.SetConsoleTitleW("Vapor Debug Console")
+
+            # Center the console window
+            hwnd = kernel32.GetConsoleWindow()
+            if hwnd:
+                screen_width = ctypes.windll.user32.GetSystemMetrics(0)
+                screen_height = ctypes.windll.user32.GetSystemMetrics(1)
+
+                rect = ctypes.wintypes.RECT()
+                ctypes.windll.user32.GetWindowRect(hwnd, ctypes.byref(rect))
+                console_width = rect.right - rect.left
+                console_height = rect.bottom - rect.top
+
+                x = (screen_width - console_width) // 2
+                y = (screen_height - console_height) // 2
+
+                ctypes.windll.user32.SetWindowPos(hwnd, None, x, y, 0, 0, 0x0001)
+
+            log("Debug console opened", "DEBUG")
         else:
-            ctypes.windll.user32.ShowWindow(hwnd, win32con.SW_HIDE)
-            log("Console window hidden", "DEBUG")
+            # Free the console
+            hwnd = kernel32.GetConsoleWindow()
+            if hwnd:
+                kernel32.FreeConsole()
+                log("Debug console closed", "DEBUG")
+    except Exception as e:
+        # Can't log here if console is being freed
+        pass
 
 
 def load_process_names_and_startup():
@@ -698,6 +799,13 @@ def quit_app(icon, query):
     stop_event.set()
     try:
         keyboard.unhook_all()
+    except:
+        pass
+    # Free debug console if it exists
+    try:
+        hwnd = ctypes.windll.kernel32.GetConsoleWindow()
+        if hwnd:
+            ctypes.windll.kernel32.FreeConsole()
     except:
         pass
     icon.stop()

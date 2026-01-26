@@ -453,13 +453,18 @@ custom_resource_entry.pack(padx=20, anchor='w')
 
 # ===== Content for Preferences Tab =====
 # Preferences title
-preferences_title = ctk.CTkLabel(master=preferences_tab, text="Vapor and Game Preferences", font=("Calibri", 20, "bold"))
-preferences_title.pack(pady=20, anchor='center')
+preferences_title = ctk.CTkLabel(master=preferences_tab, text="Vapor Preferences", font=("Calibri", 16, "bold"))
+preferences_title.pack(pady=10, anchor='center')
 
-# Playtime summary toggle (moved up)
+# Playtime summary toggle (at top)
 playtime_summary_var = tk.BooleanVar(value=enable_playtime_summary)
 playtime_summary_switch = ctk.CTkSwitch(master=preferences_tab, text="Enable Playtime Summary Report", variable=playtime_summary_var, font=("Calibri", 14))
 playtime_summary_switch.pack(padx=20, pady=5, anchor='w')
+
+# Startup toggle
+startup_var = tk.BooleanVar(value=launch_at_startup)
+startup_switch = ctk.CTkSwitch(master=preferences_tab, text="Launch Vapor at System Startup", variable=startup_var, font=("Calibri", 14))
+startup_switch.pack(padx=20, pady=5, anchor='w')
 
 # Debug mode toggle
 debug_mode_var = tk.BooleanVar(value=enable_debug_mode)
@@ -581,11 +586,6 @@ game_mode_end_column.pack(side="left", padx=30)
 enable_game_mode_end_var = tk.BooleanVar(value=enable_game_mode_end)
 enable_game_mode_end_switch = ctk.CTkSwitch(master=game_mode_end_column, text="Disable Game Mode at Game End", variable=enable_game_mode_end_var, font=("Calibri", 14))
 enable_game_mode_end_switch.pack(anchor='w')
-
-# Startup toggle (moved to bottom)
-startup_var = tk.BooleanVar(value=launch_at_startup)
-startup_switch = ctk.CTkSwitch(master=preferences_tab, text="Launch Vapor at System Startup", variable=startup_var, font=("Calibri", 14))
-startup_switch.pack(padx=20, pady=5, anchor='w')
 
 # Bottom buttons frame (outside tabs, always at bottom)
 button_frame = ctk.CTkFrame(master=root, fg_color="transparent")

@@ -14,7 +14,7 @@ GITHUB_REPO = "Vapor"
 GITHUB_PAT = "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"
 
 # Current app version - this is the single source of truth for the version
-CURRENT_VERSION = "0.1.5"
+CURRENT_VERSION = "0.1.6"
 
 # GitHub API endpoint for latest release
 LATEST_RELEASE_URL = f"https://api.github.com/repos/{GITHUB_OWNER}/{GITHUB_REPO}/releases/latest"
@@ -39,12 +39,6 @@ def is_development_mode():
     """Check if running from PyCharm or development environment"""
     # Not frozen = running as .py file, not .exe
     if not getattr(sys, 'frozen', False):
-        return True
-    # Check if running from a .venv folder
-    if '.venv' in sys.executable.lower():
-        return True
-    # Check if running from a PycharmProjects folder
-    if 'pycharmprojects' in sys.executable.lower():
         return True
     return False
 

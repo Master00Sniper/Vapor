@@ -61,6 +61,6 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon='Images/tray_icon.ico',
+    icon='Images/exe_icon.ico',
     uac_admin=False
 )
