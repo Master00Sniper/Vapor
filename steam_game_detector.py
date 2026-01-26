@@ -89,6 +89,7 @@ from watchdog.events import FileSystemEventHandler
 # For notifications
 import win11toast
 import atexit
+import signal
 
 
 def _cleanup_console():
@@ -101,7 +102,21 @@ def _cleanup_console():
         pass
 
 
+def _signal_handler(signum, frame):
+    """Handle termination signals by cleaning up console"""
+    _cleanup_console()
+    sys.exit(0)
+
+
 atexit.register(_cleanup_console)
+
+# Register signal handlers for common termination signals
+try:
+    signal.signal(signal.SIGTERM, _signal_handler)
+    signal.signal(signal.SIGINT, _signal_handler)
+    signal.signal(signal.SIGBREAK, _signal_handler)  # Windows-specific
+except (AttributeError, ValueError):
+    pass  # Some signals may not be available on all platforms
 
 # Path fix for frozen executable
 application_path = ''
@@ -129,8 +144,12 @@ from updater import check_for_updates, CURRENT_VERSION
 
 def log(message, category="INFO"):
     """Centralized logging with timestamp and category"""
-    timestamp = time.strftime("%H:%M:%S")
-    print(f"[{timestamp}] [{category}] {message}")
+    try:
+        timestamp = time.strftime("%H:%M:%S")
+        print(f"[{timestamp}] [{category}] {message}")
+    except (OSError, ValueError):
+        # Handle case where console has been freed (invalid handle)
+        pass
 
 
 def set_console_visibility(visible):
@@ -918,50 +937,63 @@ if __name__ == '__main__':
 
     else:
         # === NORMAL TRAY MODE ===
-        killed_notification = {}
-        killed_resource = {}
-        stop_event = threading.Event()
+        try:
+            killed_notification = {}
+            killed_resource = {}
+            stop_event = threading.Event()
 
-        # Check if this is the first run (no settings file exists)
-        is_first_run = not os.path.exists(SETTINGS_FILE)
-        if is_first_run:
-            log("First run detected - creating default settings file", "INIT")
-            create_default_settings()
+            # Check if this is the first run (no settings file exists)
+            is_first_run = not os.path.exists(SETTINGS_FILE)
+            if is_first_run:
+                log("First run detected - creating default settings file", "INIT")
+                create_default_settings()
 
-        # Start the main monitoring thread
-        thread = threading.Thread(target=monitor_steam_games,
-                                  args=(stop_event, killed_notification, killed_resource, is_first_run),
-                                  daemon=True)
-        thread.start()
+            # Start the main monitoring thread
+            thread = threading.Thread(target=monitor_steam_games,
+                                      args=(stop_event, killed_notification, killed_resource, is_first_run),
+                                      daemon=True)
+            thread.start()
 
-        # Start periodic update checking
-        from updater import periodic_update_check
+            # Start periodic update checking
+            from updater import periodic_update_check
 
-        current_app_id_holder = [0]
-
-
-        def get_current_app_id():
-            return current_app_id_holder[0]
+            current_app_id_holder = [0]
 
 
-        update_thread = threading.Thread(
-            target=periodic_update_check,
-            args=(stop_event, get_running_steam_app_id, show_notification, 3600),
-            daemon=True
-        )
-        update_thread.start()
+            def get_current_app_id():
+                return current_app_id_holder[0]
 
-        menu = pystray.Menu(
-            item('Launch Settings', open_settings),
-            item('Check Updates', manual_check_updates),
-            pystray.Menu.SEPARATOR,
-            item('Quit', quit_app)
-        )
 
-        icon_image = Image.open(TRAY_ICON_PATH) if os.path.exists(TRAY_ICON_PATH) else None
-        icon = pystray.Icon("Vapor", icon_image, "Vapor - Streamline Gaming", menu)
-        log("System tray icon created", "INIT")
-        icon.run()
+            update_thread = threading.Thread(
+                target=periodic_update_check,
+                args=(stop_event, get_running_steam_app_id, show_notification, 3600),
+                daemon=True
+            )
+            update_thread.start()
 
-        thread.join()
-        log("Vapor has stopped.", "SHUTDOWN")
+            menu = pystray.Menu(
+                item('Launch Settings', open_settings),
+                item('Check Updates', manual_check_updates),
+                pystray.Menu.SEPARATOR,
+                item('Quit', quit_app)
+            )
+
+            icon_image = Image.open(TRAY_ICON_PATH) if os.path.exists(TRAY_ICON_PATH) else None
+            icon = pystray.Icon("Vapor", icon_image, "Vapor - Streamline Gaming", menu)
+            log("System tray icon created", "INIT")
+            icon.run()
+
+            thread.join()
+            log("Vapor has stopped.", "SHUTDOWN")
+
+        except Exception as e:
+            # Log the error if possible
+            try:
+                log(f"Fatal error: {e}", "ERROR")
+            except:
+                pass
+            raise
+
+        finally:
+            # Ensure console is always cleaned up, even on crash
+            _cleanup_console()
