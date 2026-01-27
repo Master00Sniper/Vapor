@@ -947,6 +947,21 @@ if __name__ == '__main__':
         exec(ui_code, globals_dict)
 
     else:
+        # Add this code block immediately after the "else:" in the if __name__ == '__main__' section
+        # (right before the "try:" block in the NORMAL TRAY MODE)
+
+        # Single-instance check using named mutex (reliable on Windows)
+        mutex_name = "Vapor_SingleInstance_Mutex"
+        mutex = win32event.CreateMutex(None, True, mutex_name)
+        if win32api.GetLastError() == winerror.ERROR_ALREADY_EXISTS:
+            log("Vapor is already running. Exiting.", "ERROR")
+            sys.exit(0)
+            # Note: If you want to show a notification here, it might not work reliably since the new instance
+            # hasn't fully initialized. The existing instance is already running in the tray.
+
+        # If we reach here, we're the first instance - proceed with holding the mutex until exit
+        # (No need to explicitly release; it auto-releases on process termination)
+
         # === NORMAL TRAY MODE ===
         try:
             killed_notification = {}
