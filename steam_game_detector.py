@@ -1,8 +1,15 @@
 # steam_game_detector.py
 
-# Show splash screen immediately on startup (only for main app, not settings UI)
-import os
+# Single-instance check BEFORE splash screen (only for main app, not settings UI)
 import sys
+import os
+
+if '--ui' not in sys.argv:
+    import win32api, win32event, winerror
+    mutex_name = "Vapor_SingleInstance_Mutex"
+    mutex = win32event.CreateMutex(None, True, mutex_name)
+    if win32api.GetLastError() == winerror.ERROR_ALREADY_EXISTS:
+        sys.exit(0)
 
 
 def show_splash_screen():
@@ -897,16 +904,13 @@ def manual_check_updates(icon, query):
 
     def check_thread():
         try:
-            # Use the same proxy as the auto-updater
-            from updater import PROXY_BASE_URL, GITHUB_OWNER, GITHUB_REPO
+            # Use the same proxy and headers as the auto-updater
+            from updater import PROXY_BASE_URL, GITHUB_OWNER, GITHUB_REPO, HEADERS
             proxy_url = f"{PROXY_BASE_URL}/repos/{GITHUB_OWNER}/{GITHUB_REPO}/releases/latest"
 
             response = requests.get(
                 proxy_url,
-                headers={
-                    "Accept": "application/vnd.github.v3+json",
-                    "User-Agent": "Vapor-Updater/1.0"
-                },
+                headers=HEADERS,
                 timeout=10
             )
 
@@ -947,21 +951,6 @@ if __name__ == '__main__':
         exec(ui_code, globals_dict)
 
     else:
-        # Add this code block immediately after the "else:" in the if __name__ == '__main__' section
-        # (right before the "try:" block in the NORMAL TRAY MODE)
-
-        # Single-instance check using named mutex (reliable on Windows)
-        mutex_name = "Vapor_SingleInstance_Mutex"
-        mutex = win32event.CreateMutex(None, True, mutex_name)
-        if win32api.GetLastError() == winerror.ERROR_ALREADY_EXISTS:
-            log("Vapor is already running. Exiting.", "ERROR")
-            sys.exit(0)
-            # Note: If you want to show a notification here, it might not work reliably since the new instance
-            # hasn't fully initialized. The existing instance is already running in the tray.
-
-        # If we reach here, we're the first instance - proceed with holding the mutex until exit
-        # (No need to explicitly release; it auto-releases on process termination)
-
         # === NORMAL TRAY MODE ===
         try:
             killed_notification = {}

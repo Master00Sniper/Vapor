@@ -898,9 +898,9 @@ developer_name = ctk.CTkLabel(master=about_scroll_frame, text="Greg Morton (@Mas
                                font=("Calibri", 16, "bold"))
 developer_name.pack(pady=(0, 10), anchor='center')
 
-bio_text = """This is my first software application! I'm a passionate gamer, Sr. Systems Administrator 
-by profession, wine enthusiast, and proud small winery owner. Vapor was born from my own frustration 
-with notifications interrupting epic gaming moments – I hope it enhances your gaming sessions as much as it has mine."""
+bio_text = """I'm a passionate gamer, Sr. Systems Administrator by profession, wine enthusiast, and proud 
+small winery owner. Vapor was born from my own frustration with notifications interrupting epic gaming 
+moments. I hope it enhances your gaming sessions as much as it has mine."""
 
 bio_label = ctk.CTkLabel(master=about_scroll_frame, text=bio_text, font=("Calibri", 12),
                           wraplength=620, justify="center")
@@ -912,7 +912,7 @@ separator2.pack(fill="x", padx=40, pady=15)
 contact_title = ctk.CTkLabel(master=about_scroll_frame, text="Contact & Connect", font=("Calibri", 14, "bold"))
 contact_title.pack(pady=(5, 10), anchor='center')
 
-email_label = ctk.CTkLabel(master=about_scroll_frame, text="📧  gkmorton1@gmail.com", font=("Calibri", 12))
+email_label = ctk.CTkLabel(master=about_scroll_frame, text="📧  Email Coming Soon", font=("Calibri", 12))
 email_label.pack(pady=2, anchor='center')
 
 x_link_frame = ctk.CTkFrame(master=about_scroll_frame, fg_color="transparent")

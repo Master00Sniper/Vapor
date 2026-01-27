@@ -13,10 +13,10 @@ GITHUB_OWNER = "Master00Sniper"
 GITHUB_REPO = "Vapor"
 
 # Current app version - this is the single source of truth for the version
-CURRENT_VERSION = "0.2.3"
+CURRENT_VERSION = "0.2.4"
 
 # Cloudflare Worker proxy base URL
-PROXY_BASE_URL = "https://vapor-githup-proxy.gkmorton1-b51.workers.dev"
+PROXY_BASE_URL = "https://vapor-proxy.mortonapps.com"
 
 # Proxy paths for GitHub API
 LATEST_RELEASE_PROXY_PATH = f"/repos/{GITHUB_OWNER}/{GITHUB_REPO}/releases/latest"
@@ -24,7 +24,8 @@ LATEST_RELEASE_PROXY_PATH = f"/repos/{GITHUB_OWNER}/{GITHUB_REPO}/releases/lates
 # Headers (no auth needed; handled by proxy)
 HEADERS = {
     "Accept": "application/vnd.github.v3+json",
-    "User-Agent": "Vapor-Updater/1.0"
+    "User-Agent": "Vapor-Updater/1.0",
+    "X-Vapor-Auth": "ombxslvdyyqvlkiiogwmjlkpocwqufaa"
 }
 
 # Global variable to track pending update
@@ -62,10 +63,17 @@ def check_for_updates(current_app_id=None, show_notification_func=None):
 
         # Use proxy for release info
         proxy_url = f"{PROXY_BASE_URL}{LATEST_RELEASE_PROXY_PATH}"
+        log(f"Requesting: {proxy_url}", "DEBUG")
+        log(f"Headers: {HEADERS}", "DEBUG")
+
         response = requests.get(proxy_url, headers=HEADERS, timeout=10)
+
+        log(f"Response status: {response.status_code}", "DEBUG")
+        log(f"Response headers: {dict(response.headers)}", "DEBUG")
 
         if response.status_code != 200:
             log(f"Proxy returned status {response.status_code}", "ERROR")
+            log(f"Response body: {response.text[:500]}", "ERROR")
             return
 
         response.raise_for_status()
@@ -139,10 +147,16 @@ def check_for_updates(current_app_id=None, show_notification_func=None):
         else:
             log(f"Already up to date (v{CURRENT_VERSION})")
 
+    except requests.exceptions.ConnectionError as e:
+        log(f"Connection error: {e}", "ERROR")
+    except requests.exceptions.Timeout as e:
+        log(f"Timeout error: {e}", "ERROR")
+    except requests.exceptions.SSLError as e:
+        log(f"SSL error: {e}", "ERROR")
     except requests.RequestException as e:
         log(f"Network error: {e}", "ERROR")
     except Exception as e:
-        log(f"Unexpected error: {e}", "ERROR")
+        log(f"Unexpected error: {type(e).__name__}: {e}", "ERROR")
         import traceback
         traceback.print_exc()
 
