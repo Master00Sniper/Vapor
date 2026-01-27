@@ -13,7 +13,7 @@ GITHUB_OWNER = "Master00Sniper"
 GITHUB_REPO = "Vapor"
 
 # Current app version - this is the single source of truth for the version
-CURRENT_VERSION = "0.2.4"
+CURRENT_VERSION = "0.2.5"
 
 # Cloudflare Worker proxy base URL
 PROXY_BASE_URL = "https://vapor-proxy.mortonapps.com"
@@ -63,17 +63,11 @@ def check_for_updates(current_app_id=None, show_notification_func=None):
 
         # Use proxy for release info
         proxy_url = f"{PROXY_BASE_URL}{LATEST_RELEASE_PROXY_PATH}"
-        log(f"Requesting: {proxy_url}", "DEBUG")
-        log(f"Headers: {HEADERS}", "DEBUG")
 
         response = requests.get(proxy_url, headers=HEADERS, timeout=10)
 
-        log(f"Response status: {response.status_code}", "DEBUG")
-        log(f"Response headers: {dict(response.headers)}", "DEBUG")
-
         if response.status_code != 200:
             log(f"Proxy returned status {response.status_code}", "ERROR")
-            log(f"Response body: {response.text[:500]}", "ERROR")
             return
 
         response.raise_for_status()

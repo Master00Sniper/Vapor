@@ -6,10 +6,41 @@ import os
 
 if '--ui' not in sys.argv:
     import win32api, win32event, winerror
+
     mutex_name = "Vapor_SingleInstance_Mutex"
     mutex = win32event.CreateMutex(None, True, mutex_name)
     if win32api.GetLastError() == winerror.ERROR_ALREADY_EXISTS:
         sys.exit(0)
+
+
+    # Clean up stale PyInstaller _MEI folders from previous crashes
+    # Do this early, before splash screen, to prevent the warning dialog
+    def cleanup_stale_mei_folders():
+        try:
+            import shutil
+            import tempfile
+            temp_dir = tempfile.gettempdir()
+            current_mei = getattr(sys, '_MEIPASS', None)
+
+            for item in os.listdir(temp_dir):
+                if item.startswith('_MEI'):
+                    mei_path = os.path.join(temp_dir, item)
+                    # Don't delete our own folder
+                    if current_mei and mei_path == current_mei:
+                        continue
+                    # Only delete if it's a directory
+                    if os.path.isdir(mei_path):
+                        try:
+                            shutil.rmtree(mei_path)
+                        except (PermissionError, OSError):
+                            # Folder is in use by another process, skip it
+                            pass
+        except Exception:
+            pass  # Don't let cleanup errors prevent app from starting
+
+
+    if getattr(sys, 'frozen', False):
+        cleanup_stale_mei_folders()
 
 
 def show_splash_screen():
@@ -145,6 +176,25 @@ SETTINGS_FILE = os.path.join(appdata_dir, 'vapor_settings.json')
 TRAY_ICON_PATH = os.path.join(base_dir, 'Images', 'tray_icon.png')
 UI_SCRIPT_PATH = os.path.join(base_dir, 'vapor_settings_ui.py')
 STEAM_PATH = r"C:\Program Files (x86)\Steam\steamapps"
+
+# Protected system processes that should never be killed
+PROTECTED_PROCESSES = {
+    # Windows core
+    'explorer.exe', 'svchost.exe', 'csrss.exe', 'wininit.exe', 'winlogon.exe',
+    'services.exe', 'lsass.exe', 'smss.exe', 'dwm.exe', 'taskhostw.exe',
+    'sihost.exe', 'fontdrvhost.exe', 'ctfmon.exe', 'conhost.exe', 'dllhost.exe',
+    'runtimebroker.exe', 'searchhost.exe', 'startmenuexperiencehost.exe',
+    'shellexperiencehost.exe', 'textinputhost.exe', 'applicationframehost.exe',
+    'systemsettings.exe', 'securityhealthservice.exe', 'securityhealthsystray.exe',
+    # System utilities
+    'taskmgr.exe', 'cmd.exe', 'powershell.exe', 'regedit.exe', 'mmc.exe',
+    # Windows Defender / Security
+    'msmpeng.exe', 'mssense.exe', 'nissrv.exe', 'securityhealthhost.exe',
+    # Critical services
+    'spoolsv.exe', 'wuauserv.exe', 'audiodg.exe',
+    # Vapor itself
+    'vapor.exe',
+}
 
 from updater import check_for_updates, CURRENT_VERSION
 
@@ -350,6 +400,11 @@ def kill_processes(process_names, killed_processes, purpose=""):
     purpose_str = f" ({purpose})" if purpose else ""
     log(f"Attempting to close {len(process_names)} {purpose} process type(s)...", "PROCESS")
     for name in process_names:
+        # Skip protected system processes
+        if name.lower() in PROTECTED_PROCESSES:
+            log(f"Skipping protected process: {name}", "PROCESS")
+            continue
+
         killed_count = 0
         path_to_store = None
         for proc in psutil.process_iter(['name', 'exe']):
@@ -943,12 +998,13 @@ if __name__ == '__main__':
         # === UI MODE ===
         pid = int(sys.argv[2]) if len(sys.argv) > 2 else None
         os.chdir(base_dir)
-        sys.path.append(base_dir)
+        sys.path.insert(0, base_dir)
 
-        with open(UI_SCRIPT_PATH, 'r', encoding='utf-8') as f:
-            ui_code = f.read()
-        globals_dict = {'__name__': '__main__', '__file__': UI_SCRIPT_PATH, 'main_pid': pid}
-        exec(ui_code, globals_dict)
+        # Pass pid via environment variable for the UI module to access
+        if pid:
+            os.environ['VAPOR_MAIN_PID'] = str(pid)
+
+        import vapor_settings_ui
 
     else:
         # === NORMAL TRAY MODE ===

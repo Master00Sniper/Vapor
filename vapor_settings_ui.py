@@ -25,6 +25,7 @@ sys.path.append(application_path)
 
 import customtkinter as ctk
 import tkinter as tk
+from tkinter import messagebox
 import json
 from PIL import Image, ImageTk
 import psutil
@@ -44,6 +45,25 @@ os.makedirs(appdata_dir, exist_ok=True)
 SETTINGS_FILE = os.path.join(appdata_dir, 'vapor_settings.json')
 
 TRAY_ICON_PATH = os.path.join(base_dir, 'Images', 'tray_icon.png')
+
+# Protected system processes that cannot be added as custom processes
+PROTECTED_PROCESSES = {
+    # Windows core
+    'explorer.exe', 'svchost.exe', 'csrss.exe', 'wininit.exe', 'winlogon.exe',
+    'services.exe', 'lsass.exe', 'smss.exe', 'dwm.exe', 'taskhostw.exe',
+    'sihost.exe', 'fontdrvhost.exe', 'ctfmon.exe', 'conhost.exe', 'dllhost.exe',
+    'runtimebroker.exe', 'searchhost.exe', 'startmenuexperiencehost.exe',
+    'shellexperiencehost.exe', 'textinputhost.exe', 'applicationframehost.exe',
+    'systemsettings.exe', 'securityhealthservice.exe', 'securityhealthsystray.exe',
+    # System utilities
+    'taskmgr.exe', 'cmd.exe', 'powershell.exe', 'regedit.exe', 'mmc.exe',
+    # Windows Defender / Security
+    'msmpeng.exe', 'mssense.exe', 'nissrv.exe', 'securityhealthhost.exe',
+    # Critical services
+    'spoolsv.exe', 'wuauserv.exe', 'audiodg.exe',
+    # Vapor itself
+    'vapor.exe',
+}
 
 BUILT_IN_APPS = [
     {'display_name': 'WhatsApp', 'processes': ['WhatsApp.Root.exe'],
@@ -197,7 +217,8 @@ new_style = style & ~win32con.WS_SYSMENU
 win32gui.SetWindowLong(hwnd, win32con.GWL_STYLE, new_style)
 
 current_settings = load_settings()
-selected_notification_apps = current_settings.get('selected_notification_apps', current_settings.get('selected_apps', []))
+selected_notification_apps = current_settings.get('selected_notification_apps',
+                                                  current_settings.get('selected_apps', []))
 custom_processes = current_settings.get('custom_processes', [])
 selected_resource_apps = current_settings.get('selected_resource_apps', [])
 custom_resource_processes = current_settings.get('custom_resource_processes', [])
@@ -222,8 +243,14 @@ after_power_plan = current_settings.get('after_power_plan', 'Balanced')
 enable_game_mode_start = current_settings.get('enable_game_mode_start', False)
 enable_game_mode_end = current_settings.get('enable_game_mode_end', False)
 
+# Get main process PID from environment variable or command line args
 main_pid = None
-if len(sys.argv) > 1:
+if os.environ.get('VAPOR_MAIN_PID'):
+    try:
+        main_pid = int(os.environ.get('VAPOR_MAIN_PID'))
+    except ValueError:
+        pass
+elif len(sys.argv) > 1:
     if sys.argv[1] == '--ui':
         if len(sys.argv) > 2:
             try:
@@ -257,8 +284,8 @@ notification_title = ctk.CTkLabel(master=notif_scroll_frame, text="Notification 
 notification_title.pack(pady=(10, 5), anchor='center')
 
 notif_description = ctk.CTkLabel(master=notif_scroll_frame,
-                                  text="Control which messaging and notification apps are closed when you start gaming.",
-                                  font=("Calibri", 12), text_color="gray60")
+                                 text="Control which messaging and notification apps are closed when you start gaming.",
+                                 font=("Calibri", 12), text_color="gray60")
 notif_description.pack(pady=(0, 15), anchor='center')
 
 notif_sep1 = ctk.CTkFrame(master=notif_scroll_frame, height=2, fg_color="gray50")
@@ -307,8 +334,8 @@ apps_subtitle = ctk.CTkLabel(master=notif_scroll_frame, text="Select Apps to Man
 apps_subtitle.pack(pady=(10, 5), anchor='center')
 
 apps_hint = ctk.CTkLabel(master=notif_scroll_frame,
-                          text="Toggle the apps you want Vapor to close during gaming sessions.",
-                          font=("Calibri", 11), text_color="gray60")
+                         text="Toggle the apps you want Vapor to close during gaming sessions.",
+                         font=("Calibri", 11), text_color="gray60")
 apps_hint.pack(pady=(0, 10), anchor='center')
 
 app_frame = ctk.CTkFrame(master=notif_scroll_frame, fg_color="transparent")
@@ -381,12 +408,12 @@ custom_title = ctk.CTkLabel(master=notif_scroll_frame, text="Custom Processes", 
 custom_title.pack(pady=(10, 5), anchor='center')
 
 custom_label = ctk.CTkLabel(master=notif_scroll_frame,
-                             text="Add additional processes to close (comma-separated, e.g.: MyApp1.exe, MyApp2.exe)",
-                             font=("Calibri", 11), text_color="gray60")
+                            text="Add additional processes to close (comma-separated, e.g.: MyApp1.exe, MyApp2.exe)",
+                            font=("Calibri", 11), text_color="gray60")
 custom_label.pack(pady=(0, 10), anchor='center')
 
 custom_entry = ctk.CTkEntry(master=notif_scroll_frame, width=550, font=("Calibri", 13),
-                             placeholder_text="Enter custom process names...")
+                            placeholder_text="Enter custom process names...")
 custom_entry.insert(0, ','.join(custom_processes))
 custom_entry.pack(pady=(0, 20), anchor='center')
 
@@ -398,8 +425,8 @@ preferences_title = ctk.CTkLabel(master=pref_scroll_frame, text="Preferences", f
 preferences_title.pack(pady=(10, 5), anchor='center')
 
 pref_description = ctk.CTkLabel(master=pref_scroll_frame,
-                                 text="Customize Vapor's behavior, audio settings, and power management options.",
-                                 font=("Calibri", 12), text_color="gray60")
+                                text="Customize Vapor's behavior, audio settings, and power management options.",
+                                font=("Calibri", 12), text_color="gray60")
 pref_description.pack(pady=(0, 15), anchor='center')
 
 pref_sep1 = ctk.CTkFrame(master=pref_scroll_frame, height=2, fg_color="gray50")
@@ -438,8 +465,8 @@ audio_title = ctk.CTkLabel(master=pref_scroll_frame, text="Audio Settings", font
 audio_title.pack(pady=(10, 5), anchor='center')
 
 audio_hint = ctk.CTkLabel(master=pref_scroll_frame,
-                           text="Automatically adjust volume levels when a game starts.",
-                           font=("Calibri", 11), text_color="gray60")
+                          text="Automatically adjust volume levels when a game starts.",
+                          font=("Calibri", 11), text_color="gray60")
 audio_hint.pack(pady=(0, 10), anchor='center')
 
 audio_frame = ctk.CTkFrame(master=pref_scroll_frame, fg_color="transparent")
@@ -505,8 +532,8 @@ power_title = ctk.CTkLabel(master=pref_scroll_frame, text="Power Management", fo
 power_title.pack(pady=(10, 5), anchor='center')
 
 power_hint = ctk.CTkLabel(master=pref_scroll_frame,
-                           text="Automatically switch power plans when gaming starts and ends.",
-                           font=("Calibri", 11), text_color="gray60")
+                          text="Automatically switch power plans when gaming starts and ends.",
+                          font=("Calibri", 11), text_color="gray60")
 power_hint.pack(pady=(0, 10), anchor='center')
 
 power_frame = ctk.CTkFrame(master=pref_scroll_frame, fg_color="transparent")
@@ -553,8 +580,8 @@ game_mode_title = ctk.CTkLabel(master=pref_scroll_frame, text="Windows Game Mode
 game_mode_title.pack(pady=(10, 5), anchor='center')
 
 game_mode_hint = ctk.CTkLabel(master=pref_scroll_frame,
-                               text="Control Windows Game Mode automatically during gaming sessions.",
-                               font=("Calibri", 11), text_color="gray60")
+                              text="Control Windows Game Mode automatically during gaming sessions.",
+                              font=("Calibri", 11), text_color="gray60")
 game_mode_hint.pack(pady=(0, 10), anchor='center')
 
 game_mode_frame = ctk.CTkFrame(master=pref_scroll_frame, fg_color="transparent")
@@ -578,8 +605,8 @@ resource_title = ctk.CTkLabel(master=res_scroll_frame, text="Resource Management
 resource_title.pack(pady=(10, 5), anchor='center')
 
 res_description = ctk.CTkLabel(master=res_scroll_frame,
-                                text="Control which resource-intensive apps are closed to free up system resources during gaming.",
-                                font=("Calibri", 12), text_color="gray60")
+                               text="Control which resource-intensive apps are closed to free up system resources during gaming.",
+                               font=("Calibri", 12), text_color="gray60")
 res_description.pack(pady=(0, 15), anchor='center')
 
 res_sep1 = ctk.CTkFrame(master=res_scroll_frame, height=2, fg_color="gray50")
@@ -626,12 +653,13 @@ ctk.CTkRadioButton(master=resource_options_frame, text="Disabled", variable=reso
 res_sep2 = ctk.CTkFrame(master=res_scroll_frame, height=2, fg_color="gray50")
 res_sep2.pack(fill="x", padx=40, pady=15)
 
-resource_apps_subtitle = ctk.CTkLabel(master=res_scroll_frame, text="Select Apps to Manage", font=("Calibri", 16, "bold"))
+resource_apps_subtitle = ctk.CTkLabel(master=res_scroll_frame, text="Select Apps to Manage",
+                                      font=("Calibri", 16, "bold"))
 resource_apps_subtitle.pack(pady=(10, 5), anchor='center')
 
 res_apps_hint = ctk.CTkLabel(master=res_scroll_frame,
-                              text="Toggle the resource-heavy apps you want Vapor to close during gaming sessions.",
-                              font=("Calibri", 11), text_color="gray60")
+                             text="Toggle the resource-heavy apps you want Vapor to close during gaming sessions.",
+                             font=("Calibri", 11), text_color="gray60")
 res_apps_hint.pack(pady=(0, 10), anchor='center')
 
 resource_app_frame = ctk.CTkFrame(master=res_scroll_frame, fg_color="transparent")
@@ -719,7 +747,8 @@ def on_resource_all_apps_toggle():
 resource_all_apps_var = tk.BooleanVar(value=all(display_name in selected_resource_apps for display_name in
                                                 [app['display_name'] for app in BUILT_IN_RESOURCE_APPS]))
 
-resource_all_apps_switch = ctk.CTkSwitch(master=res_scroll_frame, text="Toggle All Apps", variable=resource_all_apps_var,
+resource_all_apps_switch = ctk.CTkSwitch(master=res_scroll_frame, text="Toggle All Apps",
+                                         variable=resource_all_apps_var,
                                          command=on_resource_all_apps_toggle, font=("Calibri", 13))
 resource_all_apps_switch.pack(pady=10, anchor='center')
 
@@ -730,12 +759,12 @@ res_custom_title = ctk.CTkLabel(master=res_scroll_frame, text="Custom Processes"
 res_custom_title.pack(pady=(10, 5), anchor='center')
 
 custom_resource_label = ctk.CTkLabel(master=res_scroll_frame,
-                                      text="Add additional processes to close (comma-separated, e.g.: MyApp1.exe, MyApp2.exe)",
-                                      font=("Calibri", 11), text_color="gray60")
+                                     text="Add additional processes to close (comma-separated, e.g.: MyApp1.exe, MyApp2.exe)",
+                                     font=("Calibri", 11), text_color="gray60")
 custom_resource_label.pack(pady=(0, 10), anchor='center')
 
 custom_resource_entry = ctk.CTkEntry(master=res_scroll_frame, width=550, font=("Calibri", 13),
-                                      placeholder_text="Enter custom process names...")
+                                     placeholder_text="Enter custom process names...")
 custom_resource_entry.insert(0, ','.join(custom_resource_processes))
 custom_resource_entry.pack(pady=(0, 20), anchor='center')
 
@@ -747,8 +776,8 @@ help_title = ctk.CTkLabel(master=help_scroll_frame, text="Help & Support", font=
 help_title.pack(pady=(10, 5), anchor='center')
 
 help_description = ctk.CTkLabel(master=help_scroll_frame,
-                                 text="Get help with Vapor, learn how it works, and troubleshoot common issues.",
-                                 font=("Calibri", 12), text_color="gray60")
+                                text="Get help with Vapor, learn how it works, and troubleshoot common issues.",
+                                font=("Calibri", 12), text_color="gray60")
 help_description.pack(pady=(0, 15), anchor='center')
 
 help_sep1 = ctk.CTkFrame(master=help_scroll_frame, height=2, fg_color="gray50")
@@ -769,7 +798,7 @@ a Steam game, Vapor automatically:
 When you exit your game, Vapor reverses these changes and relaunches your closed apps."""
 
 how_label = ctk.CTkLabel(master=help_scroll_frame, text=how_text, font=("Calibri", 12),
-                          wraplength=580, justify="left")
+                         wraplength=580, justify="left")
 how_label.pack(pady=10, anchor='center')
 
 help_sep2 = ctk.CTkFrame(master=help_scroll_frame, height=2, fg_color="gray50")
@@ -786,7 +815,7 @@ in that category. This is useful for quickly silencing distractions before a mee
 stream, or any focus session — even when you're not gaming."""
 
 shortcuts_label = ctk.CTkLabel(master=help_scroll_frame, text=shortcuts_text, font=("Calibri", 12),
-                                wraplength=580, justify="left")
+                               wraplength=580, justify="left")
 shortcuts_label.pack(pady=10, anchor='center')
 
 help_sep3 = ctk.CTkFrame(master=help_scroll_frame, height=2, fg_color="gray50")
@@ -805,7 +834,7 @@ trouble_text = """If Vapor isn't working as expected, try these steps:
 If issues persist, enable Debug Mode in Preferences to see detailed logs."""
 
 trouble_label = ctk.CTkLabel(master=help_scroll_frame, text=trouble_text, font=("Calibri", 12),
-                              wraplength=580, justify="left")
+                             wraplength=580, justify="left")
 trouble_label.pack(pady=10, anchor='center')
 
 help_sep4 = ctk.CTkFrame(master=help_scroll_frame, height=2, fg_color="gray50")
@@ -815,8 +844,8 @@ reset_title = ctk.CTkLabel(master=help_scroll_frame, text="Reset Settings", font
 reset_title.pack(pady=(10, 5), anchor='center')
 
 reset_hint = ctk.CTkLabel(master=help_scroll_frame,
-                           text="Restore all settings to their default values.",
-                           font=("Calibri", 11), text_color="gray60")
+                          text="Restore all settings to their default values.",
+                          font=("Calibri", 11), text_color="gray60")
 reset_hint.pack(pady=(0, 10), anchor='center')
 
 
@@ -862,15 +891,17 @@ def rebuild_settings():
                       duration='short', icon=TRAY_ICON_PATH, audio={'silent': 'true'})
 
 
-rebuild_button = ctk.CTkButton(master=help_scroll_frame, text="Reset to Defaults", command=rebuild_settings, corner_radius=10,
-                               fg_color="#c9302c", hover_color="#a02622", text_color="white", width=200, font=("Calibri", 14))
+rebuild_button = ctk.CTkButton(master=help_scroll_frame, text="Reset to Defaults", command=rebuild_settings,
+                               corner_radius=10,
+                               fg_color="#c9302c", hover_color="#a02622", text_color="white", width=200,
+                               font=("Calibri", 14))
 rebuild_button.pack(pady=(5, 20), anchor='center')
 
 # ===== Content for About Tab =====
 about_scroll_frame = ctk.CTkScrollableFrame(master=about_tab, fg_color="transparent")
 about_scroll_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
-about_title = ctk.CTkLabel(master=about_scroll_frame, text="Vapor", font=("Calibri", 28, "bold"))
+about_title = ctk.CTkLabel(master=about_scroll_frame, text="Vapor - Open Beta Release", font=("Calibri", 28, "bold"))
 about_title.pack(pady=(10, 5), anchor='center')
 
 version_label = ctk.CTkLabel(master=about_scroll_frame, text=f"Version {CURRENT_VERSION}", font=("Calibri", 14))
@@ -885,7 +916,7 @@ Features include customizable app management, audio controls, power plan switchi
 Windows Game Mode integration, and playtime tracking with session summaries."""
 
 description_label = ctk.CTkLabel(master=about_scroll_frame, text=description_text, font=("Calibri", 13),
-                                  wraplength=620, justify="center")
+                                 wraplength=620, justify="center")
 description_label.pack(pady=10, anchor='center')
 
 separator1 = ctk.CTkFrame(master=about_scroll_frame, height=2, fg_color="gray50")
@@ -895,15 +926,16 @@ developer_title = ctk.CTkLabel(master=about_scroll_frame, text="Developed by", f
 developer_title.pack(pady=(5, 0), anchor='center')
 
 developer_name = ctk.CTkLabel(master=about_scroll_frame, text="Greg Morton (@Master00Sniper)",
-                               font=("Calibri", 16, "bold"))
+                              font=("Calibri", 16, "bold"))
 developer_name.pack(pady=(0, 10), anchor='center')
 
 bio_text = """I'm a passionate gamer, Sr. Systems Administrator by profession, wine enthusiast, and proud 
 small winery owner. Vapor was born from my own frustration with notifications interrupting epic gaming 
-moments. I hope it enhances your gaming sessions as much as it has mine."""
+moments, and constantly having to adjust audio levels for games. I hope it enhances your gaming sessions 
+as much as it has mine."""
 
 bio_label = ctk.CTkLabel(master=about_scroll_frame, text=bio_text, font=("Calibri", 12),
-                          wraplength=620, justify="center")
+                         wraplength=620, justify="center")
 bio_label.pack(pady=10, anchor='center')
 
 separator2 = ctk.CTkFrame(master=about_scroll_frame, height=2, fg_color="gray50")
@@ -912,7 +944,7 @@ separator2.pack(fill="x", padx=40, pady=15)
 contact_title = ctk.CTkLabel(master=about_scroll_frame, text="Contact & Connect", font=("Calibri", 14, "bold"))
 contact_title.pack(pady=(5, 10), anchor='center')
 
-email_label = ctk.CTkLabel(master=about_scroll_frame, text="📧  Email Coming Soon", font=("Calibri", 12))
+email_label = ctk.CTkLabel(master=about_scroll_frame, text="📧  greg@mortonapps.com", font=("Calibri", 12))
 email_label.pack(pady=2, anchor='center')
 
 x_link_frame = ctk.CTkFrame(master=about_scroll_frame, fg_color="transparent")
@@ -922,7 +954,7 @@ x_icon_label = ctk.CTkLabel(master=x_link_frame, text="𝕏  ", font=("Calibri",
 x_icon_label.pack(side="left")
 
 x_link_label = ctk.CTkLabel(master=x_link_frame, text="x.com/master00sniper", font=("Calibri", 12, "underline"),
-                             text_color="#1DA1F2", cursor="hand2")
+                            text_color="#1DA1F2", cursor="hand2")
 x_link_label.pack(side="left")
 x_link_label.bind("<Button-1>", lambda e: os.startfile("https://x.com/master00sniper"))
 
@@ -936,15 +968,32 @@ donate_title = ctk.CTkLabel(master=about_scroll_frame, text="Support Development
 donate_title.pack(pady=(5, 5), anchor='center')
 
 donate_label = ctk.CTkLabel(master=about_scroll_frame, text="☕  Donation page coming soon!",
-                             font=("Calibri", 12))
+                            font=("Calibri", 12))
 donate_label.pack(pady=5, anchor='center')
 
 separator4 = ctk.CTkFrame(master=about_scroll_frame, height=2, fg_color="gray50")
 separator4.pack(fill="x", padx=40, pady=15)
 
+credits_title = ctk.CTkLabel(master=about_scroll_frame, text="Credits", font=("Calibri", 14, "bold"))
+credits_title.pack(pady=(5, 5), anchor='center')
+
+credits_frame = ctk.CTkFrame(master=about_scroll_frame, fg_color="transparent")
+credits_frame.pack(pady=2, anchor='center')
+
+credits_text_label = ctk.CTkLabel(master=credits_frame, text="Icons by ", font=("Calibri", 12))
+credits_text_label.pack(side="left")
+
+icons8_link_label = ctk.CTkLabel(master=credits_frame, text="Icons8", font=("Calibri", 12, "underline"),
+                                 text_color="#1DA1F2", cursor="hand2")
+icons8_link_label.pack(side="left")
+icons8_link_label.bind("<Button-1>", lambda e: os.startfile("https://icons8.com"))
+
+separator5 = ctk.CTkFrame(master=about_scroll_frame, height=2, fg_color="gray50")
+separator5.pack(fill="x", padx=40, pady=15)
+
 copyright_label = ctk.CTkLabel(master=about_scroll_frame,
-                                text=f"© 2024-2026 Greg Morton (@Master00Sniper). All Rights Reserved.",
-                                font=("Calibri", 11))
+                               text=f"© 2024-2026 Greg Morton (@Master00Sniper). All Rights Reserved.",
+                               font=("Calibri", 11))
 copyright_label.pack(pady=(5, 5), anchor='center')
 
 disclaimer_text = """DISCLAIMER: This software is provided "as is" without warranty of any kind, express or implied, 
@@ -952,7 +1001,7 @@ including but not limited to the warranties of merchantability, fitness for a pa
 In no event shall the author be liable for any claim, damages, or other liability arising from the use of this software."""
 
 disclaimer_label = ctk.CTkLabel(master=about_scroll_frame, text=disclaimer_text, font=("Calibri", 10),
-                                 wraplength=620, justify="center", text_color="gray60")
+                                wraplength=620, justify="center", text_color="gray60")
 disclaimer_label.pack(pady=(5, 20), anchor='center')
 
 button_frame = ctk.CTkFrame(master=root, fg_color="transparent")
@@ -967,9 +1016,39 @@ button_frame.grid_columnconfigure(4, weight=1)
 
 def on_save():
     new_selected_notification_apps = [name for name, var in switch_vars.items() if var.get()]
-    new_customs = [c.strip() for c in custom_entry.get().split(',') if c.strip()]
+    raw_customs = [c.strip() for c in custom_entry.get().split(',') if c.strip()]
     new_selected_resource_apps = [name for name, var in resource_switch_vars.items() if var.get()]
-    new_resource_customs = [c.strip() for c in custom_resource_entry.get().split(',') if c.strip()]
+    raw_resource_customs = [c.strip() for c in custom_resource_entry.get().split(',') if c.strip()]
+
+    # Filter out protected processes and collect blocked ones
+    blocked = []
+    new_customs = []
+    for proc in raw_customs:
+        if proc.lower() in PROTECTED_PROCESSES:
+            blocked.append(proc)
+        else:
+            new_customs.append(proc)
+
+    new_resource_customs = []
+    for proc in raw_resource_customs:
+        if proc.lower() in PROTECTED_PROCESSES:
+            blocked.append(proc)
+        else:
+            new_resource_customs.append(proc)
+
+    # Warn user if any processes were blocked
+    if blocked:
+        blocked_list = ', '.join(blocked)
+        messagebox.showwarning(
+            "Protected Processes",
+            f"The following system processes cannot be managed by Vapor and were removed:\n\n{blocked_list}"
+        )
+        # Update the entry fields to remove blocked processes
+        custom_entry.delete(0, 'end')
+        custom_entry.insert(0, ', '.join(new_customs))
+        custom_resource_entry.delete(0, 'end')
+        custom_resource_entry.insert(0, ', '.join(new_resource_customs))
+
     new_launch_startup = startup_var.get()
     new_launch_settings_on_start = launch_settings_on_start_var.get()
     new_close_on_startup = close_startup_var.get() == "Enabled"
@@ -1022,7 +1101,8 @@ save_button = ctk.CTkButton(master=button_frame, text="Save & Close", command=on
                             fg_color="green", text_color="white", width=150, font=("Calibri", 14))
 save_button.grid(row=0, column=1, padx=15, sticky='ew')
 
-discard_button = ctk.CTkButton(master=button_frame, text="Discard & Close", command=on_discard_and_close, corner_radius=10,
+discard_button = ctk.CTkButton(master=button_frame, text="Discard & Close", command=on_discard_and_close,
+                               corner_radius=10,
                                fg_color="gray", text_color="white", width=150, font=("Calibri", 14))
 discard_button.grid(row=0, column=2, padx=15, sticky='ew')
 
