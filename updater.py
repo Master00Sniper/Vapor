@@ -13,7 +13,7 @@ GITHUB_OWNER = "Master00Sniper"
 GITHUB_REPO = "Vapor"
 
 # Current app version - this is the single source of truth for the version
-CURRENT_VERSION = "0.2.2"
+CURRENT_VERSION = "0.2.3"
 
 # Cloudflare Worker proxy base URL
 PROXY_BASE_URL = "https://vapor-githup-proxy.gkmorton1-b51.workers.dev"

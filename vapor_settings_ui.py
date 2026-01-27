@@ -26,7 +26,7 @@ sys.path.append(application_path)
 import customtkinter as ctk
 import tkinter as tk
 import json
-from PIL import Image
+from PIL import Image, ImageTk
 import psutil
 import win32gui
 import win32con
@@ -173,16 +173,6 @@ root.title("Vapor Settings")
 root.geometry("700x900")
 root.resizable(False, False)
 
-icon_path = os.path.join(base_dir, 'Images', 'exe_icon.ico')
-if os.path.exists(icon_path):
-    root.iconbitmap(icon_path)
-
-root.update()
-hwnd = int(root.wm_frame(), 16)
-style = win32gui.GetWindowLong(hwnd, win32con.GWL_STYLE)
-new_style = style & ~win32con.WS_SYSMENU
-win32gui.SetWindowLong(hwnd, win32con.GWL_STYLE, new_style)
-
 screen_width = root.winfo_screenwidth()
 screen_height = root.winfo_screenheight()
 window_width = 700
@@ -192,6 +182,19 @@ y = (screen_height - window_height) // 2
 root.geometry(f"{window_width}x{window_height}+{x}+{y}")
 
 root.deiconify()
+
+icon_path = os.path.join(base_dir, 'Images', 'exe_icon.ico')
+if os.path.exists(icon_path):
+    try:
+        root.iconbitmap(icon_path)
+    except Exception as e:
+        print(f"Error: {e}")
+
+root.update()
+hwnd = int(root.wm_frame(), 16)
+style = win32gui.GetWindowLong(hwnd, win32con.GWL_STYLE)
+new_style = style & ~win32con.WS_SYSMENU
+win32gui.SetWindowLong(hwnd, win32con.GWL_STYLE, new_style)
 
 current_settings = load_settings()
 selected_notification_apps = current_settings.get('selected_notification_apps', current_settings.get('selected_apps', []))
