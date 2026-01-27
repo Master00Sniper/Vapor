@@ -896,10 +896,15 @@ def manual_check_updates(icon, query):
 
     def check_thread():
         try:
+            # Use the same proxy as the auto-updater
+            from updater import PROXY_BASE_URL, GITHUB_OWNER, GITHUB_REPO
+            proxy_url = f"{PROXY_BASE_URL}/repos/{GITHUB_OWNER}/{GITHUB_REPO}/releases/latest"
+
             response = requests.get(
-                f"https://api.github.com/repos/Master00Sniper/Vapor/releases/latest",
+                proxy_url,
                 headers={
-                    "Accept": "application/vnd.github.v3+json"
+                    "Accept": "application/vnd.github.v3+json",
+                    "User-Agent": "Vapor-Updater/1.0"
                 },
                 timeout=10
             )

@@ -13,7 +13,7 @@ GITHUB_OWNER = "Master00Sniper"
 GITHUB_REPO = "Vapor"
 
 # Current app version - this is the single source of truth for the version
-CURRENT_VERSION = "0.2.0"
+CURRENT_VERSION = "0.2.1"
 
 # Cloudflare Worker proxy base URL
 PROXY_BASE_URL = "https://vapor-githup-proxy.gkmorton1-b51.workers.dev"
@@ -23,7 +23,8 @@ LATEST_RELEASE_PROXY_PATH = f"/repos/{GITHUB_OWNER}/{GITHUB_REPO}/releases/lates
 
 # Headers (no auth needed; handled by proxy)
 HEADERS = {
-    "Accept": "application/vnd.github.v3+json"
+    "Accept": "application/vnd.github.v3+json",
+    "User-Agent": "Vapor-Updater/1.0"
 }
 
 # Global variable to track pending update
