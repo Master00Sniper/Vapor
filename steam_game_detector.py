@@ -1,9 +1,14 @@
 # steam_game_detector.py
+# Main Vapor application - monitors Steam games and manages system resources during gameplay.
 
-# Single-instance check BEFORE splash screen (only for main app, not settings UI)
+# =============================================================================
+# Single Instance Check (runs before anything else)
+# =============================================================================
+
 import sys
 import os
 
+# Only enforce single instance for main app, not settings UI
 if '--ui' not in sys.argv:
     import win32api, win32event, winerror
 
@@ -13,9 +18,11 @@ if '--ui' not in sys.argv:
         sys.exit(0)
 
 
-    # Clean up stale PyInstaller _MEI folders from previous crashes
-    # Do this early, before splash screen, to prevent the warning dialog
     def cleanup_stale_mei_folders():
+        """
+        Remove leftover PyInstaller _MEI folders from previous crashes.
+        Must run early to prevent the PyInstaller warning dialog.
+        """
         try:
             import shutil
             import tempfile
@@ -43,8 +50,12 @@ if '--ui' not in sys.argv:
         cleanup_stale_mei_folders()
 
 
+# =============================================================================
+# Splash Screen
+# =============================================================================
+
 def show_splash_screen():
-    """Display a 2-second splash screen if splash_screen.png exists"""
+    """Display a 2-second splash screen if splash_screen.png exists."""
     try:
         import tkinter as tk
         from PIL import Image, ImageTk
@@ -91,10 +102,15 @@ def show_splash_screen():
 if '--ui' not in sys.argv:
     show_splash_screen()
 
-# Keep these even if unused
+# =============================================================================
+# Imports
+# =============================================================================
+
+# GUI libraries (keep imports even if PyCharm marks as unused - needed for frozen exe)
 import win32gui
 import customtkinter
 
+# Standard library
 import winreg
 import requests
 import time
@@ -113,25 +129,29 @@ import ctypes.wintypes
 import sys
 import re
 
-# For system and game volume control
+# Audio control (pycaw)
 import comtypes
 from comtypes import CLSCTX_ALL, COINIT_MULTITHREADED
 from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
-from pycaw.constants import CLSID_MMDeviceEnumerator
-from pycaw.constants import EDataFlow, ERole
+from pycaw.constants import CLSID_MMDeviceEnumerator, EDataFlow, ERole
 from pycaw.pycaw import IMMDeviceEnumerator
 
+# File watching for settings changes
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
-# For notifications
+# Windows toast notifications
 import win11toast
 import atexit
 import signal
 
 
+# =============================================================================
+# Console Cleanup (ensures no orphan console windows)
+# =============================================================================
+
 def _cleanup_console():
-    """Ensure console is freed on exit"""
+    """Free console on exit to prevent orphan windows."""
     try:
         hwnd = ctypes.windll.kernel32.GetConsoleWindow()
         if hwnd:
@@ -141,23 +161,26 @@ def _cleanup_console():
 
 
 def _signal_handler(signum, frame):
-    """Handle termination signals by cleaning up console"""
+    """Handle termination signals by cleaning up console."""
     _cleanup_console()
     sys.exit(0)
 
 
 atexit.register(_cleanup_console)
 
-# Register signal handlers for common termination signals
+# Register signal handlers for graceful shutdown
 try:
     signal.signal(signal.SIGTERM, _signal_handler)
     signal.signal(signal.SIGINT, _signal_handler)
     signal.signal(signal.SIGBREAK, _signal_handler)  # Windows-specific
 except (AttributeError, ValueError):
-    pass  # Some signals may not be available on all platforms
+    pass  # Some signals may not be available
 
-# Path fix for frozen executable
-application_path = ''
+# =============================================================================
+# Path Configuration
+# =============================================================================
+
+# Set working directory for frozen executable compatibility
 if getattr(sys, 'frozen', False):
     application_path = sys._MEIPASS
 else:
@@ -165,10 +188,9 @@ else:
 os.chdir(application_path)
 sys.path.append(application_path)
 
-# Added base_dir for frozen executable compatibility
 base_dir = getattr(sys, '_MEIPASS', os.path.abspath(os.path.dirname(__file__)))
 
-# Use %APPDATA% for writable settings file
+# Settings stored in %APPDATA%/Vapor for persistence across updates
 appdata_dir = os.path.join(os.getenv('APPDATA'), 'Vapor')
 os.makedirs(appdata_dir, exist_ok=True)
 SETTINGS_FILE = os.path.join(appdata_dir, 'vapor_settings.json')
@@ -177,7 +199,7 @@ TRAY_ICON_PATH = os.path.join(base_dir, 'Images', 'tray_icon.png')
 UI_SCRIPT_PATH = os.path.join(base_dir, 'vapor_settings_ui.py')
 STEAM_PATH = r"C:\Program Files (x86)\Steam\steamapps"
 
-# Protected system processes that should never be killed
+# System processes that should never be terminated (safety protection)
 PROTECTED_PROCESSES = {
     # Windows core
     'explorer.exe', 'svchost.exe', 'csrss.exe', 'wininit.exe', 'winlogon.exe',
@@ -199,18 +221,26 @@ PROTECTED_PROCESSES = {
 from updater import check_for_updates, CURRENT_VERSION
 
 
+# =============================================================================
+# Logging
+# =============================================================================
+
 def log(message, category="INFO"):
-    """Centralized logging with timestamp and category"""
+    """Print timestamped log message with category."""
     try:
         timestamp = time.strftime("%H:%M:%S")
         print(f"[{timestamp}] [{category}] {message}")
     except (OSError, ValueError):
-        # Handle case where console has been freed (invalid handle)
+        # Handle case where console has been freed
         pass
 
 
+# =============================================================================
+# Console Visibility Control
+# =============================================================================
+
 def set_console_visibility(visible):
-    """Show or hide the console window by allocating/freeing a console"""
+    """Show or hide the debug console window."""
     try:
         kernel32 = ctypes.windll.kernel32
 
@@ -258,8 +288,12 @@ def set_console_visibility(visible):
         pass
 
 
+# =============================================================================
+# Settings Management
+# =============================================================================
+
 def create_default_settings():
-    """Create a default settings file with all default values"""
+    """Create default settings file on first run."""
     log("Creating default settings file...", "SETTINGS")
     default_settings = {
         'notification_processes': ['WhatsApp.Root.exe', 'Telegram.exe', 'ms-teams.exe', 'Messenger.exe', 'slack.exe',
@@ -298,6 +332,7 @@ def create_default_settings():
 
 
 def load_process_names_and_startup():
+    """Load all settings from JSON file and return as tuple."""
     log("Loading settings from file...", "SETTINGS")
     if os.path.exists(SETTINGS_FILE):
         log(f"Settings file found: {SETTINGS_FILE}", "SETTINGS")
@@ -341,8 +376,12 @@ def load_process_names_and_startup():
                 True, False, 33, False, 100, False, 'High Performance', False, 'Balanced', True, False, False)
 
 
+# =============================================================================
+# Windows Startup Registry
+# =============================================================================
+
 def set_startup(enabled):
-    """Improved Startup Registry Function"""
+    """Add or remove Vapor from Windows startup via registry."""
     key_path = r'Software\Microsoft\Windows\CurrentVersion\Run'
     app_name = 'Vapor'
     log(f"Setting startup registry: enabled={enabled}", "STARTUP")
@@ -369,7 +408,12 @@ def set_startup(enabled):
         log(f"Startup registry error: {e}", "ERROR")
 
 
+# =============================================================================
+# Steam Integration
+# =============================================================================
+
 def get_running_steam_app_id():
+    """Get the AppID of currently running Steam game (0 if none)."""
     try:
         key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Valve\Steam")
         app_id, _ = winreg.QueryValueEx(key, "RunningAppID")
@@ -380,6 +424,7 @@ def get_running_steam_app_id():
 
 
 def get_game_name(app_id):
+    """Fetch game name from Steam API for given AppID."""
     if app_id == 0:
         return "No game running"
     log(f"Fetching game name for AppID {app_id} from Steam API...", "STEAM")
@@ -396,7 +441,15 @@ def get_game_name(app_id):
     return "Unknown"
 
 
+# =============================================================================
+# Process Management
+# =============================================================================
+
 def kill_processes(process_names, killed_processes, purpose=""):
+    """
+    Terminate processes from the given list.
+    Stores process info in killed_processes dict for potential relaunch.
+    """
     purpose_str = f" ({purpose})" if purpose else ""
     log(f"Attempting to close {len(process_names)} {purpose} process type(s)...", "PROCESS")
     for name in process_names:
@@ -430,6 +483,7 @@ def kill_processes(process_names, killed_processes, purpose=""):
 
 
 def relaunch_processes(killed_processes, relaunch_on_exit, purpose=""):
+    """Relaunch previously terminated processes (minimized)."""
     purpose_str = f" ({purpose})" if purpose else ""
     if not relaunch_on_exit:
         log(f"Relaunch disabled for {purpose} apps - skipping", "RELAUNCH")
@@ -453,14 +507,24 @@ def relaunch_processes(killed_processes, relaunch_on_exit, purpose=""):
             log(f"Failed to relaunch {name}: {e}", "ERROR")
 
 
+# =============================================================================
+# Notifications
+# =============================================================================
+
 def show_notification(message):
+    """Display a Windows toast notification."""
     log(f"Showing notification: {message}", "NOTIFY")
     icon_path = os.path.abspath(TRAY_ICON_PATH)
     win11toast.notify(body=message, app_id='Vapor - Streamline Gaming', duration='short', icon=icon_path,
                       audio={'silent': 'true'})
 
 
+# =============================================================================
+# Audio Control
+# =============================================================================
+
 def set_system_volume(level):
+    """Set system master volume (0-100)."""
     log(f"Setting system volume to {level}%...", "AUDIO")
     comtypes.CoInitializeEx(comtypes.COINIT_MULTITHREADED)
     try:
@@ -488,7 +552,12 @@ def set_system_volume(level):
         comtypes.CoUninitialize()
 
 
+# =============================================================================
+# Power Management
+# =============================================================================
+
 def get_power_plan_guid(plan_name):
+    """Map power plan name to Windows GUID."""
     plan_map = {
         'Balanced': '381b4222-f694-41f0-9685-ff5bb260df2e',
         'High Performance': '8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c',
@@ -498,6 +567,7 @@ def get_power_plan_guid(plan_name):
 
 
 def set_power_plan(plan_name):
+    """Activate a Windows power plan by name."""
     log(f"Setting power plan to: {plan_name}", "POWER")
     guid = get_power_plan_guid(plan_name)
     if guid:
@@ -510,8 +580,12 @@ def set_power_plan(plan_name):
         log(f"Unknown power plan: {plan_name}", "ERROR")
 
 
+# =============================================================================
+# Windows Game Mode
+# =============================================================================
+
 def set_game_mode(enabled):
-    """Enable or disable Windows Game Mode via registry"""
+    """Enable or disable Windows Game Mode via registry."""
     log(f"Setting Windows Game Mode to: {'Enabled' if enabled else 'Disabled'}", "GAMEMODE")
     try:
         key_path = r"Software\Microsoft\GameBar"
@@ -532,7 +606,12 @@ def set_game_mode(enabled):
         log(f"Failed to set Game Mode: {e}", "ERROR")
 
 
+# =============================================================================
+# Steam Path Detection
+# =============================================================================
+
 def get_steam_path():
+    """Detect Steam installation path from registry."""
     log("Detecting Steam installation path...", "STEAM")
     try:
         key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Valve\Steam")
@@ -547,6 +626,7 @@ def get_steam_path():
 
 
 def get_library_folders():
+    """Scan for all Steam library folders (including additional drives)."""
     log("Scanning for Steam library folders...", "STEAM")
     main_steamapps = get_steam_path()
     steam_install_dir = os.path.dirname(main_steamapps)
@@ -580,6 +660,7 @@ def get_library_folders():
 
 
 def get_game_folder(app_id):
+    """Locate the installation folder for a Steam game by AppID."""
     log(f"Locating game folder for AppID {app_id}...", "STEAM")
     libraries = get_library_folders()
     for lib in libraries:
@@ -602,7 +683,12 @@ def get_game_folder(app_id):
     return None
 
 
+# =============================================================================
+# Game Audio Control
+# =============================================================================
+
 def find_game_pids(game_folder):
+    """Find process IDs for executables running from the game folder."""
     if not game_folder:
         return []
     log(f"Scanning for game processes in: {game_folder}", "PROCESS")
@@ -643,6 +729,7 @@ def find_game_pids(game_folder):
 
 
 def set_game_volume(game_pids, level):
+    """Set volume for game processes (0-100) with retry logic."""
     if not game_pids:
         return
     log(f"Setting game volume to {level}% for {len(game_pids)} PID(s)...", "AUDIO")
@@ -677,7 +764,13 @@ def set_game_volume(game_pids, level):
         comtypes.CoUninitialize()
 
 
+# =============================================================================
+# Settings File Watcher
+# =============================================================================
+
 class SettingsFileHandler(FileSystemEventHandler):
+    """Watch for settings file changes and trigger reload callback."""
+
     def __init__(self, callback):
         self.callback = callback
 
@@ -687,7 +780,15 @@ class SettingsFileHandler(FileSystemEventHandler):
             self.callback()
 
 
+# =============================================================================
+# Main Game Monitoring Loop
+# =============================================================================
+
 def monitor_steam_games(stop_event, killed_notification, killed_resource, is_first_run=False):
+    """
+    Main monitoring loop that watches for Steam game launches.
+    Manages process termination, audio, power plans, and more.
+    """
     log("=" * 50, "INIT")
     log(f"Vapor v{CURRENT_VERSION} starting...", "INIT")
     log("=" * 50, "INIT")
@@ -924,7 +1025,12 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
         observer.join()
 
 
+# =============================================================================
+# Tray Menu Actions
+# =============================================================================
+
 def open_settings(icon, query):
+    """Launch the settings UI window."""
     log("Opening settings UI...", "UI")
     try:
         if getattr(sys, 'frozen', False):
@@ -937,6 +1043,7 @@ def open_settings(icon, query):
 
 
 def quit_app(icon, query):
+    """Shut down Vapor gracefully."""
     log("Quit requested - shutting down...", "SHUTDOWN")
     stop_event.set()
     try:
@@ -954,7 +1061,7 @@ def quit_app(icon, query):
 
 
 def manual_check_updates(icon, query):
-    """Manual update check triggered from tray menu"""
+    """Trigger manual update check from tray menu."""
     log("Manual update check requested", "UPDATE")
 
     def check_thread():
@@ -993,14 +1100,19 @@ def manual_check_updates(icon, query):
     threading.Thread(target=check_thread, daemon=True).start()
 
 
+# =============================================================================
+# Entry Point
+# =============================================================================
+
 if __name__ == '__main__':
     if len(sys.argv) > 1 and sys.argv[1] == '--ui':
         # === UI MODE ===
+        # Launch settings interface
         pid = int(sys.argv[2]) if len(sys.argv) > 2 else None
         os.chdir(base_dir)
         sys.path.insert(0, base_dir)
 
-        # Pass pid via environment variable for the UI module to access
+        # Pass parent PID to UI for process monitoring
         if pid:
             os.environ['VAPOR_MAIN_PID'] = str(pid)
 

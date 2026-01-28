@@ -1,27 +1,37 @@
 # vapor_settings_ui.py
+# Settings interface for Vapor - allows users to configure app management, audio, power, and more.
 
 import os
 import sys
 
-# NEW: Imports for mutex
+# =============================================================================
+# Single Instance Check
+# =============================================================================
+
 import win32event
 import win32api
 import winerror
 
-# Check for existing instance
+# Prevent multiple settings windows from opening
 mutex = win32event.CreateMutex(None, True, "Vapor_Settings_SingleInstance_Mutex")
 if win32api.GetLastError() == winerror.ERROR_ALREADY_EXISTS:
     print("Settings window is already open. Exiting.")
     sys.exit(0)
 
-# Path fix for frozen executable
-application_path = ''
+# =============================================================================
+# Path Configuration
+# =============================================================================
+
 if getattr(sys, 'frozen', False):
     application_path = sys._MEIPASS
 else:
     application_path = os.path.dirname(os.path.abspath(__file__))
 os.chdir(application_path)
 sys.path.append(application_path)
+
+# =============================================================================
+# Imports
+# =============================================================================
 
 import customtkinter as ctk
 import tkinter as tk
@@ -40,13 +50,14 @@ except ImportError:
 
 base_dir = getattr(sys, '_MEIPASS', os.path.abspath(os.path.dirname(__file__)))
 
+# Settings stored in %APPDATA%/Vapor for persistence
 appdata_dir = os.path.join(os.getenv('APPDATA'), 'Vapor')
 os.makedirs(appdata_dir, exist_ok=True)
 SETTINGS_FILE = os.path.join(appdata_dir, 'vapor_settings.json')
 
 TRAY_ICON_PATH = os.path.join(base_dir, 'Images', 'tray_icon.png')
 
-# Protected system processes that cannot be added as custom processes
+# System processes that cannot be added as custom processes (safety protection)
 PROTECTED_PROCESSES = {
     # Windows core
     'explorer.exe', 'svchost.exe', 'csrss.exe', 'wininit.exe', 'winlogon.exe',
@@ -65,6 +76,11 @@ PROTECTED_PROCESSES = {
     'vapor.exe',
 }
 
+# =============================================================================
+# Built-in App Definitions
+# =============================================================================
+
+# Notification/messaging apps that can be closed during gaming
 BUILT_IN_APPS = [
     {'display_name': 'WhatsApp', 'processes': ['WhatsApp.Root.exe'],
      'icon_path': os.path.join(base_dir, 'Images', 'whatsapp_icon.png')},
@@ -84,8 +100,9 @@ BUILT_IN_APPS = [
      'icon_path': os.path.join(base_dir, 'Images', 'wechat_icon.png')}
 ]
 
+# Resource-heavy apps organized by category
 BUILT_IN_RESOURCE_APPS = [
-    # Left column - Browsers (indices 0-3)
+    # Browsers (indices 0-3)
     {'display_name': 'Chrome', 'processes': ['chrome.exe'],
      'icon_path': os.path.join(base_dir, 'Images', 'chrome_icon.png')},
     {'display_name': 'Firefox', 'processes': ['firefox.exe'],
@@ -94,7 +111,7 @@ BUILT_IN_RESOURCE_APPS = [
      'icon_path': os.path.join(base_dir, 'Images', 'edge_icon.png')},
     {'display_name': 'Opera', 'processes': ['opera.exe'],
      'icon_path': os.path.join(base_dir, 'Images', 'opera_icon.png')},
-    # Middle column - Cloud/Media (indices 4-7)
+    # Cloud/Media (indices 4-7)
     {'display_name': 'Spotify', 'processes': ['spotify.exe'],
      'icon_path': os.path.join(base_dir, 'Images', 'spotify_icon.png')},
     {'display_name': 'OneDrive', 'processes': ['OneDrive.exe'],
@@ -103,7 +120,7 @@ BUILT_IN_RESOURCE_APPS = [
      'icon_path': os.path.join(base_dir, 'Images', 'googledrive_icon.png')},
     {'display_name': 'Dropbox', 'processes': ['Dropbox.exe'],
      'icon_path': os.path.join(base_dir, 'Images', 'dropbox_icon.png')},
-    # Right column - Gaming Utilities (indices 8-11)
+    # Gaming Utilities (indices 8-11)
     {'display_name': 'Wallpaper Engine', 'processes': ['wallpaper64.exe'],
      'icon_path': os.path.join(base_dir, 'Images', 'wallpaperengine_icon.png')},
     {'display_name': 'iCUE', 'processes': ['iCUE.exe'],
@@ -115,7 +132,12 @@ BUILT_IN_RESOURCE_APPS = [
 ]
 
 
+# =============================================================================
+# Settings Management
+# =============================================================================
+
 def load_settings():
+    """Load settings from file or return defaults."""
     if os.path.exists(SETTINGS_FILE):
         with open(SETTINGS_FILE, 'r') as f:
             return json.load(f)
@@ -143,6 +165,8 @@ def save_settings(selected_notification_apps, customs, selected_resource_apps, r
                   enable_playtime_summary, enable_debug_mode, system_audio_level, enable_system_audio,
                   game_audio_level, enable_game_audio, enable_during_power, during_power_plan,
                   enable_after_power, after_power_plan, enable_game_mode_start, enable_game_mode_end):
+    """Save all settings to the JSON configuration file."""
+    # Build process lists from selected apps
     notification_processes = []
     for app in BUILT_IN_APPS:
         if app['display_name'] in selected_notification_apps:
@@ -187,8 +211,12 @@ def save_settings(selected_notification_apps, customs, selected_resource_apps, r
         json.dump(settings, f)
 
 
+# =============================================================================
+# Window Setup
+# =============================================================================
+
 root = ctk.CTk()
-root.withdraw()
+root.withdraw()  # Hide while setting up
 root.title("Vapor Settings")
 root.geometry("700x900")
 root.resizable(False, False)
@@ -201,8 +229,9 @@ x = (screen_width - window_width) // 2
 y = (screen_height - window_height) // 2
 root.geometry(f"{window_width}x{window_height}+{x}+{y}")
 
-root.deiconify()
+root.deiconify()  # Show window
 
+# Set window icon
 icon_path = os.path.join(base_dir, 'Images', 'exe_icon.ico')
 if os.path.exists(icon_path):
     try:
@@ -210,11 +239,16 @@ if os.path.exists(icon_path):
     except Exception as e:
         print(f"Error: {e}")
 
+# Remove system menu (close/minimize buttons handled by custom buttons)
 root.update()
 hwnd = int(root.wm_frame(), 16)
 style = win32gui.GetWindowLong(hwnd, win32con.GWL_STYLE)
 new_style = style & ~win32con.WS_SYSMENU
 win32gui.SetWindowLong(hwnd, win32con.GWL_STYLE, new_style)
+
+# =============================================================================
+# Load Current Settings
+# =============================================================================
 
 current_settings = load_settings()
 selected_notification_apps = current_settings.get('selected_notification_apps',
@@ -243,7 +277,7 @@ after_power_plan = current_settings.get('after_power_plan', 'Balanced')
 enable_game_mode_start = current_settings.get('enable_game_mode_start', False)
 enable_game_mode_end = current_settings.get('enable_game_mode_end', False)
 
-# Get main process PID from environment variable or command line args
+# Get main process PID for communication with main app
 main_pid = None
 if os.environ.get('VAPOR_MAIN_PID'):
     try:
@@ -263,8 +297,13 @@ elif len(sys.argv) > 1:
         except ValueError:
             pass
 
+# UI state tracking
 switch_vars = {}
 resource_switch_vars = {}
+
+# =============================================================================
+# Tab View Setup
+# =============================================================================
 
 tabview = ctk.CTkTabview(master=root)
 tabview.pack(pady=10, padx=10, fill="both", expand=True)
@@ -275,7 +314,10 @@ preferences_tab = tabview.add("Preferences ")
 help_tab = tabview.add("   Help   ")
 about_tab = tabview.add("  About  ")
 
-# ===== Content for Notifications Tab =====
+# =============================================================================
+# Notifications Tab
+# =============================================================================
+
 notif_scroll_frame = ctk.CTkScrollableFrame(master=notifications_tab, fg_color="transparent")
 notif_scroll_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
@@ -389,6 +431,7 @@ for i in range(4, 8):
 
 
 def on_all_apps_toggle():
+    """Toggle all notification apps on/off."""
     state = all_apps_var.get()
     for var in switch_vars.values():
         var.set(state)
@@ -417,7 +460,10 @@ custom_entry = ctk.CTkEntry(master=notif_scroll_frame, width=550, font=("Calibri
 custom_entry.insert(0, ','.join(custom_processes))
 custom_entry.pack(pady=(0, 20), anchor='center')
 
-# ===== Content for Preferences Tab =====
+# =============================================================================
+# Preferences Tab
+# =============================================================================
+
 pref_scroll_frame = ctk.CTkScrollableFrame(master=preferences_tab, fg_color="transparent")
 pref_scroll_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
@@ -489,6 +535,7 @@ system_current_value_label.pack(anchor='center')
 
 
 def update_system_audio_label(value):
+    """Update the system audio percentage display."""
     system_current_value_label.configure(text=f"{int(value)}%")
 
 
@@ -515,6 +562,7 @@ game_current_value_label.pack(anchor='center')
 
 
 def update_game_audio_label(value):
+    """Update the game audio percentage display."""
     game_current_value_label.configure(text=f"{int(value)}%")
 
 
@@ -597,7 +645,10 @@ enable_game_mode_end_switch = ctk.CTkSwitch(master=game_mode_frame, text="Disabl
                                             variable=enable_game_mode_end_var, font=("Calibri", 13))
 enable_game_mode_end_switch.pack(pady=5, anchor='w')
 
-# ===== Content for Resources Tab =====
+# =============================================================================
+# Resources Tab
+# =============================================================================
+
 res_scroll_frame = ctk.CTkScrollableFrame(master=resources_tab, fg_color="transparent")
 res_scroll_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
@@ -674,7 +725,7 @@ resource_middle_column.pack(side="left", padx=10)
 resource_right_column = ctk.CTkFrame(master=resource_app_frame, fg_color="transparent")
 resource_right_column.pack(side="left", padx=10)
 
-# Left column - Browsers (indices 0-3)
+# Browsers column (indices 0-3)
 for i in range(4):
     app = BUILT_IN_RESOURCE_APPS[i]
     display_name = app['display_name']
@@ -695,7 +746,7 @@ for i in range(4):
     switch = ctk.CTkSwitch(master=row_frame, text=display_name, variable=var, font=("Calibri", 13))
     switch.pack(side="left")
 
-# Middle column - Cloud/Media (indices 4-7)
+# Cloud/Media column (indices 4-7)
 for i in range(4, 8):
     app = BUILT_IN_RESOURCE_APPS[i]
     display_name = app['display_name']
@@ -716,7 +767,7 @@ for i in range(4, 8):
     switch = ctk.CTkSwitch(master=row_frame, text=display_name, variable=var, font=("Calibri", 13))
     switch.pack(side="left")
 
-# Right column - Gaming Utilities (indices 8-11)
+# Gaming Utilities column (indices 8-11)
 for i in range(8, 12):
     app = BUILT_IN_RESOURCE_APPS[i]
     display_name = app['display_name']
@@ -739,6 +790,7 @@ for i in range(8, 12):
 
 
 def on_resource_all_apps_toggle():
+    """Toggle all resource apps on/off."""
     state = resource_all_apps_var.get()
     for var in resource_switch_vars.values():
         var.set(state)
@@ -768,7 +820,10 @@ custom_resource_entry = ctk.CTkEntry(master=res_scroll_frame, width=550, font=("
 custom_resource_entry.insert(0, ','.join(custom_resource_processes))
 custom_resource_entry.pack(pady=(0, 20), anchor='center')
 
-# ===== Content for Help Tab =====
+# =============================================================================
+# Help Tab
+# =============================================================================
+
 help_scroll_frame = ctk.CTkScrollableFrame(master=help_tab, fg_color="transparent")
 help_scroll_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
@@ -850,6 +905,7 @@ reset_hint.pack(pady=(0, 10), anchor='center')
 
 
 def rebuild_settings():
+    """Reset all settings to default values."""
     default_selected = ["WhatsApp", "Telegram", "Microsoft Teams", "Facebook Messenger", "Slack", "Signal", "WeChat"]
     default_resource_selected = ["Spotify", "OneDrive", "Google Drive", "Dropbox", "Wallpaper Engine",
                                  "iCUE", "Razer Synapse", "NZXT CAM"]
@@ -897,7 +953,10 @@ rebuild_button = ctk.CTkButton(master=help_scroll_frame, text="Reset to Defaults
                                font=("Calibri", 14))
 rebuild_button.pack(pady=(5, 20), anchor='center')
 
-# ===== Content for About Tab =====
+# =============================================================================
+# About Tab
+# =============================================================================
+
 about_scroll_frame = ctk.CTkScrollableFrame(master=about_tab, fg_color="transparent")
 about_scroll_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
@@ -1004,6 +1063,10 @@ disclaimer_label = ctk.CTkLabel(master=about_scroll_frame, text=disclaimer_text,
                                 wraplength=620, justify="center", text_color="gray60")
 disclaimer_label.pack(pady=(5, 20), anchor='center')
 
+# =============================================================================
+# Bottom Button Bar
+# =============================================================================
+
 button_frame = ctk.CTkFrame(master=root, fg_color="transparent")
 button_frame.pack(pady=20, fill='x', padx=40)
 
@@ -1015,12 +1078,13 @@ button_frame.grid_columnconfigure(4, weight=1)
 
 
 def on_save():
+    """Save current settings to file."""
     new_selected_notification_apps = [name for name, var in switch_vars.items() if var.get()]
     raw_customs = [c.strip() for c in custom_entry.get().split(',') if c.strip()]
     new_selected_resource_apps = [name for name, var in resource_switch_vars.items() if var.get()]
     raw_resource_customs = [c.strip() for c in custom_resource_entry.get().split(',') if c.strip()]
 
-    # Filter out protected processes and collect blocked ones
+    # Filter out protected processes
     blocked = []
     new_customs = []
     for proc in raw_customs:
@@ -1079,15 +1143,18 @@ def on_save():
 
 
 def on_save_and_close():
+    """Save settings and close the window."""
     on_save()
     root.destroy()
 
 
 def on_discard_and_close():
+    """Close without saving changes."""
     root.destroy()
 
 
 def on_stop_vapor():
+    """Terminate the main Vapor process and close settings."""
     if main_pid:
         try:
             main_process = psutil.Process(main_pid)
@@ -1111,7 +1178,12 @@ stop_button = ctk.CTkButton(master=button_frame, text="Stop Vapor", command=on_s
 stop_button.grid(row=0, column=3, padx=15, sticky='ew')
 
 
+# =============================================================================
+# Main Process Monitoring
+# =============================================================================
+
 def check_main_process():
+    """Auto-close settings if main Vapor process exits."""
     if main_pid:
         try:
             main_process = psutil.Process(main_pid)
@@ -1125,4 +1197,5 @@ def check_main_process():
 if main_pid:
     root.after(1000, check_main_process)
 
+# Start the UI
 root.mainloop()
