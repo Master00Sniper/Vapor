@@ -212,39 +212,40 @@ def save_settings(selected_notification_apps, customs, selected_resource_apps, r
 
 
 # =============================================================================
-# Window Setup
+# Window Setup with Dynamic Height
 # =============================================================================
 
 root = ctk.CTk()
 root.withdraw()  # Hide while setting up
 root.title("Vapor Settings")
-root.geometry("700x900")
-root.resizable(False, False)
 
+# Get screen dimensions (accounts for Windows scaling automatically via tkinter)
 screen_width = root.winfo_screenwidth()
 screen_height = root.winfo_screenheight()
+
+# Calculate dynamic window height based on available screen space
+# Use 85% of screen height, with min 600 and max 1000
 window_width = 700
-window_height = 900
+window_height = int(screen_height * 0.85)
+window_height = max(600, min(window_height, 1000))  # Clamp between 600-1000
+
+# Center the window on screen
 x = (screen_width - window_width) // 2
 y = (screen_height - window_height) // 2
+
 root.geometry(f"{window_width}x{window_height}+{x}+{y}")
+root.resizable(False, False)
 
-root.deiconify()  # Show window
-
-# Set window icon
+# Set window icon BEFORE showing window
 icon_path = os.path.join(base_dir, 'Images', 'exe_icon.ico')
 if os.path.exists(icon_path):
     try:
         root.iconbitmap(icon_path)
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Error setting icon: {e}")
 
-# Remove system menu (close/minimize buttons handled by custom buttons)
-root.update()
-hwnd = int(root.wm_frame(), 16)
-style = win32gui.GetWindowLong(hwnd, win32con.GWL_STYLE)
-new_style = style & ~win32con.WS_SYSMENU
-win32gui.SetWindowLong(hwnd, win32con.GWL_STYLE, new_style)
+root.deiconify()  # Show window
+root.update()  # Process pending events to fully initialize window
 
 # =============================================================================
 # Load Current Settings
@@ -402,7 +403,7 @@ for i in range(4):
         icon_label = ctk.CTkLabel(master=row_frame, image=ctk_image, text="")
         icon_label.pack(side="left", padx=5)
     else:
-        ctk.CTkLabel(master=row_frame, text="●", font=("Calibri", 14)).pack(side="left", padx=5)
+        ctk.CTkLabel(master=row_frame, text="*", font=("Calibri", 14)).pack(side="left", padx=5)
 
     var = tk.BooleanVar(value=display_name in selected_notification_apps)
     switch_vars[display_name] = var
@@ -422,7 +423,7 @@ for i in range(4, 8):
         icon_label = ctk.CTkLabel(master=row_frame, image=ctk_image, text="")
         icon_label.pack(side="left", padx=5)
     else:
-        ctk.CTkLabel(master=row_frame, text="●", font=("Calibri", 14)).pack(side="left", padx=5)
+        ctk.CTkLabel(master=row_frame, text="*", font=("Calibri", 14)).pack(side="left", padx=5)
 
     var = tk.BooleanVar(value=display_name in selected_notification_apps)
     switch_vars[display_name] = var
@@ -739,7 +740,7 @@ for i in range(4):
         icon_label = ctk.CTkLabel(master=row_frame, image=ctk_image, text="")
         icon_label.pack(side="left", padx=5)
     else:
-        ctk.CTkLabel(master=row_frame, text="●", font=("Calibri", 14)).pack(side="left", padx=5)
+        ctk.CTkLabel(master=row_frame, text="*", font=("Calibri", 14)).pack(side="left", padx=5)
 
     var = tk.BooleanVar(value=display_name in selected_resource_apps)
     resource_switch_vars[display_name] = var
@@ -760,7 +761,7 @@ for i in range(4, 8):
         icon_label = ctk.CTkLabel(master=row_frame, image=ctk_image, text="")
         icon_label.pack(side="left", padx=5)
     else:
-        ctk.CTkLabel(master=row_frame, text="●", font=("Calibri", 14)).pack(side="left", padx=5)
+        ctk.CTkLabel(master=row_frame, text="*", font=("Calibri", 14)).pack(side="left", padx=5)
 
     var = tk.BooleanVar(value=display_name in selected_resource_apps)
     resource_switch_vars[display_name] = var
@@ -781,7 +782,7 @@ for i in range(8, 12):
         icon_label = ctk.CTkLabel(master=row_frame, image=ctk_image, text="")
         icon_label.pack(side="left", padx=5)
     else:
-        ctk.CTkLabel(master=row_frame, text="●", font=("Calibri", 14)).pack(side="left", padx=5)
+        ctk.CTkLabel(master=row_frame, text="*", font=("Calibri", 14)).pack(side="left", padx=5)
 
     var = tk.BooleanVar(value=display_name in selected_resource_apps)
     resource_switch_vars[display_name] = var
@@ -844,11 +845,11 @@ how_title.pack(pady=(10, 10), anchor='center')
 how_text = """Vapor runs quietly in your system tray and monitors Steam for game launches. When you start 
 a Steam game, Vapor automatically:
 
-  •  Closes notification apps (like Discord, Slack, Teams) to prevent interruptions
-  •  Closes resource-heavy apps (like browsers, cloud sync) to free up RAM and CPU
-  •  Adjusts your audio levels (if enabled)
-  •  Switches your power plan (if enabled)
-  •  Enables Windows Game Mode (if enabled)
+  *  Closes notification apps (like Discord, Slack, Teams) to prevent interruptions
+  *  Closes resource-heavy apps (like browsers, cloud sync) to free up RAM and CPU
+  *  Adjusts your audio levels (if enabled)
+  *  Switches your power plan (if enabled)
+  *  Enables Windows Game Mode (if enabled)
 
 When you exit your game, Vapor reverses these changes and relaunches your closed apps."""
 
@@ -862,12 +863,12 @@ help_sep2.pack(fill="x", padx=40, pady=15)
 shortcuts_title = ctk.CTkLabel(master=help_scroll_frame, text="Keyboard Shortcuts", font=("Calibri", 16, "bold"))
 shortcuts_title.pack(pady=(10, 10), anchor='center')
 
-shortcuts_text = """Ctrl + Alt + K  —  Manually close all selected notification and resource apps
+shortcuts_text = """Ctrl + Alt + K  -  Manually close all selected notification and resource apps
 
 This hotkey works independently of game detection. When enabled in the Notifications 
 or Resources tab, pressing this combination will immediately close all toggled apps 
 in that category. This is useful for quickly silencing distractions before a meeting, 
-stream, or any focus session — even when you're not gaming."""
+stream, or any focus session - even when you're not gaming."""
 
 shortcuts_label = ctk.CTkLabel(master=help_scroll_frame, text=shortcuts_text, font=("Calibri", 12),
                                wraplength=580, justify="left")
@@ -881,10 +882,10 @@ trouble_title.pack(pady=(10, 10), anchor='center')
 
 trouble_text = """If Vapor isn't working as expected, try these steps:
 
-  •  Make sure Steam is running before launching games
-  •  Check that the apps you want managed are toggled ON in the Notifications/Resources tabs
-  •  Ensure Vapor is running (look for the icon in your system tray)
-  •  Try clicking "Reset to Defaults" below to restore default settings
+  *  Make sure Steam is running before launching games
+  *  Check that the apps you want managed are toggled ON in the Notifications/Resources tabs
+  *  Ensure Vapor is running (look for the icon in your system tray)
+  *  Try clicking "Reset to Defaults" below to restore default settings
 
 If issues persist, enable Debug Mode in Preferences to see detailed logs."""
 
@@ -1003,13 +1004,13 @@ separator2.pack(fill="x", padx=40, pady=15)
 contact_title = ctk.CTkLabel(master=about_scroll_frame, text="Contact & Connect", font=("Calibri", 14, "bold"))
 contact_title.pack(pady=(5, 10), anchor='center')
 
-email_label = ctk.CTkLabel(master=about_scroll_frame, text="📧  greg@mortonapps.com", font=("Calibri", 12))
+email_label = ctk.CTkLabel(master=about_scroll_frame, text="Email: greg@mortonapps.com", font=("Calibri", 12))
 email_label.pack(pady=2, anchor='center')
 
 x_link_frame = ctk.CTkFrame(master=about_scroll_frame, fg_color="transparent")
 x_link_frame.pack(pady=2, anchor='center')
 
-x_icon_label = ctk.CTkLabel(master=x_link_frame, text="𝕏  ", font=("Calibri", 12))
+x_icon_label = ctk.CTkLabel(master=x_link_frame, text="X: ", font=("Calibri", 12))
 x_icon_label.pack(side="left")
 
 x_link_label = ctk.CTkLabel(master=x_link_frame, text="x.com/master00sniper", font=("Calibri", 12, "underline"),
@@ -1017,7 +1018,7 @@ x_link_label = ctk.CTkLabel(master=x_link_frame, text="x.com/master00sniper", fo
 x_link_label.pack(side="left")
 x_link_label.bind("<Button-1>", lambda e: os.startfile("https://x.com/master00sniper"))
 
-x_handle_label = ctk.CTkLabel(master=x_link_frame, text="  •  @Master00Sniper", font=("Calibri", 12))
+x_handle_label = ctk.CTkLabel(master=x_link_frame, text="  -  @Master00Sniper", font=("Calibri", 12))
 x_handle_label.pack(side="left")
 
 separator3 = ctk.CTkFrame(master=about_scroll_frame, height=2, fg_color="gray50")
@@ -1026,7 +1027,7 @@ separator3.pack(fill="x", padx=40, pady=15)
 donate_title = ctk.CTkLabel(master=about_scroll_frame, text="Support Development", font=("Calibri", 14, "bold"))
 donate_title.pack(pady=(5, 5), anchor='center')
 
-donate_label = ctk.CTkLabel(master=about_scroll_frame, text="☕  Donation page coming soon!",
+donate_label = ctk.CTkLabel(master=about_scroll_frame, text="Donation page coming soon!",
                             font=("Calibri", 12))
 donate_label.pack(pady=5, anchor='center')
 
@@ -1051,7 +1052,7 @@ separator5 = ctk.CTkFrame(master=about_scroll_frame, height=2, fg_color="gray50"
 separator5.pack(fill="x", padx=40, pady=15)
 
 copyright_label = ctk.CTkLabel(master=about_scroll_frame,
-                               text=f"© 2024-2026 Greg Morton (@Master00Sniper). All Rights Reserved.",
+                               text=f"(c) 2024-2026 Greg Morton (@Master00Sniper). All Rights Reserved.",
                                font=("Calibri", 11))
 copyright_label.pack(pady=(5, 5), anchor='center')
 
@@ -1176,6 +1177,9 @@ discard_button.grid(row=0, column=2, padx=15, sticky='ew')
 stop_button = ctk.CTkButton(master=button_frame, text="Stop Vapor", command=on_stop_vapor, corner_radius=10,
                             fg_color="red", text_color="white", width=150, font=("Calibri", 14))
 stop_button.grid(row=0, column=3, padx=15, sticky='ew')
+
+# Make the X button work like Discard & Close
+root.protocol("WM_DELETE_WINDOW", on_discard_and_close)
 
 
 # =============================================================================

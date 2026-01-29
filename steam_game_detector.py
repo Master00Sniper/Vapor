@@ -194,6 +194,7 @@ base_dir = getattr(sys, '_MEIPASS', os.path.abspath(os.path.dirname(__file__)))
 appdata_dir = os.path.join(os.getenv('APPDATA'), 'Vapor')
 os.makedirs(appdata_dir, exist_ok=True)
 SETTINGS_FILE = os.path.join(appdata_dir, 'vapor_settings.json')
+NOTIFICATION_WARNING_DISMISSED_FILE = os.path.join(appdata_dir, 'notification_warning_dismissed')
 
 TRAY_ICON_PATH = os.path.join(base_dir, 'Images', 'tray_icon.png')
 UI_SCRIPT_PATH = os.path.join(base_dir, 'vapor_settings_ui.py')
@@ -233,6 +234,251 @@ def log(message, category="INFO"):
     except (OSError, ValueError):
         # Handle case where console has been freed
         pass
+
+
+# =============================================================================
+# Windows Notification Check
+# =============================================================================
+
+def are_windows_notifications_enabled():
+    """
+    Check if Windows notifications are enabled and not blocked by Do Not Disturb.
+    Returns tuple: (notifications_enabled, reason_string)
+    """
+    try:
+        # Check 1: Main notification toggle
+        try:
+            key_path = r"Software\Microsoft\Windows\CurrentVersion\PushNotifications"
+            key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path)
+            value, _ = winreg.QueryValueEx(key, "ToastEnabled")
+            winreg.CloseKey(key)
+            if value == 0:
+                return False, "notifications_disabled"
+        except FileNotFoundError:
+            pass
+        except Exception:
+            pass
+
+        # Check 2: Newer notification settings path
+        try:
+            key_path2 = r"Software\Microsoft\Windows\CurrentVersion\Notifications\Settings"
+            key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path2)
+            try:
+                value, _ = winreg.QueryValueEx(key, "NOC_GLOBAL_SETTING_TOASTS_ENABLED")
+                if value == 0:
+                    winreg.CloseKey(key)
+                    return False, "notifications_disabled"
+            except FileNotFoundError:
+                pass
+            winreg.CloseKey(key)
+        except FileNotFoundError:
+            pass
+        except Exception:
+            pass
+
+        # Check 3: Windows 11 Do Not Disturb via CloudStore
+        # The data contains the profile name as UTF-16LE after a binary header
+        # We search for the byte patterns directly:
+        # - b'U\x00n\x00r\x00e\x00s\x00t\x00r\x00i\x00c\x00t\x00e\x00d' = Unrestricted (DND OFF)
+        # - b'P\x00r\x00i\x00o\x00r\x00i\x00t\x00y\x00O\x00n\x00l\x00y' = PriorityOnly (DND ON)
+        # - b'A\x00l\x00a\x00r\x00m\x00s\x00O\x00n\x00l\x00y' = AlarmsOnly (DND ON)
+        try:
+            base_path = r"Software\Microsoft\Windows\CurrentVersion\CloudStore\Store\DefaultAccount\Current"
+            key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, base_path)
+
+            # Find the quiethourssettings key (has GUID prefix)
+            i = 0
+            settings_key_name = None
+            while True:
+                try:
+                    subkey_name = winreg.EnumKey(key, i)
+                    if 'quiethourssettings' in subkey_name.lower() and 'profile' not in subkey_name.lower():
+                        settings_key_name = subkey_name
+                        break
+                    i += 1
+                except OSError:
+                    break
+            winreg.CloseKey(key)
+
+            if settings_key_name:
+                # Read the nested subkey with the actual Data
+                full_path = f"{base_path}\\{settings_key_name}\\windows.data.donotdisturb.quiethourssettings"
+                try:
+                    dnd_key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, full_path)
+                    data, _ = winreg.QueryValueEx(dnd_key, "Data")
+                    winreg.CloseKey(dnd_key)
+
+                    # Search for profile name patterns in the raw bytes
+                    # UTF-16LE encoding means each ASCII char is followed by \x00
+                    if b'U\x00n\x00r\x00e\x00s\x00t\x00r\x00i\x00c\x00t\x00e\x00d' in data:
+                        # DND is OFF - notifications are enabled
+                        pass
+                    elif b'P\x00r\x00i\x00o\x00r\x00i\x00t\x00y\x00O\x00n\x00l\x00y' in data:
+                        return False, "do_not_disturb"
+                    elif b'A\x00l\x00a\x00r\x00m\x00s\x00O\x00n\x00l\x00y' in data:
+                        return False, "do_not_disturb"
+                except FileNotFoundError:
+                    pass
+                except Exception:
+                    pass
+        except FileNotFoundError:
+            pass
+        except Exception:
+            pass
+
+        return True, "enabled"
+    except Exception:
+        return True, "enabled"
+
+
+def was_notification_warning_dismissed():
+    """Check if user has previously dismissed the notification warning."""
+    return os.path.exists(NOTIFICATION_WARNING_DISMISSED_FILE)
+
+
+def mark_notification_warning_dismissed():
+    """Mark that user has dismissed the notification warning."""
+    try:
+        with open(NOTIFICATION_WARNING_DISMISSED_FILE, 'w') as f:
+            f.write('dismissed')
+    except Exception:
+        pass
+
+
+def show_notification_warning_popup(reason="notifications_disabled"):
+    """
+    Show a styled popup warning about Windows notifications being disabled.
+    Uses CustomTkinter to match the settings UI style.
+
+    Args:
+        reason: Either "notifications_disabled" or "do_not_disturb"
+    """
+    import customtkinter as ctk
+
+    # Create popup window
+    popup = ctk.CTk()
+
+    if reason == "do_not_disturb":
+        popup.title("Vapor - Do Not Disturb Enabled")
+        title_text = "Do Not Disturb is Enabled"
+        message_text = """Vapor uses Windows notifications to keep you informed about:
+
+  *  When Vapor starts monitoring your games
+  *  Playtime summaries after gaming sessions
+  *  App updates and other important messages
+
+Windows "Do Not Disturb" (Focus) mode is currently on, so you 
+won't see these messages. Vapor will still function normally.
+
+To see Vapor notifications, either:
+  *  Turn off Do Not Disturb in the system tray
+  *  Add Vapor to your priority notifications list"""
+    else:
+        popup.title("Vapor - Notifications Disabled")
+        title_text = "Windows Notifications Disabled"
+        message_text = """Vapor uses Windows notifications to keep you informed about:
+
+  *  When Vapor starts monitoring your games
+  *  Playtime summaries after gaming sessions
+  *  App updates and other important messages
+
+Your Windows notifications appear to be turned off, so you 
+won't see these messages. Vapor will still function normally.
+
+To enable notifications, go to:
+Windows Settings > System > Notifications"""
+
+    popup.geometry("500x340")
+    popup.resizable(False, False)
+
+    # Center on screen
+    screen_width = popup.winfo_screenwidth()
+    screen_height = popup.winfo_screenheight()
+    x = (screen_width - 500) // 2
+    y = (screen_height - 340) // 2
+    popup.geometry(f"500x340+{x}+{y}")
+
+    # Set window icon
+    icon_path = os.path.join(base_dir, 'Images', 'exe_icon.ico')
+    if os.path.exists(icon_path):
+        try:
+            popup.iconbitmap(icon_path)
+        except Exception:
+            pass
+
+    # Title
+    title_label = ctk.CTkLabel(
+        master=popup,
+        text=title_text,
+        font=("Calibri", 20, "bold")
+    )
+    title_label.pack(pady=(25, 15))
+
+    # Message
+    message_label = ctk.CTkLabel(
+        master=popup,
+        text=message_text,
+        font=("Calibri", 12),
+        justify="left",
+        wraplength=450
+    )
+    message_label.pack(pady=(0, 20), padx=25)
+
+    # Button frame
+    button_frame = ctk.CTkFrame(master=popup, fg_color="transparent")
+    button_frame.pack(pady=(0, 25))
+
+    def on_ok():
+        popup.destroy()
+
+    def on_dont_show_again():
+        mark_notification_warning_dismissed()
+        popup.destroy()
+
+    ok_button = ctk.CTkButton(
+        master=button_frame,
+        text="OK",
+        command=on_ok,
+        width=120,
+        height=35,
+        corner_radius=10,
+        fg_color="green",
+        hover_color="#228B22",
+        font=("Calibri", 14)
+    )
+    ok_button.pack(side="left", padx=10)
+
+    dont_show_button = ctk.CTkButton(
+        master=button_frame,
+        text="Don't Show Again",
+        command=on_dont_show_again,
+        width=150,
+        height=35,
+        corner_radius=10,
+        fg_color="gray",
+        hover_color="#555555",
+        font=("Calibri", 14)
+    )
+    dont_show_button.pack(side="left", padx=10)
+
+    popup.mainloop()
+
+
+def check_and_warn_notifications():
+    """
+    Check if Windows notifications are disabled and show warning if needed.
+    Only shows warning once unless user clicks OK (vs Don't Show Again).
+    """
+    if was_notification_warning_dismissed():
+        log("Notification warning previously dismissed - skipping check", "INIT")
+        return
+
+    enabled, reason = are_windows_notifications_enabled()
+    if not enabled:
+        log(f"Windows notifications blocked (reason: {reason}) - showing warning", "INIT")
+        show_notification_warning_popup(reason)
+    else:
+        log("Windows notifications are enabled", "INIT")
 
 
 # =============================================================================
@@ -1130,6 +1376,9 @@ if __name__ == '__main__':
             if is_first_run:
                 log("First run detected - creating default settings file", "INIT")
                 create_default_settings()
+
+            # Check Windows notification settings and warn if disabled
+            check_and_warn_notifications()
 
             # Start the main monitoring thread
             thread = threading.Thread(target=monitor_steam_games,
