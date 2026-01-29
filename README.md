@@ -1,23 +1,37 @@
 # Vapor
 
-Vapor is intended to be a Steam companion app, automating tasks you might do before, during, and after gaming.
-Below is an example of how you might use Vapor in conjunction with Steam:
+Vapor is a Windows companion app for Steam that automates common tasks before, during, and after gaming sessions.
 
-Audio Settings:
-  Set system audio level to 60% when game starts.
-  Set game audio level to 25% when game starts.
-  (Keeping game volume lower to account for Discord/voice conversations).
+## Features
 
-Power:
-  Set power profile to High Performance when game starts.
-  Set power profile to Balanced or Power Saver when game ends.
+**Audio Management**
+- Automatically adjust system and game audio levels when a game starts
+- Keep game volume lower for Discord/voice conversations
 
-Notifications:
-  Close common or custom apps with distracting notifications when game starts.
-  Optionally close apps with hotkey instead of on game start.
-  Optionally reopen all closed apps when game ends.
+**Power Profiles**
+- Switch to High Performance when gaming
+- Revert to Balanced or Power Saver when done
 
-Resource Management:
-  Close common or custom apps with high resource usage.
-  Optionally close apps with a hotkey instead of on game start.
-  Optionally reopen all closed apps when game ends.
+**Notification Control**
+- Close distracting apps when a game launches
+- Optionally reopen them when the game ends
+- Use hotkeys to manually trigger
+
+**Resource Management**
+- Close resource-heavy apps to free up system resources
+- Customizable app lists
+
+## Requirements
+
+- Windows 10 or 11
+- Steam installed
+
+## Installation
+
+### Download (Recommended)
+- Download the latest release from the [Releases](https://github.com/Master00Sniper/Vapor/releases) page.
+- Move Vapor.exe to your preferred location.
+- Double click to start.
+
+### Run from Source
+1. Clone the repository:
