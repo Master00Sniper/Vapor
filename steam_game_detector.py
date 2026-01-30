@@ -216,7 +216,13 @@ def request_admin_restart():
             params = ' '.join(sys.argv[1:])
             work_dir = os.path.dirname(sys.executable)
         else:
-            executable = sys.executable
+            # Use pythonw.exe to avoid console window when elevated
+            python_dir = os.path.dirname(sys.executable)
+            pythonw_exe = os.path.join(python_dir, 'pythonw.exe')
+            if os.path.exists(pythonw_exe):
+                executable = pythonw_exe
+            else:
+                executable = sys.executable
             script_path = os.path.abspath(__file__)
             params = f'"{script_path}" ' + ' '.join(sys.argv[1:])
             work_dir = os.path.dirname(script_path)
