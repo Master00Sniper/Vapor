@@ -1146,7 +1146,12 @@ def set_power_plan(plan_name):
     guid = get_power_plan_guid(plan_name)
     if guid:
         try:
-            subprocess.run(['powercfg', '/setactive', guid], check=True)
+            # Use CREATE_NO_WINDOW to prevent black console box from appearing
+            startupinfo = subprocess.STARTUPINFO()
+            startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+            startupinfo.wShowWindow = 0  # SW_HIDE
+            subprocess.run(['powercfg', '/setactive', guid], check=True,
+                           startupinfo=startupinfo, creationflags=subprocess.CREATE_NO_WINDOW)
             log(f"Power plan set to {plan_name}", "POWER")
         except Exception as e:
             log(f"Failed to set power plan: {e}", "ERROR")
@@ -1241,11 +1246,14 @@ def get_cpu_temperature():
                 LHM_COMPUTER.IsCpuEnabled = True
                 LHM_COMPUTER.Open()
 
-            LHM_COMPUTER.Accept(HardwareVisitor())
+            # Update all hardware (don't use visitor pattern - doesn't work well with pythonnet)
+            for hardware in LHM_COMPUTER.Hardware:
+                hardware.Update()
+                for subhardware in hardware.SubHardware:
+                    subhardware.Update()
 
             for hardware in LHM_COMPUTER.Hardware:
                 if hardware.HardwareType == HardwareType.Cpu:
-                    hardware.Update()
                     for sensor in hardware.Sensors:
                         if sensor.SensorType == SensorType.Temperature:
                             name = str(sensor.Name)
@@ -1291,23 +1299,6 @@ def get_cpu_temperature():
             log(f"OpenHardwareMonitor WMI not available: {e}", "TEMP")
 
     return None
-
-
-class HardwareVisitor:
-    """Visitor pattern for LibreHardwareMonitor to traverse hardware tree."""
-    def VisitComputer(self, computer):
-        pass
-
-    def VisitHardware(self, hardware):
-        hardware.Update()
-        for subhardware in hardware.SubHardware:
-            subhardware.Accept(self)
-
-    def VisitSensor(self, sensor):
-        pass
-
-    def VisitParameter(self, parameter):
-        pass
 
 
 class TemperatureTracker:
