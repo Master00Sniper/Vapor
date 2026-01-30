@@ -730,9 +730,9 @@ summary_mode_label = ctk.CTkLabel(master=summary_mode_frame, text="Summary Style
 summary_mode_label.pack(side="left", padx=(0, 10))
 
 playtime_summary_mode_var = tk.StringVar(value=playtime_summary_mode)
-ctk.CTkRadioButton(master=summary_mode_frame, text="Brief (Toast)", variable=playtime_summary_mode_var,
+ctk.CTkRadioButton(master=summary_mode_frame, text="Brief", variable=playtime_summary_mode_var,
                    value="brief", font=("Calibri", 12)).pack(side="left", padx=10)
-ctk.CTkRadioButton(master=summary_mode_frame, text="Detailed (Popup)", variable=playtime_summary_mode_var,
+ctk.CTkRadioButton(master=summary_mode_frame, text="Detailed", variable=playtime_summary_mode_var,
                    value="detailed", font=("Calibri", 12)).pack(side="left", padx=10)
 
 startup_var = tk.BooleanVar(value=launch_at_startup)
