@@ -42,6 +42,7 @@ import psutil
 import win32gui
 import win32con
 import win11toast
+import ctypes
 
 try:
     from updater import CURRENT_VERSION
@@ -56,6 +57,60 @@ os.makedirs(appdata_dir, exist_ok=True)
 SETTINGS_FILE = os.path.join(appdata_dir, 'vapor_settings.json')
 
 TRAY_ICON_PATH = os.path.join(base_dir, 'Images', 'tray_icon.png')
+
+
+# =============================================================================
+# Admin Privilege Functions
+# =============================================================================
+
+def is_admin():
+    """Check if the current process has admin privileges."""
+    try:
+        return ctypes.windll.shell32.IsUserAnAdmin() != 0
+    except Exception:
+        return False
+
+
+def restart_vapor_as_admin(main_pid):
+    """
+    Restart the main Vapor process with admin privileges.
+    Terminates the current main process and starts a new elevated one.
+    """
+    # Terminate current main process if running
+    if main_pid:
+        try:
+            main_process = psutil.Process(main_pid)
+            main_process.terminate()
+            main_process.wait(timeout=5)  # Wait for process to terminate
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.TimeoutExpired):
+            pass
+
+    # Determine the executable to run
+    if getattr(sys, 'frozen', False):
+        # Running as compiled exe - find the main Vapor executable
+        vapor_exe = os.path.join(os.path.dirname(sys.executable), 'Vapor.exe')
+        if os.path.exists(vapor_exe):
+            executable = vapor_exe
+            params = ""
+        else:
+            # Fallback to steam_game_detector.exe if Vapor.exe not found
+            executable = os.path.join(os.path.dirname(sys.executable), 'steam_game_detector.exe')
+            params = ""
+    else:
+        # Running from Python - use python interpreter with script
+        executable = sys.executable
+        main_script = os.path.join(base_dir, 'steam_game_detector.py')
+        params = f'"{main_script}"'
+
+    # Request elevation using ShellExecute with 'runas'
+    try:
+        result = ctypes.windll.shell32.ShellExecuteW(
+            None, "runas", executable, params, base_dir, 1
+        )
+        return result > 32  # ShellExecuteW returns > 32 on success
+    except Exception:
+        return False
+
 
 # System processes that cannot be added as custom processes (safety protection)
 PROTECTED_PROCESSES = {
@@ -1201,6 +1256,28 @@ def on_save():
                   new_enable_game_audio, new_enable_during_power, new_during_power_plan, new_enable_after_power,
                   new_after_power_plan, new_enable_game_mode_start, new_enable_game_mode_end, new_enable_cpu_thermal,
                   new_enable_gpu_thermal)
+
+    # Check if CPU thermal is enabled and Vapor needs to restart with admin privileges
+    if new_enable_cpu_thermal and not is_admin():
+        response = messagebox.askyesno(
+            "Admin Privileges Required",
+            "CPU temperature monitoring requires administrator privileges.\n\n"
+            "Would you like to restart Vapor with admin privileges now?\n\n"
+            "Click 'Yes' to restart Vapor as administrator.\n"
+            "Click 'No' to continue without CPU monitoring (will be enabled on next admin restart)."
+        )
+        if response:
+            # User agreed to restart with admin
+            if restart_vapor_as_admin(main_pid):
+                # Successfully requested elevation, close settings window
+                root.destroy()
+                return
+            else:
+                messagebox.showerror(
+                    "Elevation Failed",
+                    "Failed to restart Vapor with admin privileges.\n"
+                    "Please try running Vapor as administrator manually."
+                )
 
 
 def on_save_and_close():
