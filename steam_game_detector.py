@@ -1739,7 +1739,7 @@ def set_game_volume(game_pids, level):
     comtypes.CoInitializeEx(comtypes.COINIT_MULTITHREADED)
     try:
         level = max(0, min(100, level)) / 100.0
-        max_attempts = 120  # 120 attempts × 0.5s = 60 seconds max wait
+        max_attempts = 240  # 240 attempts × 0.5s = 120 seconds (2 min) max wait
         retry_delay = 0.5
 
         for attempt in range(max_attempts):
