@@ -542,6 +542,7 @@ tabview.pack(pady=10, padx=10, fill="both", expand=True)
 
 notifications_tab = tabview.add("Notifications")
 resources_tab = tabview.add(" Resources ")
+thermal_tab = tabview.add("  Thermal  ")
 preferences_tab = tabview.add("Preferences ")
 help_tab = tabview.add("   Help   ")
 about_tab = tabview.add("  About  ")
@@ -891,18 +892,34 @@ enable_game_mode_end_switch = ctk.CTkSwitch(master=game_mode_frame, text="Disabl
                                             variable=enable_game_mode_end_var, font=("Calibri", 13))
 enable_game_mode_end_switch.pack(pady=5, anchor='w')
 
-pref_sep5 = ctk.CTkFrame(master=pref_scroll_frame, height=2, fg_color="gray50")
-pref_sep5.pack(fill="x", padx=40, pady=15)
+# =============================================================================
+# Thermal Tab
+# =============================================================================
 
-thermal_title = ctk.CTkLabel(master=pref_scroll_frame, text="Thermal Monitoring", font=("Calibri", 16, "bold"))
+thermal_scroll_frame = ctk.CTkScrollableFrame(master=thermal_tab, fg_color="transparent")
+thermal_scroll_frame.pack(fill="both", expand=True, padx=10, pady=10)
+
+thermal_main_title = ctk.CTkLabel(master=thermal_scroll_frame, text="Thermal Management", font=("Calibri", 24, "bold"))
+thermal_main_title.pack(pady=(10, 5), anchor='center')
+
+thermal_main_description = ctk.CTkLabel(master=thermal_scroll_frame,
+                                        text="Monitor and track CPU and GPU temperatures during gaming sessions.",
+                                        font=("Calibri", 12), text_color="gray60")
+thermal_main_description.pack(pady=(0, 15), anchor='center')
+
+thermal_sep1 = ctk.CTkFrame(master=thermal_scroll_frame, height=2, fg_color="gray50")
+thermal_sep1.pack(fill="x", padx=40, pady=10)
+
+# Temperature Monitoring Section
+thermal_title = ctk.CTkLabel(master=thermal_scroll_frame, text="Temperature Monitoring", font=("Calibri", 16, "bold"))
 thermal_title.pack(pady=(10, 5), anchor='center')
 
-thermal_hint = ctk.CTkLabel(master=pref_scroll_frame,
+thermal_hint = ctk.CTkLabel(master=thermal_scroll_frame,
                             text="Track maximum CPU and GPU temperatures during gaming sessions.",
                             font=("Calibri", 11), text_color="gray60")
 thermal_hint.pack(pady=(0, 10), anchor='center')
 
-thermal_frame = ctk.CTkFrame(master=pref_scroll_frame, fg_color="transparent")
+thermal_frame = ctk.CTkFrame(master=thermal_scroll_frame, fg_color="transparent")
 thermal_frame.pack(pady=10, anchor='center')
 
 enable_gpu_thermal_var = tk.BooleanVar(value=enable_gpu_thermal)
@@ -922,18 +939,18 @@ cpu_thermal_disclaimer = ctk.CTkLabel(master=thermal_frame,
 cpu_thermal_disclaimer.pack(pady=(5, 0), anchor='w')
 
 # Temperature Alerts Section
-thermal_alerts_sep = ctk.CTkFrame(master=pref_scroll_frame, height=2, fg_color="gray50")
-thermal_alerts_sep.pack(fill="x", padx=40, pady=15)
+thermal_sep2 = ctk.CTkFrame(master=thermal_scroll_frame, height=2, fg_color="gray50")
+thermal_sep2.pack(fill="x", padx=40, pady=15)
 
-thermal_alerts_title = ctk.CTkLabel(master=pref_scroll_frame, text="Temperature Alerts", font=("Calibri", 16, "bold"))
+thermal_alerts_title = ctk.CTkLabel(master=thermal_scroll_frame, text="Temperature Alerts", font=("Calibri", 16, "bold"))
 thermal_alerts_title.pack(pady=(10, 5), anchor='center')
 
-thermal_alerts_hint = ctk.CTkLabel(master=pref_scroll_frame,
+thermal_alerts_hint = ctk.CTkLabel(master=thermal_scroll_frame,
                                    text="Get notified when temperatures exceed a threshold during gaming.",
                                    font=("Calibri", 11), text_color="gray60")
 thermal_alerts_hint.pack(pady=(0, 10), anchor='center')
 
-thermal_alerts_frame = ctk.CTkFrame(master=pref_scroll_frame, fg_color="transparent")
+thermal_alerts_frame = ctk.CTkFrame(master=thermal_scroll_frame, fg_color="transparent")
 thermal_alerts_frame.pack(pady=10, anchor='center')
 
 # GPU Temperature Alert
