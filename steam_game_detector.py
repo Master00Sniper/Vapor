@@ -175,11 +175,39 @@ LHM_AVAILABLE = False
 LHM_COMPUTER = None
 try:
     import clr
-    # Try to load bundled LibreHardwareMonitorLib.dll
-    lhm_dll_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'LibreHardwareMonitorLib.dll')
+    import System
+    from System.Reflection import Assembly
+
+    # Determine lib folder path
     if getattr(sys, 'frozen', False):
-        lhm_dll_path = os.path.join(sys._MEIPASS, 'LibreHardwareMonitorLib.dll')
+        lib_dir = os.path.join(sys._MEIPASS, 'lib')
+    else:
+        lib_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'lib')
+
+    lhm_dll_path = os.path.join(lib_dir, 'LibreHardwareMonitorLib.dll')
+
+    # Fallback to root directory for backwards compatibility
+    if not os.path.exists(lhm_dll_path):
+        if getattr(sys, 'frozen', False):
+            lhm_dll_path = os.path.join(sys._MEIPASS, 'LibreHardwareMonitorLib.dll')
+            lib_dir = sys._MEIPASS
+        else:
+            lhm_dll_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'LibreHardwareMonitorLib.dll')
+            lib_dir = os.path.dirname(os.path.abspath(__file__))
+
     if os.path.exists(lhm_dll_path):
+        # Add lib directory to assembly search path for dependencies
+        System.AppDomain.CurrentDomain.AppendPrivatePath(lib_dir)
+
+        # Pre-load dependencies that LibreHardwareMonitorLib needs
+        for dep_dll in ['System.Memory.dll', 'System.Buffers.dll', 'HidSharp.dll']:
+            dep_path = os.path.join(lib_dir, dep_dll)
+            if os.path.exists(dep_path):
+                try:
+                    Assembly.LoadFrom(dep_path)
+                except:
+                    pass
+
         clr.AddReference(lhm_dll_path)
         from LibreHardwareMonitor.Hardware import Computer, HardwareType, SensorType
         LHM_AVAILABLE = True
