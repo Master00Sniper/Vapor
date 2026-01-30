@@ -1505,9 +1505,8 @@ class TemperatureTracker:
                     log(f"Playing critical alert sound: {sound_path}", "ALERT")
                     winsound.PlaySound(sound_path, winsound.SND_FILENAME | winsound.SND_ASYNC)
                     return
-            # Fallback to system beep if no custom sound found
-            log("Critical alert sound file not found, using system beep", "ALERT")
-            winsound.MessageBeep(winsound.MB_ICONEXCLAMATION)
+            # No sound file found - log and skip
+            log("Critical alert sound file not found (sounds/critical_alert.wav), skipping sound", "ALERT")
         except Exception as e:
             log(f"Error playing critical alert sound: {e}", "ALERT")
 
