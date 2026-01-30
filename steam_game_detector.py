@@ -99,8 +99,8 @@ def show_splash_screen():
         pass  # Skip splash on any error
 
 
-# Only show splash for main app, not settings UI
-if '--ui' not in sys.argv:
+# Only show splash for main app, not settings UI, and not when restarting elevated
+if '--ui' not in sys.argv and '--elevated' not in sys.argv:
     show_splash_screen()
 
 # =============================================================================
@@ -175,11 +175,39 @@ LHM_AVAILABLE = False
 LHM_COMPUTER = None
 try:
     import clr
-    # Try to load bundled LibreHardwareMonitorLib.dll
-    lhm_dll_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'LibreHardwareMonitorLib.dll')
+    import System
+    from System.Reflection import Assembly
+
+    # Determine lib folder path
     if getattr(sys, 'frozen', False):
-        lhm_dll_path = os.path.join(sys._MEIPASS, 'LibreHardwareMonitorLib.dll')
+        lib_dir = os.path.join(sys._MEIPASS, 'lib')
+    else:
+        lib_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'lib')
+
+    lhm_dll_path = os.path.join(lib_dir, 'LibreHardwareMonitorLib.dll')
+
+    # Fallback to root directory for backwards compatibility
+    if not os.path.exists(lhm_dll_path):
+        if getattr(sys, 'frozen', False):
+            lhm_dll_path = os.path.join(sys._MEIPASS, 'LibreHardwareMonitorLib.dll')
+            lib_dir = sys._MEIPASS
+        else:
+            lhm_dll_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'LibreHardwareMonitorLib.dll')
+            lib_dir = os.path.dirname(os.path.abspath(__file__))
+
     if os.path.exists(lhm_dll_path):
+        # Add lib directory to assembly search path for dependencies
+        System.AppDomain.CurrentDomain.AppendPrivatePath(lib_dir)
+
+        # Pre-load dependencies that LibreHardwareMonitorLib needs
+        for dep_dll in ['System.Memory.dll', 'System.Buffers.dll', 'HidSharp.dll']:
+            dep_path = os.path.join(lib_dir, dep_dll)
+            if os.path.exists(dep_path):
+                try:
+                    Assembly.LoadFrom(dep_path)
+                except:
+                    pass
+
         clr.AddReference(lhm_dll_path)
         from LibreHardwareMonitor.Hardware import Computer, HardwareType, SensorType
         LHM_AVAILABLE = True
@@ -214,7 +242,9 @@ def request_admin_restart():
         # Get the executable path and working directory
         if getattr(sys, 'frozen', False):
             executable = sys.executable
-            params = ' '.join(sys.argv[1:])
+            # Add --elevated flag to skip splash screen on restart
+            existing_params = ' '.join(sys.argv[1:])
+            params = f'{existing_params} --elevated'.strip()
             work_dir = os.path.dirname(sys.executable)
         else:
             # Use pythonw.exe to avoid console window when elevated
@@ -225,7 +255,8 @@ def request_admin_restart():
             else:
                 executable = sys.executable
             script_path = os.path.abspath(__file__)
-            params = f'"{script_path}"'
+            # Add --elevated flag to skip splash screen on restart
+            params = f'"{script_path}" --elevated'
             work_dir = os.path.dirname(script_path)
 
         # Request elevation using ShellExecute with 'runas'
@@ -1321,6 +1352,21 @@ def get_cpu_temperature():
                     return int(sensor.Value)
         except Exception as e:
             log(f"OpenHardwareMonitor WMI not available: {e}", "TEMP")
+
+        # Fallback: Try Windows native thermal zone (requires admin)
+        if is_admin():
+            try:
+                w = wmi.WMI(namespace="root\\wmi")
+                temps = w.MSAcpi_ThermalZoneTemperature()
+                if temps:
+                    # Convert from decikelvin to Celsius: (temp / 10) - 273.15
+                    for temp in temps:
+                        if hasattr(temp, 'CurrentTemperature') and temp.CurrentTemperature:
+                            celsius = (temp.CurrentTemperature / 10.0) - 273.15
+                            if 0 < celsius < 150:  # Sanity check for valid temp range
+                                return int(celsius)
+            except Exception as e:
+                log(f"Windows thermal zone not available: {e}", "TEMP")
 
     return None
 

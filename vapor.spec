@@ -12,9 +12,15 @@ a = Analysis(
     datas=[
         ('vapor_settings_ui.py', '.'),
         ('updater.py', '.'),
-        # CPU temperature monitoring (requires LibreHardwareMonitorLib.dll from https://github.com/LibreHardwareMonitor/LibreHardwareMonitor)
-        # Uncomment the line below after placing the DLL in the project root
-        ('LibreHardwareMonitorLib.dll', '.'),
+        # CPU temperature monitoring - LibreHardwareMonitor DLLs
+        # Download from: https://github.com/LibreHardwareMonitor/LibreHardwareMonitor/releases
+        # Place all DLLs in a 'lib' folder, then uncomment the lines below:
+        # ('lib/LibreHardwareMonitorLib.dll', 'lib'),
+        # ('lib/HidSharp.dll', 'lib'),
+        # ('lib/System.Memory.dll', 'lib'),
+        # ('lib/System.Buffers.dll', 'lib'),
+        # ('lib/System.Numerics.Vectors.dll', 'lib'),
+        # ('lib/System.Runtime.CompilerServices.Unsafe.dll', 'lib'),
     ],
     hiddenimports=[
         # Windows API
