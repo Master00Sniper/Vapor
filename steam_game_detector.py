@@ -911,24 +911,30 @@ def show_detailed_summary(session_data):
     minutes = session_data['minutes']
     seconds = session_data['seconds']
     closed_apps_count = session_data['closed_apps_count']
+    closed_apps_list = session_data.get('closed_apps_list', [])
     start_cpu_temp = session_data.get('start_cpu_temp')
     start_gpu_temp = session_data.get('start_gpu_temp')
-    max_cpu_temp = session_data.get('max_cpu_temp')
-    max_gpu_temp = session_data.get('max_gpu_temp')
+    end_cpu_temp = session_data.get('end_cpu_temp')
+    end_gpu_temp = session_data.get('end_gpu_temp')
 
     # Run popup in a separate thread to avoid blocking
     def show_popup():
         popup = ctk.CTk()
         popup.title("Vapor - Game Session Summary")
-        popup.geometry("450x400")
+
+        # Calculate height based on content
+        base_height = 420
+        if closed_apps_list:
+            base_height += min(len(closed_apps_list) * 18, 100)  # Add space for apps list
+        popup.geometry(f"500x{base_height}")
         popup.resizable(False, False)
 
         # Center on screen
         screen_width = popup.winfo_screenwidth()
         screen_height = popup.winfo_screenheight()
-        x = (screen_width - 450) // 2
-        y = (screen_height - 400) // 2
-        popup.geometry(f"450x400+{x}+{y}")
+        x = (screen_width - 500) // 2
+        y = (screen_height - base_height) // 2
+        popup.geometry(f"500x{base_height}+{x}+{y}")
 
         # Set window icon
         icon_path = os.path.join(base_dir, 'Images', 'exe_icon.ico')
@@ -938,17 +944,21 @@ def show_detailed_summary(session_data):
             except Exception:
                 pass
 
+        # Main content frame
+        content_frame = ctk.CTkFrame(master=popup, fg_color="transparent")
+        content_frame.pack(fill="both", expand=True, padx=25, pady=(20, 10))
+
         # Title
         title_label = ctk.CTkLabel(
-            master=popup,
+            master=content_frame,
             text="Game Session Complete",
             font=("Calibri", 22, "bold")
         )
-        title_label.pack(pady=(20, 5))
+        title_label.pack(pady=(0, 5))
 
         # Game name
         game_label = ctk.CTkLabel(
-            master=popup,
+            master=content_frame,
             text=game_name,
             font=("Calibri", 16),
             text_color="gray70"
@@ -956,113 +966,125 @@ def show_detailed_summary(session_data):
         game_label.pack(pady=(0, 15))
 
         # Separator
-        sep1 = ctk.CTkFrame(master=popup, height=2, fg_color="gray50")
-        sep1.pack(fill="x", padx=40, pady=10)
+        sep1 = ctk.CTkFrame(master=content_frame, height=2, fg_color="gray50")
+        sep1.pack(fill="x", padx=20, pady=5)
 
-        # Stats frame
-        stats_frame = ctk.CTkFrame(master=popup, fg_color="transparent")
-        stats_frame.pack(pady=10, padx=30, fill="x")
+        # Stats frame using grid for alignment
+        stats_frame = ctk.CTkFrame(master=content_frame, fg_color="transparent")
+        stats_frame.pack(pady=10, padx=20, fill="x")
 
-        # Playtime
-        playtime_label = ctk.CTkLabel(
-            master=stats_frame,
-            text="Session Duration:",
-            font=("Calibri", 13, "bold"),
-            anchor="w"
-        )
-        playtime_label.grid(row=0, column=0, sticky="w", pady=5)
-        playtime_value = ctk.CTkLabel(
-            master=stats_frame,
-            text=f"{hours}h {minutes}m {seconds}s",
-            font=("Calibri", 13),
-            anchor="e"
-        )
-        playtime_value.grid(row=0, column=1, sticky="e", pady=5, padx=(20, 0))
+        # Time Played
+        ctk.CTkLabel(master=stats_frame, text="Time Played:", font=("Calibri", 13, "bold"),
+                     anchor="w").grid(row=0, column=0, sticky="w", pady=3)
+        time_str = f"{hours}h {minutes}m {seconds}s" if hours > 0 else f"{minutes}m {seconds}s"
+        ctk.CTkLabel(master=stats_frame, text=time_str, font=("Calibri", 13),
+                     anchor="e").grid(row=0, column=1, sticky="e", pady=3)
 
-        # Apps closed
-        apps_label = ctk.CTkLabel(
-            master=stats_frame,
-            text="Apps Closed:",
-            font=("Calibri", 13, "bold"),
-            anchor="w"
-        )
-        apps_label.grid(row=1, column=0, sticky="w", pady=5)
-        apps_value = ctk.CTkLabel(
-            master=stats_frame,
-            text=str(closed_apps_count),
-            font=("Calibri", 13),
-            anchor="e"
-        )
-        apps_value.grid(row=1, column=1, sticky="e", pady=5, padx=(20, 0))
+        # Apps Closed
+        ctk.CTkLabel(master=stats_frame, text="Apps Closed:", font=("Calibri", 13, "bold"),
+                     anchor="w").grid(row=1, column=0, sticky="w", pady=3)
+        ctk.CTkLabel(master=stats_frame, text=str(closed_apps_count), font=("Calibri", 13),
+                     anchor="e").grid(row=1, column=1, sticky="e", pady=3)
 
         stats_frame.grid_columnconfigure(1, weight=1)
 
+        # Show closed apps list if any
+        if closed_apps_list:
+            apps_list_frame = ctk.CTkFrame(master=content_frame, fg_color="transparent")
+            apps_list_frame.pack(pady=(0, 5), padx=40, fill="x")
+
+            # Format app names nicely (remove .exe extension)
+            app_names = [app.replace('.exe', '').replace('.EXE', '') for app in closed_apps_list]
+            apps_text = ", ".join(app_names[:8])  # Limit to first 8 apps
+            if len(app_names) > 8:
+                apps_text += f" (+{len(app_names) - 8} more)"
+
+            apps_list_label = ctk.CTkLabel(
+                master=apps_list_frame,
+                text=apps_text,
+                font=("Calibri", 11),
+                text_color="gray60",
+                wraplength=400
+            )
+            apps_list_label.pack(anchor="w")
+
         # Separator
-        sep2 = ctk.CTkFrame(master=popup, height=2, fg_color="gray50")
-        sep2.pack(fill="x", padx=40, pady=10)
+        sep2 = ctk.CTkFrame(master=content_frame, height=2, fg_color="gray50")
+        sep2.pack(fill="x", padx=20, pady=5)
 
         # Temperature section
         temp_title = ctk.CTkLabel(
-            master=popup,
-            text="Temperature Statistics",
+            master=content_frame,
+            text="Temperatures",
             font=("Calibri", 14, "bold")
         )
-        temp_title.pack(pady=(5, 10))
+        temp_title.pack(pady=(5, 8))
 
-        temp_frame = ctk.CTkFrame(master=popup, fg_color="transparent")
-        temp_frame.pack(pady=5, padx=30, fill="x")
+        temp_frame = ctk.CTkFrame(master=content_frame, fg_color="transparent")
+        temp_frame.pack(pady=5, padx=20, fill="x")
+
+        has_temps = False
 
         # CPU temps
-        if start_cpu_temp is not None or max_cpu_temp is not None:
-            cpu_header = ctk.CTkLabel(master=temp_frame, text="CPU:", font=("Calibri", 13, "bold"), anchor="w")
-            cpu_header.grid(row=0, column=0, sticky="w", pady=3)
+        if start_cpu_temp is not None or end_cpu_temp is not None:
+            has_temps = True
+            ctk.CTkLabel(master=temp_frame, text="CPU:", font=("Calibri", 13, "bold"),
+                         anchor="w").grid(row=0, column=0, sticky="w", pady=3)
 
-            cpu_start_text = f"{start_cpu_temp}°C" if start_cpu_temp is not None else "N/A"
-            cpu_max_text = f"{max_cpu_temp}°C" if max_cpu_temp is not None else "N/A"
+            start_text = f"{start_cpu_temp}°C" if start_cpu_temp is not None else "N/A"
+            end_text = f"{end_cpu_temp}°C" if end_cpu_temp is not None else "N/A"
 
-            cpu_start_label = ctk.CTkLabel(master=temp_frame, text=f"Start: {cpu_start_text}", font=("Calibri", 12))
-            cpu_start_label.grid(row=0, column=1, sticky="e", pady=3, padx=(10, 0))
-            cpu_max_label = ctk.CTkLabel(master=temp_frame, text=f"Max: {cpu_max_text}", font=("Calibri", 12))
-            cpu_max_label.grid(row=0, column=2, sticky="e", pady=3, padx=(15, 0))
+            ctk.CTkLabel(master=temp_frame, text=f"Start: {start_text}",
+                         font=("Calibri", 12)).grid(row=0, column=1, sticky="e", pady=3, padx=(20, 0))
+            ctk.CTkLabel(master=temp_frame, text=f"End: {end_text}",
+                         font=("Calibri", 12)).grid(row=0, column=2, sticky="e", pady=3, padx=(20, 0))
 
         # GPU temps
-        if start_gpu_temp is not None or max_gpu_temp is not None:
-            gpu_header = ctk.CTkLabel(master=temp_frame, text="GPU:", font=("Calibri", 13, "bold"), anchor="w")
-            gpu_header.grid(row=1, column=0, sticky="w", pady=3)
+        if start_gpu_temp is not None or end_gpu_temp is not None:
+            has_temps = True
+            row = 1 if (start_cpu_temp is not None or end_cpu_temp is not None) else 0
+            ctk.CTkLabel(master=temp_frame, text="GPU:", font=("Calibri", 13, "bold"),
+                         anchor="w").grid(row=row, column=0, sticky="w", pady=3)
 
-            gpu_start_text = f"{start_gpu_temp}°C" if start_gpu_temp is not None else "N/A"
-            gpu_max_text = f"{max_gpu_temp}°C" if max_gpu_temp is not None else "N/A"
+            start_text = f"{start_gpu_temp}°C" if start_gpu_temp is not None else "N/A"
+            end_text = f"{end_gpu_temp}°C" if end_gpu_temp is not None else "N/A"
 
-            gpu_start_label = ctk.CTkLabel(master=temp_frame, text=f"Start: {gpu_start_text}", font=("Calibri", 12))
-            gpu_start_label.grid(row=1, column=1, sticky="e", pady=3, padx=(10, 0))
-            gpu_max_label = ctk.CTkLabel(master=temp_frame, text=f"Max: {gpu_max_text}", font=("Calibri", 12))
-            gpu_max_label.grid(row=1, column=2, sticky="e", pady=3, padx=(15, 0))
+            ctk.CTkLabel(master=temp_frame, text=f"Start: {start_text}",
+                         font=("Calibri", 12)).grid(row=row, column=1, sticky="e", pady=3, padx=(20, 0))
+            ctk.CTkLabel(master=temp_frame, text=f"End: {end_text}",
+                         font=("Calibri", 12)).grid(row=row, column=2, sticky="e", pady=3, padx=(20, 0))
 
         # No temps available message
-        if start_cpu_temp is None and max_cpu_temp is None and start_gpu_temp is None and max_gpu_temp is None:
-            no_temp_label = ctk.CTkLabel(
+        if not has_temps:
+            ctk.CTkLabel(
                 master=temp_frame,
-                text="No temperature data available",
+                text="Temperature monitoring not enabled",
                 font=("Calibri", 12),
                 text_color="gray60"
-            )
-            no_temp_label.grid(row=0, column=0, columnspan=3, pady=10)
+            ).grid(row=0, column=0, columnspan=3, pady=10)
 
         temp_frame.grid_columnconfigure(2, weight=1)
 
-        # OK button
+        # Separator above button
+        sep3 = ctk.CTkFrame(master=popup, height=2, fg_color="gray50")
+        sep3.pack(fill="x", padx=40, pady=(10, 0))
+
+        # Button frame at bottom
+        button_frame = ctk.CTkFrame(master=popup, fg_color="transparent")
+        button_frame.pack(pady=20)
+
         ok_button = ctk.CTkButton(
-            master=popup,
+            master=button_frame,
             text="OK",
             command=popup.destroy,
-            width=120,
+            width=150,
             height=35,
             corner_radius=10,
             fg_color="green",
             hover_color="#228B22",
             font=("Calibri", 14)
         )
-        ok_button.pack(pady=(20, 20))
+        ok_button.pack()
 
         popup.mainloop()
 
@@ -1353,11 +1375,18 @@ class TemperatureTracker:
         if self._thread:
             self._thread.join(timeout=2)
             self._thread = None
-        log(f"Temperature monitoring stopped. Start CPU: {self.start_cpu_temp}°C, Max CPU: {self.max_cpu_temp}°C, "
-            f"Start GPU: {self.start_gpu_temp}°C, Max GPU: {self.max_gpu_temp}°C", "TEMP")
+
+        # Capture ending temperatures
+        end_cpu_temp = get_cpu_temperature() if self._enable_cpu else None
+        end_gpu_temp = get_gpu_temperature() if self._enable_gpu else None
+
+        log(f"Temperature monitoring stopped. Start CPU: {self.start_cpu_temp}°C, End CPU: {end_cpu_temp}°C, "
+            f"Start GPU: {self.start_gpu_temp}°C, End GPU: {end_gpu_temp}°C", "TEMP")
         return {
             'start_cpu': self.start_cpu_temp,
             'start_gpu': self.start_gpu_temp,
+            'end_cpu': end_cpu_temp,
+            'end_gpu': end_gpu_temp,
             'max_cpu': self.max_cpu_temp,
             'max_gpu': self.max_gpu_temp
         }
@@ -1758,6 +1787,9 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
                             log(f"Session duration: {hours}h {minutes}m", "GAME")
                             log(f"Apps closed during session: {closed_apps_count}", "GAME")
 
+                            # Build list of closed app names
+                            closed_apps_list = list(killed_notification.keys()) + list(killed_resource.keys())
+
                             # Build session data for summary
                             session_data = {
                                 'game_name': current_game_name,
@@ -1765,8 +1797,11 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
                                 'minutes': minutes,
                                 'seconds': seconds,
                                 'closed_apps_count': closed_apps_count,
+                                'closed_apps_list': closed_apps_list,
                                 'start_cpu_temp': temp_data.get('start_cpu'),
                                 'start_gpu_temp': temp_data.get('start_gpu'),
+                                'end_cpu_temp': temp_data.get('end_cpu'),
+                                'end_gpu_temp': temp_data.get('end_gpu'),
                                 'max_cpu_temp': temp_data.get('max_cpu'),
                                 'max_gpu_temp': temp_data.get('max_gpu')
                             }
