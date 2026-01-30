@@ -12,6 +12,9 @@ a = Analysis(
     datas=[
         ('vapor_settings_ui.py', '.'),
         ('updater.py', '.'),
+        # CPU temperature monitoring (requires LibreHardwareMonitorLib.dll from https://github.com/LibreHardwareMonitor/LibreHardwareMonitor)
+        # Uncomment the line below after placing the DLL in the project root
+        # ('LibreHardwareMonitorLib.dll', '.'),
     ],
     hiddenimports=[
         # Windows API
@@ -28,6 +31,11 @@ a = Analysis(
         'keyboard', 'pystray',
         'watchdog', 'watchdog.observers', 'watchdog.events',
         'win11toast', 'psutil', 'requests', 'certifi', 'urllib3',
+        # Temperature monitoring
+        'pynvml',  # NVIDIA GPU temps
+        'pyadl',   # AMD GPU temps
+        'wmi',     # WMI fallback
+        'clr', 'pythonnet',  # LibreHardwareMonitor for CPU temps
     ] + collect_submodules('customtkinter') + collect_submodules('pycaw') + collect_submodules('comtypes'),
     hookspath=[],
     hooksconfig={},
