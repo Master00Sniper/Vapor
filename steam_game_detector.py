@@ -1956,7 +1956,7 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
             current_app_id = get_running_steam_app_id()
             poll_count += 1
 
-            # Log polling status every 20 polls (~60 seconds)
+            # Log polling status every 20 polls (~20 seconds)
             if poll_count % 20 == 0:
                 if current_app_id == 0:
                     log("Polling... No game detected", "MONITOR")
@@ -2071,7 +2071,7 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
 
                 previous_app_id = current_app_id
 
-            if stop_event.wait(3):
+            if stop_event.wait(1):
                 break
 
     finally:
