@@ -159,17 +159,24 @@ def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=N
     y = (screen_height - height) // 2
     dialog.geometry(f"{width}x{height}+{x}+{y}")
 
-    # Set window icon
+    # Set window icon - use after() for CTkToplevel to ensure window is ready
     icon_path = os.path.join(base_dir, 'Images', 'exe_icon.ico')
     if os.path.exists(icon_path):
-        try:
-            dialog.iconbitmap(icon_path)
-        except Exception:
-            pass
+        def set_icon():
+            try:
+                dialog.iconbitmap(icon_path)
+            except Exception:
+                pass
+        dialog.after(10, set_icon)
 
     # Make dialog modal
-    dialog.transient(parent)
+    if parent:
+        dialog.transient(parent)
     dialog.grab_set()
+
+    # Lift dialog to top and focus
+    dialog.lift()
+    dialog.focus_force()
 
     # Title label with appropriate color based on type
     title_colors = {
@@ -218,10 +225,10 @@ def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=N
         btn_value = btn_config.get("value", None)
         btn_color = btn_config.get("color", "gray")
 
-        # Map color names to actual colors
+        # Map color names to actual colors (matching Vapor settings UI style)
         color_map = {
-            "green": ("#2ecc71", "#27ae60"),
-            "red": ("#e74c3c", "#c0392b"),
+            "green": ("green", "#228B22"),      # Match Save & Close button
+            "red": ("#c9302c", "#a02622"),      # Match Stop Vapor button
             "gray": ("gray", "#555555"),
             "blue": ("#3498db", "#2980b9"),
             "orange": ("#f39c12", "#d68910")

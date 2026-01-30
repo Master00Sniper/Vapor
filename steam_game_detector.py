@@ -9,11 +9,12 @@ import sys
 import os
 
 # Only enforce single instance for main app, not settings UI
+VAPOR_MUTEX = None  # Global mutex handle for single instance check
 if '--ui' not in sys.argv:
     import win32api, win32event, winerror
 
     mutex_name = "Vapor_SingleInstance_Mutex"
-    mutex = win32event.CreateMutex(None, True, mutex_name)
+    VAPOR_MUTEX = win32event.CreateMutex(None, True, mutex_name)
     if win32api.GetLastError() == winerror.ERROR_ALREADY_EXISTS:
         sys.exit(0)
 
@@ -224,7 +225,7 @@ def request_admin_restart():
             else:
                 executable = sys.executable
             script_path = os.path.abspath(__file__)
-            params = f'"{script_path}" ' + ' '.join(sys.argv[1:])
+            params = f'"{script_path}"'
             work_dir = os.path.dirname(script_path)
 
         # Request elevation using ShellExecute with 'runas'
@@ -1952,6 +1953,12 @@ if __name__ == '__main__':
                     if startup_settings.get('enable_cpu_thermal', False) and not is_admin():
                         log("CPU thermal monitoring enabled but not running as admin - requesting elevation", "INIT")
                         if request_admin_restart():
+                            # Release mutex before exiting so elevated instance can acquire it
+                            if VAPOR_MUTEX:
+                                try:
+                                    win32api.CloseHandle(VAPOR_MUTEX)
+                                except Exception:
+                                    pass
                             sys.exit(0)  # Exit current instance, elevated one will start
                 except Exception as e:
                     log(f"Error checking thermal settings: {e}", "ERROR")
