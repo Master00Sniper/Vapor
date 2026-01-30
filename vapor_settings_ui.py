@@ -370,8 +370,10 @@ def load_settings():
                 'enable_after_power': False, 'after_power_plan': 'Balanced',
                 'enable_game_mode_start': True, 'enable_game_mode_end': False,
                 'enable_cpu_thermal': False, 'enable_gpu_thermal': True,
-                'enable_cpu_temp_alert': False, 'cpu_temp_alert_threshold': 85,
-                'enable_gpu_temp_alert': False, 'gpu_temp_alert_threshold': 80}
+                'enable_cpu_temp_alert': False, 'cpu_temp_warning_threshold': 85,
+                'cpu_temp_critical_threshold': 95,
+                'enable_gpu_temp_alert': False, 'gpu_temp_warning_threshold': 80,
+                'gpu_temp_critical_threshold': 90}
 
 
 def save_settings(selected_notification_apps, customs, selected_resource_apps, resource_customs, launch_startup,
@@ -380,8 +382,9 @@ def save_settings(selected_notification_apps, customs, selected_resource_apps, r
                   enable_playtime_summary, playtime_summary_mode, enable_debug_mode, system_audio_level,
                   enable_system_audio, game_audio_level, enable_game_audio, enable_during_power, during_power_plan,
                   enable_after_power, after_power_plan, enable_game_mode_start, enable_game_mode_end,
-                  enable_cpu_thermal, enable_gpu_thermal, enable_cpu_temp_alert, cpu_temp_alert_threshold,
-                  enable_gpu_temp_alert, gpu_temp_alert_threshold):
+                  enable_cpu_thermal, enable_gpu_thermal, enable_cpu_temp_alert, cpu_temp_warning_threshold,
+                  cpu_temp_critical_threshold, enable_gpu_temp_alert, gpu_temp_warning_threshold,
+                  gpu_temp_critical_threshold):
     """Save all settings to the JSON configuration file."""
     # Build process lists from selected apps
     notification_processes = []
@@ -427,9 +430,11 @@ def save_settings(selected_notification_apps, customs, selected_resource_apps, r
         'enable_cpu_thermal': enable_cpu_thermal,
         'enable_gpu_thermal': enable_gpu_thermal,
         'enable_cpu_temp_alert': enable_cpu_temp_alert,
-        'cpu_temp_alert_threshold': cpu_temp_alert_threshold,
+        'cpu_temp_warning_threshold': cpu_temp_warning_threshold,
+        'cpu_temp_critical_threshold': cpu_temp_critical_threshold,
         'enable_gpu_temp_alert': enable_gpu_temp_alert,
-        'gpu_temp_alert_threshold': gpu_temp_alert_threshold
+        'gpu_temp_warning_threshold': gpu_temp_warning_threshold,
+        'gpu_temp_critical_threshold': gpu_temp_critical_threshold
     }
     with open(SETTINGS_FILE, 'w') as f:
         json.dump(settings, f)
@@ -505,9 +510,11 @@ enable_game_mode_end = current_settings.get('enable_game_mode_end', False)
 enable_cpu_thermal = current_settings.get('enable_cpu_thermal', False)
 enable_gpu_thermal = current_settings.get('enable_gpu_thermal', True)
 enable_cpu_temp_alert = current_settings.get('enable_cpu_temp_alert', False)
-cpu_temp_alert_threshold = current_settings.get('cpu_temp_alert_threshold', 85)
+cpu_temp_warning_threshold = current_settings.get('cpu_temp_warning_threshold', 85)
+cpu_temp_critical_threshold = current_settings.get('cpu_temp_critical_threshold', 95)
 enable_gpu_temp_alert = current_settings.get('enable_gpu_temp_alert', False)
-gpu_temp_alert_threshold = current_settings.get('gpu_temp_alert_threshold', 80)
+gpu_temp_warning_threshold = current_settings.get('gpu_temp_warning_threshold', 80)
+gpu_temp_critical_threshold = current_settings.get('gpu_temp_critical_threshold', 90)
 
 # Get main process PID for communication with main app
 main_pid = None
@@ -946,57 +953,86 @@ thermal_alerts_title = ctk.CTkLabel(master=thermal_scroll_frame, text="Temperatu
 thermal_alerts_title.pack(pady=(10, 5), anchor='center')
 
 thermal_alerts_hint = ctk.CTkLabel(master=thermal_scroll_frame,
-                                   text="Get notified when temperatures exceed a threshold during gaming.",
-                                   font=("Calibri", 11), text_color="gray60")
+                                   text="Get notified when temperatures exceed thresholds during gaming.\n"
+                                        "Warning alerts are silent. Critical alerts play a sound.",
+                                   font=("Calibri", 11), text_color="gray60", justify="center")
 thermal_alerts_hint.pack(pady=(0, 10), anchor='center')
 
 thermal_alerts_frame = ctk.CTkFrame(master=thermal_scroll_frame, fg_color="transparent")
 thermal_alerts_frame.pack(pady=10, anchor='center')
 
-# GPU Temperature Alert
+# GPU Temperature Alerts
+gpu_alert_header = ctk.CTkLabel(master=thermal_alerts_frame, text="GPU Alerts", font=("Calibri", 13, "bold"))
+gpu_alert_header.pack(pady=(5, 5), anchor='w')
+
 gpu_alert_row = ctk.CTkFrame(master=thermal_alerts_frame, fg_color="transparent")
 gpu_alert_row.pack(pady=5, fill='x')
 
 enable_gpu_temp_alert_var = tk.BooleanVar(value=enable_gpu_temp_alert)
-enable_gpu_temp_alert_switch = ctk.CTkSwitch(master=gpu_alert_row, text="GPU Temperature Alert",
-                                              variable=enable_gpu_temp_alert_var, font=("Calibri", 13))
-enable_gpu_temp_alert_switch.pack(side='left', padx=(0, 15))
+enable_gpu_temp_alert_switch = ctk.CTkSwitch(master=gpu_alert_row, text="Enable",
+                                              variable=enable_gpu_temp_alert_var, font=("Calibri", 12))
+enable_gpu_temp_alert_switch.pack(side='left', padx=(0, 20))
 
-gpu_threshold_label = ctk.CTkLabel(master=gpu_alert_row, text="Threshold:", font=("Calibri", 12))
-gpu_threshold_label.pack(side='left', padx=(0, 5))
+gpu_warning_label = ctk.CTkLabel(master=gpu_alert_row, text="Warning:", font=("Calibri", 12))
+gpu_warning_label.pack(side='left', padx=(0, 5))
 
-gpu_temp_alert_threshold_var = tk.StringVar(value=str(gpu_temp_alert_threshold))
-gpu_temp_alert_entry = ctk.CTkEntry(master=gpu_alert_row, textvariable=gpu_temp_alert_threshold_var,
-                                     width=50, font=("Calibri", 12))
-gpu_temp_alert_entry.pack(side='left', padx=(0, 5))
+gpu_temp_warning_threshold_var = tk.StringVar(value=str(gpu_temp_warning_threshold))
+gpu_warning_entry = ctk.CTkEntry(master=gpu_alert_row, textvariable=gpu_temp_warning_threshold_var,
+                                  width=45, font=("Calibri", 12))
+gpu_warning_entry.pack(side='left', padx=(0, 3))
 
-gpu_threshold_unit = ctk.CTkLabel(master=gpu_alert_row, text="°C", font=("Calibri", 12))
-gpu_threshold_unit.pack(side='left')
+gpu_warning_unit = ctk.CTkLabel(master=gpu_alert_row, text="°C", font=("Calibri", 12))
+gpu_warning_unit.pack(side='left', padx=(0, 15))
 
-# CPU Temperature Alert
+gpu_critical_label = ctk.CTkLabel(master=gpu_alert_row, text="Critical:", font=("Calibri", 12), text_color="#ff6b6b")
+gpu_critical_label.pack(side='left', padx=(0, 5))
+
+gpu_temp_critical_threshold_var = tk.StringVar(value=str(gpu_temp_critical_threshold))
+gpu_critical_entry = ctk.CTkEntry(master=gpu_alert_row, textvariable=gpu_temp_critical_threshold_var,
+                                   width=45, font=("Calibri", 12))
+gpu_critical_entry.pack(side='left', padx=(0, 3))
+
+gpu_critical_unit = ctk.CTkLabel(master=gpu_alert_row, text="°C", font=("Calibri", 12))
+gpu_critical_unit.pack(side='left')
+
+# CPU Temperature Alerts
+cpu_alert_header = ctk.CTkLabel(master=thermal_alerts_frame, text="CPU Alerts", font=("Calibri", 13, "bold"))
+cpu_alert_header.pack(pady=(15, 5), anchor='w')
+
 cpu_alert_row = ctk.CTkFrame(master=thermal_alerts_frame, fg_color="transparent")
 cpu_alert_row.pack(pady=5, fill='x')
 
 enable_cpu_temp_alert_var = tk.BooleanVar(value=enable_cpu_temp_alert)
-enable_cpu_temp_alert_switch = ctk.CTkSwitch(master=cpu_alert_row, text="CPU Temperature Alert",
-                                              variable=enable_cpu_temp_alert_var, font=("Calibri", 13))
-enable_cpu_temp_alert_switch.pack(side='left', padx=(0, 15))
+enable_cpu_temp_alert_switch = ctk.CTkSwitch(master=cpu_alert_row, text="Enable",
+                                              variable=enable_cpu_temp_alert_var, font=("Calibri", 12))
+enable_cpu_temp_alert_switch.pack(side='left', padx=(0, 20))
 
-cpu_threshold_label = ctk.CTkLabel(master=cpu_alert_row, text="Threshold:", font=("Calibri", 12))
-cpu_threshold_label.pack(side='left', padx=(0, 5))
+cpu_warning_label = ctk.CTkLabel(master=cpu_alert_row, text="Warning:", font=("Calibri", 12))
+cpu_warning_label.pack(side='left', padx=(0, 5))
 
-cpu_temp_alert_threshold_var = tk.StringVar(value=str(cpu_temp_alert_threshold))
-cpu_temp_alert_entry = ctk.CTkEntry(master=cpu_alert_row, textvariable=cpu_temp_alert_threshold_var,
-                                     width=50, font=("Calibri", 12))
-cpu_temp_alert_entry.pack(side='left', padx=(0, 5))
+cpu_temp_warning_threshold_var = tk.StringVar(value=str(cpu_temp_warning_threshold))
+cpu_warning_entry = ctk.CTkEntry(master=cpu_alert_row, textvariable=cpu_temp_warning_threshold_var,
+                                  width=45, font=("Calibri", 12))
+cpu_warning_entry.pack(side='left', padx=(0, 3))
 
-cpu_threshold_unit = ctk.CTkLabel(master=cpu_alert_row, text="°C", font=("Calibri", 12))
-cpu_threshold_unit.pack(side='left')
+cpu_warning_unit = ctk.CTkLabel(master=cpu_alert_row, text="°C", font=("Calibri", 12))
+cpu_warning_unit.pack(side='left', padx=(0, 15))
+
+cpu_critical_label = ctk.CTkLabel(master=cpu_alert_row, text="Critical:", font=("Calibri", 12), text_color="#ff6b6b")
+cpu_critical_label.pack(side='left', padx=(0, 5))
+
+cpu_temp_critical_threshold_var = tk.StringVar(value=str(cpu_temp_critical_threshold))
+cpu_critical_entry = ctk.CTkEntry(master=cpu_alert_row, textvariable=cpu_temp_critical_threshold_var,
+                                   width=45, font=("Calibri", 12))
+cpu_critical_entry.pack(side='left', padx=(0, 3))
+
+cpu_critical_unit = ctk.CTkLabel(master=cpu_alert_row, text="°C", font=("Calibri", 12))
+cpu_critical_unit.pack(side='left')
 
 thermal_alerts_note = ctk.CTkLabel(master=thermal_alerts_frame,
-                                   text="You will be notified once per gaming session when a threshold is exceeded.",
+                                   text="Each alert level triggers once per gaming session.",
                                    font=("Calibri", 10), text_color="gray60")
-thermal_alerts_note.pack(pady=(10, 0), anchor='w')
+thermal_alerts_note.pack(pady=(15, 0), anchor='w')
 
 # =============================================================================
 # Resources Tab
@@ -1297,9 +1333,11 @@ def rebuild_settings():
     enable_cpu_thermal_var.set(False)
     enable_gpu_thermal_var.set(True)
     enable_cpu_temp_alert_var.set(False)
-    cpu_temp_alert_threshold_var.set("85")
+    cpu_temp_warning_threshold_var.set("85")
+    cpu_temp_critical_threshold_var.set("95")
     enable_gpu_temp_alert_var.set(False)
-    gpu_temp_alert_threshold_var.set("80")
+    gpu_temp_warning_threshold_var.set("80")
+    gpu_temp_critical_threshold_var.set("90")
 
     on_save()
 
@@ -1500,13 +1538,21 @@ def on_save():
     new_enable_gpu_temp_alert = enable_gpu_temp_alert_var.get()
     # Parse threshold values, defaulting to safe values if invalid
     try:
-        new_cpu_temp_alert_threshold = int(cpu_temp_alert_threshold_var.get())
+        new_cpu_temp_warning_threshold = int(cpu_temp_warning_threshold_var.get())
     except ValueError:
-        new_cpu_temp_alert_threshold = 85
+        new_cpu_temp_warning_threshold = 85
     try:
-        new_gpu_temp_alert_threshold = int(gpu_temp_alert_threshold_var.get())
+        new_cpu_temp_critical_threshold = int(cpu_temp_critical_threshold_var.get())
     except ValueError:
-        new_gpu_temp_alert_threshold = 80
+        new_cpu_temp_critical_threshold = 95
+    try:
+        new_gpu_temp_warning_threshold = int(gpu_temp_warning_threshold_var.get())
+    except ValueError:
+        new_gpu_temp_warning_threshold = 80
+    try:
+        new_gpu_temp_critical_threshold = int(gpu_temp_critical_threshold_var.get())
+    except ValueError:
+        new_gpu_temp_critical_threshold = 90
     save_settings(new_selected_notification_apps, new_customs, new_selected_resource_apps, new_resource_customs,
                   new_launch_startup, new_launch_settings_on_start, new_close_on_startup, new_close_on_hotkey,
                   new_relaunch_on_exit, new_resource_close_on_startup, new_resource_close_on_hotkey,
@@ -1514,8 +1560,9 @@ def on_save():
                   new_enable_debug_mode, new_system_audio_level, new_enable_system_audio, new_game_audio_level,
                   new_enable_game_audio, new_enable_during_power, new_during_power_plan, new_enable_after_power,
                   new_after_power_plan, new_enable_game_mode_start, new_enable_game_mode_end, new_enable_cpu_thermal,
-                  new_enable_gpu_thermal, new_enable_cpu_temp_alert, new_cpu_temp_alert_threshold,
-                  new_enable_gpu_temp_alert, new_gpu_temp_alert_threshold)
+                  new_enable_gpu_thermal, new_enable_cpu_temp_alert, new_cpu_temp_warning_threshold,
+                  new_cpu_temp_critical_threshold, new_enable_gpu_temp_alert, new_gpu_temp_warning_threshold,
+                  new_gpu_temp_critical_threshold)
 
     # Check if CPU thermal is enabled and Vapor needs to restart with admin privileges
     if new_enable_cpu_thermal and not is_admin():

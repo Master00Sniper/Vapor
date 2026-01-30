@@ -739,9 +739,11 @@ def load_process_names_and_startup():
             enable_cpu_thermal = settings.get('enable_cpu_thermal', False)
             enable_gpu_thermal = settings.get('enable_gpu_thermal', True)
             enable_cpu_temp_alert = settings.get('enable_cpu_temp_alert', False)
-            cpu_temp_alert_threshold = settings.get('cpu_temp_alert_threshold', 85)
+            cpu_temp_warning_threshold = settings.get('cpu_temp_warning_threshold', 85)
+            cpu_temp_critical_threshold = settings.get('cpu_temp_critical_threshold', 95)
             enable_gpu_temp_alert = settings.get('enable_gpu_temp_alert', False)
-            gpu_temp_alert_threshold = settings.get('gpu_temp_alert_threshold', 80)
+            gpu_temp_warning_threshold = settings.get('gpu_temp_warning_threshold', 80)
+            gpu_temp_critical_threshold = settings.get('gpu_temp_critical_threshold', 90)
             log("Settings loaded successfully", "SETTINGS")
             return (notification_processes, resource_processes, startup, launch_settings_on_start,
                     notification_close_on_startup, resource_close_on_startup, notification_close_on_hotkey,
@@ -749,8 +751,9 @@ def load_process_names_and_startup():
                     enable_playtime_summary, playtime_summary_mode, enable_system_audio, system_audio_level,
                     enable_game_audio, game_audio_level, enable_during_power, during_power_plan, enable_after_power,
                     after_power_plan, enable_game_mode_start, enable_game_mode_end, enable_debug_mode,
-                    enable_cpu_thermal, enable_gpu_thermal, enable_cpu_temp_alert, cpu_temp_alert_threshold,
-                    enable_gpu_temp_alert, gpu_temp_alert_threshold)
+                    enable_cpu_thermal, enable_gpu_thermal, enable_cpu_temp_alert, cpu_temp_warning_threshold,
+                    cpu_temp_critical_threshold, enable_gpu_temp_alert, gpu_temp_warning_threshold,
+                    gpu_temp_critical_threshold)
     else:
         log("No settings file found - using defaults", "SETTINGS")
         default_notification = ['WhatsApp.Root.exe', 'Telegram.exe', 'ms-teams.exe', 'Messenger.exe', 'slack.exe',
@@ -758,7 +761,7 @@ def load_process_names_and_startup():
         default_resource = ['spotify.exe', 'OneDrive.exe', 'GoogleDriveFS.exe', 'Dropbox.exe', 'wallpaper64.exe']
         return (default_notification, default_resource, False, True, True, True, True, True, True, False,
                 True, 'brief', False, 33, False, 100, False, 'High Performance', False, 'Balanced', True, False,
-                False, False, True, False, 85, False, 80)
+                False, False, True, False, 85, 95, False, 80, 90)
 
 
 # =============================================================================
@@ -1380,7 +1383,7 @@ class TemperatureTracker:
     """
     Tracks CPU and GPU temperatures during a gaming session.
     Records starting temperatures and maximum temperatures reached.
-    Supports temperature alerts when thresholds are exceeded.
+    Supports temperature alerts when thresholds are exceeded (warning and critical levels).
     """
 
     def __init__(self):
@@ -1393,18 +1396,24 @@ class TemperatureTracker:
         self._monitoring = False
         self._enable_cpu = False
         self._enable_gpu = True
-        # Alert settings
+        # Alert settings (warning and critical thresholds)
         self._enable_cpu_alert = False
-        self._cpu_alert_threshold = 85
+        self._cpu_warning_threshold = 85
+        self._cpu_critical_threshold = 95
         self._enable_gpu_alert = False
-        self._gpu_alert_threshold = 80
-        self._cpu_alert_triggered = False
-        self._gpu_alert_triggered = False
+        self._gpu_warning_threshold = 80
+        self._gpu_critical_threshold = 90
+        # Track which alerts have been triggered this session
+        self._cpu_warning_triggered = False
+        self._cpu_critical_triggered = False
+        self._gpu_warning_triggered = False
+        self._gpu_critical_triggered = False
         self._game_name = None
 
     def start_monitoring(self, stop_event, enable_cpu=False, enable_gpu=True,
-                         enable_cpu_alert=False, cpu_alert_threshold=85,
-                         enable_gpu_alert=False, gpu_alert_threshold=80, game_name=None):
+                         enable_cpu_alert=False, cpu_warning_threshold=85, cpu_critical_threshold=95,
+                         enable_gpu_alert=False, gpu_warning_threshold=80, gpu_critical_threshold=90,
+                         game_name=None):
         """Start temperature monitoring in a background thread."""
         if self._monitoring:
             return
@@ -1417,13 +1426,18 @@ class TemperatureTracker:
         self._monitoring = True
         self._enable_cpu = enable_cpu
         self._enable_gpu = enable_gpu
-        # Alert settings
+        # Alert settings (warning and critical thresholds)
         self._enable_cpu_alert = enable_cpu_alert
-        self._cpu_alert_threshold = cpu_alert_threshold
+        self._cpu_warning_threshold = cpu_warning_threshold
+        self._cpu_critical_threshold = cpu_critical_threshold
         self._enable_gpu_alert = enable_gpu_alert
-        self._gpu_alert_threshold = gpu_alert_threshold
-        self._cpu_alert_triggered = False
-        self._gpu_alert_triggered = False
+        self._gpu_warning_threshold = gpu_warning_threshold
+        self._gpu_critical_threshold = gpu_critical_threshold
+        # Reset alert triggers for new session
+        self._cpu_warning_triggered = False
+        self._cpu_critical_triggered = False
+        self._gpu_warning_triggered = False
+        self._gpu_critical_triggered = False
         self._game_name = game_name
 
         # Only start monitoring if at least one thermal type is enabled
@@ -1476,6 +1490,27 @@ class TemperatureTracker:
             'max_gpu': self.max_gpu_temp
         }
 
+    def _play_critical_alert_sound(self):
+        """Play the critical alert sound if available."""
+        try:
+            import winsound
+            # Look for sound file in several locations
+            sound_locations = [
+                os.path.join(base_dir, 'sounds', 'critical_alert.wav'),
+                os.path.join(os.path.dirname(base_dir), 'sounds', 'critical_alert.wav'),
+                os.path.join(appdata_dir, 'sounds', 'critical_alert.wav')
+            ]
+            for sound_path in sound_locations:
+                if os.path.exists(sound_path):
+                    log(f"Playing critical alert sound: {sound_path}", "ALERT")
+                    winsound.PlaySound(sound_path, winsound.SND_FILENAME | winsound.SND_ASYNC)
+                    return
+            # Fallback to system beep if no custom sound found
+            log("Critical alert sound file not found, using system beep", "ALERT")
+            winsound.MessageBeep(winsound.MB_ICONEXCLAMATION)
+        except Exception as e:
+            log(f"Error playing critical alert sound: {e}", "ALERT")
+
     def _monitor_loop(self):
         """Background loop that polls temperatures every 10 seconds."""
         poll_interval = 10  # seconds
@@ -1496,22 +1531,41 @@ class TemperatureTracker:
                     self.max_gpu_temp = gpu_temp
                     log(f"New max GPU temp: {gpu_temp}°C", "TEMP")
 
-            # Check temperature alerts (only trigger once per session)
-            if self._enable_cpu_alert and cpu_temp is not None and not self._cpu_alert_triggered:
-                if cpu_temp >= self._cpu_alert_threshold:
-                    self._cpu_alert_triggered = True
-                    game_info = f" while playing {self._game_name}" if self._game_name else ""
-                    log(f"CPU temperature alert: {cpu_temp}°C exceeds threshold of {self._cpu_alert_threshold}°C", "ALERT")
+            # Check CPU temperature alerts (warning and critical levels)
+            if self._enable_cpu_alert and cpu_temp is not None:
+                game_info = f" while playing {self._game_name}" if self._game_name else ""
+                # Check critical first (higher priority)
+                if not self._cpu_critical_triggered and cpu_temp >= self._cpu_critical_threshold:
+                    self._cpu_critical_triggered = True
+                    self._cpu_warning_triggered = True  # Also mark warning as triggered
+                    log(f"CPU CRITICAL alert: {cpu_temp}°C exceeds critical threshold of {self._cpu_critical_threshold}°C", "ALERT")
+                    show_notification(f"⚠️ CRITICAL ALERT - CPU Temperature: {cpu_temp}°C{game_info}. "
+                                      f"Critical threshold of {self._cpu_critical_threshold}°C exceeded!")
+                    self._play_critical_alert_sound()
+                # Check warning level
+                elif not self._cpu_warning_triggered and cpu_temp >= self._cpu_warning_threshold:
+                    self._cpu_warning_triggered = True
+                    log(f"CPU warning alert: {cpu_temp}°C exceeds warning threshold of {self._cpu_warning_threshold}°C", "ALERT")
                     show_notification(f"CPU Temperature Warning: {cpu_temp}°C{game_info}. "
-                                      f"Threshold of {self._cpu_alert_threshold}°C exceeded.")
+                                      f"Warning threshold of {self._cpu_warning_threshold}°C exceeded.")
 
-            if self._enable_gpu_alert and gpu_temp is not None and not self._gpu_alert_triggered:
-                if gpu_temp >= self._gpu_alert_threshold:
-                    self._gpu_alert_triggered = True
-                    game_info = f" while playing {self._game_name}" if self._game_name else ""
-                    log(f"GPU temperature alert: {gpu_temp}°C exceeds threshold of {self._gpu_alert_threshold}°C", "ALERT")
+            # Check GPU temperature alerts (warning and critical levels)
+            if self._enable_gpu_alert and gpu_temp is not None:
+                game_info = f" while playing {self._game_name}" if self._game_name else ""
+                # Check critical first (higher priority)
+                if not self._gpu_critical_triggered and gpu_temp >= self._gpu_critical_threshold:
+                    self._gpu_critical_triggered = True
+                    self._gpu_warning_triggered = True  # Also mark warning as triggered
+                    log(f"GPU CRITICAL alert: {gpu_temp}°C exceeds critical threshold of {self._gpu_critical_threshold}°C", "ALERT")
+                    show_notification(f"⚠️ CRITICAL ALERT - GPU Temperature: {gpu_temp}°C{game_info}. "
+                                      f"Critical threshold of {self._gpu_critical_threshold}°C exceeded!")
+                    self._play_critical_alert_sound()
+                # Check warning level
+                elif not self._gpu_warning_triggered and gpu_temp >= self._gpu_warning_threshold:
+                    self._gpu_warning_triggered = True
+                    log(f"GPU warning alert: {gpu_temp}°C exceeds warning threshold of {self._gpu_warning_threshold}°C", "ALERT")
                     show_notification(f"GPU Temperature Warning: {gpu_temp}°C{game_info}. "
-                                      f"Threshold of {self._gpu_alert_threshold}°C exceeded.")
+                                      f"Warning threshold of {self._gpu_warning_threshold}°C exceeded.")
 
             # Wait for next poll or stop event
             if self._stop_event:
@@ -1803,7 +1857,8 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
      enable_game_audio, game_audio_level, enable_during_power, during_power_plan, enable_after_power,
      after_power_plan, enable_game_mode_start, enable_game_mode_end,
      enable_debug_mode, enable_cpu_thermal, enable_gpu_thermal, enable_cpu_temp_alert,
-     cpu_temp_alert_threshold, enable_gpu_temp_alert, gpu_temp_alert_threshold) = load_process_names_and_startup()
+     cpu_temp_warning_threshold, cpu_temp_critical_threshold, enable_gpu_temp_alert,
+     gpu_temp_warning_threshold, gpu_temp_critical_threshold) = load_process_names_and_startup()
 
     # Set console visibility based on debug mode
     set_console_visibility(enable_debug_mode)
@@ -1855,8 +1910,9 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
             set_game_mode(True)
         # Start temperature monitoring for game already in progress
         temperature_tracker.start_monitoring(stop_event, enable_cpu_thermal, enable_gpu_thermal,
-                                             enable_cpu_temp_alert, cpu_temp_alert_threshold,
-                                             enable_gpu_temp_alert, gpu_temp_alert_threshold,
+                                             enable_cpu_temp_alert, cpu_temp_warning_threshold,
+                                             cpu_temp_critical_threshold, enable_gpu_temp_alert,
+                                             gpu_temp_warning_threshold, gpu_temp_critical_threshold,
                                              game_name=current_game_name)
     else:
         log("No game running at startup", "GAME")
@@ -1871,8 +1927,8 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
             enable_playtime_summary, playtime_summary_mode, enable_system_audio, system_audio_level, \
             enable_game_audio, game_audio_level, is_hotkey_registered, enable_during_power, during_power_plan, \
             enable_after_power, after_power_plan, enable_game_mode_start, enable_game_mode_end, enable_debug_mode, \
-            enable_cpu_thermal, enable_gpu_thermal, enable_cpu_temp_alert, cpu_temp_alert_threshold, \
-            enable_gpu_temp_alert, gpu_temp_alert_threshold
+            enable_cpu_thermal, enable_gpu_thermal, enable_cpu_temp_alert, cpu_temp_warning_threshold, \
+            cpu_temp_critical_threshold, enable_gpu_temp_alert, gpu_temp_warning_threshold, gpu_temp_critical_threshold
 
         log("Reloading settings...", "SETTINGS")
         (new_notification_processes, new_resource_processes, new_startup, new_launch_settings_on_start,
@@ -1882,8 +1938,9 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
          new_enable_game_audio, new_game_audio_level, new_enable_during_power, new_during_power_plan,
          new_enable_after_power, new_after_power_plan, new_enable_game_mode_start,
          new_enable_game_mode_end, new_enable_debug_mode,
-         new_enable_cpu_thermal, new_enable_gpu_thermal, new_enable_cpu_temp_alert, new_cpu_temp_alert_threshold,
-         new_enable_gpu_temp_alert, new_gpu_temp_alert_threshold) = load_process_names_and_startup()
+         new_enable_cpu_thermal, new_enable_gpu_thermal, new_enable_cpu_temp_alert, new_cpu_temp_warning_threshold,
+         new_cpu_temp_critical_threshold, new_enable_gpu_temp_alert, new_gpu_temp_warning_threshold,
+         new_gpu_temp_critical_threshold) = load_process_names_and_startup()
 
         notification_processes[:] = new_notification_processes
         resource_processes[:] = new_resource_processes
@@ -1938,9 +1995,11 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
         enable_cpu_thermal = new_enable_cpu_thermal
         enable_gpu_thermal = new_enable_gpu_thermal
         enable_cpu_temp_alert = new_enable_cpu_temp_alert
-        cpu_temp_alert_threshold = new_cpu_temp_alert_threshold
+        cpu_temp_warning_threshold = new_cpu_temp_warning_threshold
+        cpu_temp_critical_threshold = new_cpu_temp_critical_threshold
         enable_gpu_temp_alert = new_enable_gpu_temp_alert
-        gpu_temp_alert_threshold = new_gpu_temp_alert_threshold
+        gpu_temp_warning_threshold = new_gpu_temp_warning_threshold
+        gpu_temp_critical_threshold = new_gpu_temp_critical_threshold
 
         log("Settings reloaded successfully", "SETTINGS")
 
@@ -2063,8 +2122,9 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
 
                         # Start temperature monitoring for new game session
                         temperature_tracker.start_monitoring(stop_event, enable_cpu_thermal, enable_gpu_thermal,
-                                                             enable_cpu_temp_alert, cpu_temp_alert_threshold,
-                                                             enable_gpu_temp_alert, gpu_temp_alert_threshold,
+                                                             enable_cpu_temp_alert, cpu_temp_warning_threshold,
+                                                             cpu_temp_critical_threshold, enable_gpu_temp_alert,
+                                                             gpu_temp_warning_threshold, gpu_temp_critical_threshold,
                                                              game_name=game_name)
 
                         log(f"Game session started for: {game_name}", "GAME")
