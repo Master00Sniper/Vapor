@@ -158,7 +158,8 @@ except ImportError:
 try:
     from pyadl import ADLManager
     PYADL_AVAILABLE = True
-except ImportError:
+except Exception:
+    # pyadl raises ADLError if no AMD GPU/driver found, not just ImportError
     PYADL_AVAILABLE = False
 
 # CPU temperature via WMI (requires LibreHardwareMonitor or OpenHardwareMonitor running)
