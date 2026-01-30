@@ -914,8 +914,10 @@ def show_detailed_summary(session_data):
     closed_apps_list = session_data.get('closed_apps_list', [])
     start_cpu_temp = session_data.get('start_cpu_temp')
     start_gpu_temp = session_data.get('start_gpu_temp')
-    end_cpu_temp = session_data.get('end_cpu_temp')
-    end_gpu_temp = session_data.get('end_gpu_temp')
+    max_cpu_temp = session_data.get('max_cpu_temp')
+    max_gpu_temp = session_data.get('max_gpu_temp')
+    lifetime_max_cpu = session_data.get('lifetime_max_cpu')
+    lifetime_max_gpu = session_data.get('lifetime_max_gpu')
 
     # Run popup in a separate thread to avoid blocking
     def show_popup():
@@ -923,18 +925,18 @@ def show_detailed_summary(session_data):
         popup.title("Vapor - Game Session Summary")
 
         # Calculate height based on content
-        base_height = 420
+        base_height = 450  # Slightly taller to accommodate lifetime temps
         if closed_apps_list:
             base_height += min(len(closed_apps_list) * 18, 100)  # Add space for apps list
-        popup.geometry(f"500x{base_height}")
+        popup.geometry(f"550x{base_height}")
         popup.resizable(False, False)
 
         # Center on screen
         screen_width = popup.winfo_screenwidth()
         screen_height = popup.winfo_screenheight()
-        x = (screen_width - 500) // 2
+        x = (screen_width - 550) // 2
         y = (screen_height - base_height) // 2
-        popup.geometry(f"500x{base_height}+{x}+{y}")
+        popup.geometry(f"550x{base_height}+{x}+{y}")
 
         # Set window icon
         icon_path = os.path.join(base_dir, 'Images', 'exe_icon.ico')
@@ -1025,34 +1027,50 @@ def show_detailed_summary(session_data):
 
         has_temps = False
 
+        # Column headers
+        ctk.CTkLabel(master=temp_frame, text="", font=("Calibri", 11),
+                     anchor="w").grid(row=0, column=0, sticky="w", pady=3)
+        ctk.CTkLabel(master=temp_frame, text="Start", font=("Calibri", 11, "bold"),
+                     text_color="gray60").grid(row=0, column=1, sticky="e", pady=3, padx=(15, 0))
+        ctk.CTkLabel(master=temp_frame, text="Max", font=("Calibri", 11, "bold"),
+                     text_color="gray60").grid(row=0, column=2, sticky="e", pady=3, padx=(15, 0))
+        ctk.CTkLabel(master=temp_frame, text="Lifetime", font=("Calibri", 11, "bold"),
+                     text_color="gray60").grid(row=0, column=3, sticky="e", pady=3, padx=(15, 0))
+
         # CPU temps
-        if start_cpu_temp is not None or end_cpu_temp is not None:
+        if start_cpu_temp is not None or max_cpu_temp is not None or lifetime_max_cpu is not None:
             has_temps = True
             ctk.CTkLabel(master=temp_frame, text="CPU:", font=("Calibri", 13, "bold"),
-                         anchor="w").grid(row=0, column=0, sticky="w", pady=3)
+                         anchor="w").grid(row=1, column=0, sticky="w", pady=3)
 
             start_text = f"{start_cpu_temp}°C" if start_cpu_temp is not None else "N/A"
-            end_text = f"{end_cpu_temp}°C" if end_cpu_temp is not None else "N/A"
+            max_text = f"{max_cpu_temp}°C" if max_cpu_temp is not None else "N/A"
+            lifetime_text = f"{lifetime_max_cpu}°C" if lifetime_max_cpu is not None else "N/A"
 
-            ctk.CTkLabel(master=temp_frame, text=f"Start: {start_text}",
-                         font=("Calibri", 12)).grid(row=0, column=1, sticky="e", pady=3, padx=(20, 0))
-            ctk.CTkLabel(master=temp_frame, text=f"End: {end_text}",
-                         font=("Calibri", 12)).grid(row=0, column=2, sticky="e", pady=3, padx=(20, 0))
+            ctk.CTkLabel(master=temp_frame, text=start_text,
+                         font=("Calibri", 12)).grid(row=1, column=1, sticky="e", pady=3, padx=(15, 0))
+            ctk.CTkLabel(master=temp_frame, text=max_text,
+                         font=("Calibri", 12)).grid(row=1, column=2, sticky="e", pady=3, padx=(15, 0))
+            ctk.CTkLabel(master=temp_frame, text=lifetime_text,
+                         font=("Calibri", 12), text_color="#FFD700").grid(row=1, column=3, sticky="e", pady=3, padx=(15, 0))
 
         # GPU temps
-        if start_gpu_temp is not None or end_gpu_temp is not None:
+        if start_gpu_temp is not None or max_gpu_temp is not None or lifetime_max_gpu is not None:
             has_temps = True
-            row = 1 if (start_cpu_temp is not None or end_cpu_temp is not None) else 0
+            row = 2 if (start_cpu_temp is not None or max_cpu_temp is not None or lifetime_max_cpu is not None) else 1
             ctk.CTkLabel(master=temp_frame, text="GPU:", font=("Calibri", 13, "bold"),
                          anchor="w").grid(row=row, column=0, sticky="w", pady=3)
 
             start_text = f"{start_gpu_temp}°C" if start_gpu_temp is not None else "N/A"
-            end_text = f"{end_gpu_temp}°C" if end_gpu_temp is not None else "N/A"
+            max_text = f"{max_gpu_temp}°C" if max_gpu_temp is not None else "N/A"
+            lifetime_text = f"{lifetime_max_gpu}°C" if lifetime_max_gpu is not None else "N/A"
 
-            ctk.CTkLabel(master=temp_frame, text=f"Start: {start_text}",
-                         font=("Calibri", 12)).grid(row=row, column=1, sticky="e", pady=3, padx=(20, 0))
-            ctk.CTkLabel(master=temp_frame, text=f"End: {end_text}",
-                         font=("Calibri", 12)).grid(row=row, column=2, sticky="e", pady=3, padx=(20, 0))
+            ctk.CTkLabel(master=temp_frame, text=start_text,
+                         font=("Calibri", 12)).grid(row=row, column=1, sticky="e", pady=3, padx=(15, 0))
+            ctk.CTkLabel(master=temp_frame, text=max_text,
+                         font=("Calibri", 12)).grid(row=row, column=2, sticky="e", pady=3, padx=(15, 0))
+            ctk.CTkLabel(master=temp_frame, text=lifetime_text,
+                         font=("Calibri", 12), text_color="#FFD700").grid(row=row, column=3, sticky="e", pady=3, padx=(15, 0))
 
         # No temps available message
         if not has_temps:
@@ -1061,9 +1079,9 @@ def show_detailed_summary(session_data):
                 text="Temperature monitoring not enabled",
                 font=("Calibri", 12),
                 text_color="gray60"
-            ).grid(row=0, column=0, columnspan=3, pady=10)
+            ).grid(row=0, column=0, columnspan=4, pady=10)
 
-        temp_frame.grid_columnconfigure(2, weight=1)
+        temp_frame.grid_columnconfigure(3, weight=1)
 
         # Separator above button
         sep3 = ctk.CTkFrame(master=popup, height=2, fg_color="gray50")
@@ -1242,9 +1260,11 @@ def get_cpu_temperature():
             from LibreHardwareMonitor.Hardware import Computer, HardwareType, SensorType
 
             if LHM_COMPUTER is None:
+                log("Initializing LibreHardwareMonitor Computer object...", "TEMP")
                 LHM_COMPUTER = Computer()
                 LHM_COMPUTER.IsCpuEnabled = True
                 LHM_COMPUTER.Open()
+                log("LibreHardwareMonitor initialized successfully", "TEMP")
 
             # Update all hardware (don't use visitor pattern - doesn't work well with pythonnet)
             for hardware in LHM_COMPUTER.Hardware:
@@ -1267,6 +1287,10 @@ def get_cpu_temperature():
                                 return int(sensor.Value)
         except Exception as e:
             log(f"LibreHardwareMonitorLib read failed: {e}", "TEMP")
+    elif not LHM_AVAILABLE:
+        pass  # Silently skip - already logged at startup
+    elif not is_admin():
+        pass  # Silently skip - admin status already logged at startup
 
     # Fallback: Try WMI with external LibreHardwareMonitor/OpenHardwareMonitor
     if WMI_AVAILABLE:
@@ -1412,6 +1436,90 @@ class TemperatureTracker:
 
 # Global temperature tracker instance
 temperature_tracker = TemperatureTracker()
+
+
+# =============================================================================
+# Temperature History Logging
+# =============================================================================
+
+# Directory for temperature history logs
+TEMP_HISTORY_DIR = os.path.join(appdata_dir, 'temp_history')
+os.makedirs(TEMP_HISTORY_DIR, exist_ok=True)
+
+
+def get_temp_history_path(app_id):
+    """Get the path to the temperature history file for a specific game."""
+    return os.path.join(TEMP_HISTORY_DIR, f'{app_id}_temp_history.json')
+
+
+def load_temp_history(app_id):
+    """Load temperature history for a specific game. Returns dict with lifetime max temps."""
+    history_path = get_temp_history_path(app_id)
+    if os.path.exists(history_path):
+        try:
+            with open(history_path, 'r') as f:
+                return json.load(f)
+        except Exception as e:
+            log(f"Error loading temp history for app {app_id}: {e}", "TEMP")
+    return {
+        'app_id': app_id,
+        'game_name': None,
+        'lifetime_max_cpu': None,
+        'lifetime_max_gpu': None,
+        'sessions': []
+    }
+
+
+def save_temp_history(app_id, game_name, max_cpu, max_gpu):
+    """Save temperature data for a game session and update lifetime maximums."""
+    history = load_temp_history(app_id)
+
+    # Update game name if we have it
+    if game_name:
+        history['game_name'] = game_name
+
+    # Update lifetime maximums
+    if max_cpu is not None:
+        if history['lifetime_max_cpu'] is None or max_cpu > history['lifetime_max_cpu']:
+            history['lifetime_max_cpu'] = max_cpu
+            log(f"New lifetime max CPU temp for {game_name}: {max_cpu}°C", "TEMP")
+
+    if max_gpu is not None:
+        if history['lifetime_max_gpu'] is None or max_gpu > history['lifetime_max_gpu']:
+            history['lifetime_max_gpu'] = max_gpu
+            log(f"New lifetime max GPU temp for {game_name}: {max_gpu}°C", "TEMP")
+
+    # Add session record
+    session_record = {
+        'timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
+        'max_cpu': max_cpu,
+        'max_gpu': max_gpu
+    }
+    history['sessions'].append(session_record)
+
+    # Keep only last 100 sessions to prevent file from growing too large
+    if len(history['sessions']) > 100:
+        history['sessions'] = history['sessions'][-100:]
+
+    # Save to file
+    history_path = get_temp_history_path(app_id)
+    try:
+        with open(history_path, 'w') as f:
+            json.dump(history, f, indent=2)
+        log(f"Saved temp history for {game_name} (AppID: {app_id})", "TEMP")
+    except Exception as e:
+        log(f"Error saving temp history: {e}", "TEMP")
+
+    return history
+
+
+def get_lifetime_max_temps(app_id):
+    """Get lifetime maximum temperatures for a specific game."""
+    history = load_temp_history(app_id)
+    return {
+        'lifetime_max_cpu': history.get('lifetime_max_cpu'),
+        'lifetime_max_gpu': history.get('lifetime_max_gpu')
+    }
 
 
 # =============================================================================
@@ -1768,6 +1876,13 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
                         # Stop temperature monitoring and get temp data
                         temp_data = temperature_tracker.stop_monitoring()
 
+                        # Save temperature history and get lifetime max temps
+                        max_cpu = temp_data.get('max_cpu')
+                        max_gpu = temp_data.get('max_gpu')
+                        if max_cpu is not None or max_gpu is not None:
+                            save_temp_history(previous_app_id, current_game_name, max_cpu, max_gpu)
+                        lifetime_temps = get_lifetime_max_temps(previous_app_id)
+
                         if enable_playtime_summary and start_time is not None:
                             end_time = time.time()
                             duration = end_time - start_time
@@ -1791,10 +1906,10 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
                                 'closed_apps_list': closed_apps_list,
                                 'start_cpu_temp': temp_data.get('start_cpu'),
                                 'start_gpu_temp': temp_data.get('start_gpu'),
-                                'end_cpu_temp': temp_data.get('end_cpu'),
-                                'end_gpu_temp': temp_data.get('end_gpu'),
                                 'max_cpu_temp': temp_data.get('max_cpu'),
-                                'max_gpu_temp': temp_data.get('max_gpu')
+                                'max_gpu_temp': temp_data.get('max_gpu'),
+                                'lifetime_max_cpu': lifetime_temps.get('lifetime_max_cpu'),
+                                'lifetime_max_gpu': lifetime_temps.get('lifetime_max_gpu')
                             }
 
                             if playtime_summary_mode == 'detailed':
@@ -1988,6 +2103,11 @@ if __name__ == '__main__':
                             sys.exit(0)  # Exit current instance, elevated one will start
                 except Exception as e:
                     log(f"Error checking thermal settings: {e}", "ERROR")
+
+            # Log temperature monitoring library availability
+            log(f"Temperature libraries - NVIDIA: {NVML_AVAILABLE}, AMD: {PYADL_AVAILABLE}, "
+                f"LHM DLL: {LHM_AVAILABLE}, WMI: {WMI_AVAILABLE}", "TEMP")
+            log(f"Admin privileges: {is_admin()}", "INIT")
 
             # Check Windows notification settings and warn if disabled
             check_and_warn_notifications()
