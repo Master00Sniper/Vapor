@@ -168,8 +168,67 @@ try:
     WMI_AVAILABLE = True
 except ImportError:
     WMI_AVAILABLE = False
+
+# LibreHardwareMonitorLib via pythonnet (bundled DLL for CPU temps without external app)
+LHM_AVAILABLE = False
+LHM_COMPUTER = None
+try:
+    import clr
+    # Try to load bundled LibreHardwareMonitorLib.dll
+    lhm_dll_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'LibreHardwareMonitorLib.dll')
+    if getattr(sys, 'frozen', False):
+        lhm_dll_path = os.path.join(sys._MEIPASS, 'LibreHardwareMonitorLib.dll')
+    if os.path.exists(lhm_dll_path):
+        clr.AddReference(lhm_dll_path)
+        from LibreHardwareMonitor.Hardware import Computer, HardwareType, SensorType
+        LHM_AVAILABLE = True
+except Exception:
+    pass
+
 import atexit
 import signal
+
+
+# =============================================================================
+# Admin Privilege Functions
+# =============================================================================
+
+def is_admin():
+    """Check if the current process has admin privileges."""
+    try:
+        return ctypes.windll.shell32.IsUserAnAdmin() != 0
+    except Exception:
+        return False
+
+
+def request_admin_restart():
+    """
+    Request admin privileges by restarting the application elevated.
+    Returns True if elevation was requested (app will restart), False otherwise.
+    """
+    if is_admin():
+        return False  # Already admin, no need to restart
+
+    try:
+        # Get the executable path
+        if getattr(sys, 'frozen', False):
+            executable = sys.executable
+            params = ' '.join(sys.argv[1:])
+        else:
+            executable = sys.executable
+            params = f'"{os.path.abspath(__file__)}" ' + ' '.join(sys.argv[1:])
+
+        # Request elevation using ShellExecute with 'runas'
+        result = ctypes.windll.shell32.ShellExecuteW(
+            None, "runas", executable, params, None, 1
+        )
+
+        # ShellExecuteW returns > 32 on success
+        if result > 32:
+            return True  # Elevation requested, caller should exit
+        return False
+    except Exception:
+        return False
 
 
 # =============================================================================
@@ -596,7 +655,9 @@ def create_default_settings():
         'enable_after_power': False,
         'after_power_plan': 'Balanced',
         'enable_game_mode_start': True,
-        'enable_game_mode_end': False
+        'enable_game_mode_end': False,
+        'enable_cpu_thermal': False,
+        'enable_gpu_thermal': True
     }
     with open(SETTINGS_FILE, 'w') as f:
         json.dump(default_settings, f)
@@ -632,20 +693,24 @@ def load_process_names_and_startup():
             enable_game_mode_start = settings.get('enable_game_mode_start', False)
             enable_game_mode_end = settings.get('enable_game_mode_end', False)
             enable_debug_mode = settings.get('enable_debug_mode', False)
+            enable_cpu_thermal = settings.get('enable_cpu_thermal', False)
+            enable_gpu_thermal = settings.get('enable_gpu_thermal', True)
             log("Settings loaded successfully", "SETTINGS")
             return (notification_processes, resource_processes, startup, launch_settings_on_start,
                     notification_close_on_startup, resource_close_on_startup, notification_close_on_hotkey,
                     resource_close_on_hotkey, notification_relaunch_on_exit, resource_relaunch_on_exit,
                     enable_playtime_summary, enable_system_audio, system_audio_level, enable_game_audio,
                     game_audio_level, enable_during_power, during_power_plan, enable_after_power,
-                    after_power_plan, enable_game_mode_start, enable_game_mode_end, enable_debug_mode)
+                    after_power_plan, enable_game_mode_start, enable_game_mode_end, enable_debug_mode,
+                    enable_cpu_thermal, enable_gpu_thermal)
     else:
         log("No settings file found - using defaults", "SETTINGS")
         default_notification = ['WhatsApp.Root.exe', 'Telegram.exe', 'ms-teams.exe', 'Messenger.exe', 'slack.exe',
                                 'Signal.exe', 'WeChat.exe']
         default_resource = ['spotify.exe', 'OneDrive.exe', 'GoogleDriveFS.exe', 'Dropbox.exe', 'wallpaper64.exe']
         return (default_notification, default_resource, False, True, True, True, True, True, True, False,
-                True, False, 33, False, 100, False, 'High Performance', False, 'Balanced', True, False, False)
+                True, False, 33, False, 100, False, 'High Performance', False, 'Balanced', True, False, False,
+                False, True)
 
 
 # =============================================================================
@@ -924,43 +989,88 @@ def get_gpu_temperature():
 def get_cpu_temperature():
     """
     Get current CPU temperature in Celsius.
-    Requires LibreHardwareMonitor or OpenHardwareMonitor running.
+    Tries bundled LibreHardwareMonitorLib first (requires admin), then WMI fallback.
     Returns None if temperature cannot be read.
     """
-    if not WMI_AVAILABLE:
-        return None
+    global LHM_COMPUTER
 
-    # Try LibreHardwareMonitor first
-    try:
-        w = wmi.WMI(namespace="root\\LibreHardwareMonitor")
-        sensors = w.Sensor()
-        for sensor in sensors:
-            if sensor.SensorType == "Temperature" and "CPU" in sensor.Name:
-                # Prefer "CPU Package" or "Core" temperatures
-                if "Package" in sensor.Name or "Core" in sensor.Name:
-                    return int(sensor.Value)
-        # Fallback to any CPU temperature
-        for sensor in sensors:
-            if sensor.SensorType == "Temperature" and "CPU" in sensor.Name:
-                return int(sensor.Value)
-    except Exception as e:
-        log(f"LibreHardwareMonitor not available: {e}", "TEMP")
+    # Try bundled LibreHardwareMonitorLib first (requires admin privileges)
+    if LHM_AVAILABLE and is_admin():
+        try:
+            from LibreHardwareMonitor.Hardware import Computer, HardwareType, SensorType
 
-    # Try OpenHardwareMonitor as fallback
-    try:
-        w = wmi.WMI(namespace="root\\OpenHardwareMonitor")
-        sensors = w.Sensor()
-        for sensor in sensors:
-            if sensor.SensorType == "Temperature" and "CPU" in sensor.Name:
-                if "Package" in sensor.Name or "Core" in sensor.Name:
+            if LHM_COMPUTER is None:
+                LHM_COMPUTER = Computer()
+                LHM_COMPUTER.IsCpuEnabled = True
+                LHM_COMPUTER.Open()
+
+            LHM_COMPUTER.Accept(HardwareVisitor())
+
+            for hardware in LHM_COMPUTER.Hardware:
+                if hardware.HardwareType == HardwareType.Cpu:
+                    hardware.Update()
+                    for sensor in hardware.Sensors:
+                        if sensor.SensorType == SensorType.Temperature:
+                            name = str(sensor.Name)
+                            if "Package" in name or "Core" in name:
+                                if sensor.Value is not None:
+                                    return int(sensor.Value)
+                    # Fallback to any CPU temperature
+                    for sensor in hardware.Sensors:
+                        if sensor.SensorType == SensorType.Temperature:
+                            if sensor.Value is not None:
+                                return int(sensor.Value)
+        except Exception as e:
+            log(f"LibreHardwareMonitorLib read failed: {e}", "TEMP")
+
+    # Fallback: Try WMI with external LibreHardwareMonitor/OpenHardwareMonitor
+    if WMI_AVAILABLE:
+        # Try LibreHardwareMonitor WMI
+        try:
+            w = wmi.WMI(namespace="root\\LibreHardwareMonitor")
+            sensors = w.Sensor()
+            for sensor in sensors:
+                if sensor.SensorType == "Temperature" and "CPU" in sensor.Name:
+                    if "Package" in sensor.Name or "Core" in sensor.Name:
+                        return int(sensor.Value)
+            for sensor in sensors:
+                if sensor.SensorType == "Temperature" and "CPU" in sensor.Name:
                     return int(sensor.Value)
-        for sensor in sensors:
-            if sensor.SensorType == "Temperature" and "CPU" in sensor.Name:
-                return int(sensor.Value)
-    except Exception as e:
-        log(f"OpenHardwareMonitor not available: {e}", "TEMP")
+        except Exception as e:
+            log(f"LibreHardwareMonitor WMI not available: {e}", "TEMP")
+
+        # Try OpenHardwareMonitor WMI
+        try:
+            w = wmi.WMI(namespace="root\\OpenHardwareMonitor")
+            sensors = w.Sensor()
+            for sensor in sensors:
+                if sensor.SensorType == "Temperature" and "CPU" in sensor.Name:
+                    if "Package" in sensor.Name or "Core" in sensor.Name:
+                        return int(sensor.Value)
+            for sensor in sensors:
+                if sensor.SensorType == "Temperature" and "CPU" in sensor.Name:
+                    return int(sensor.Value)
+        except Exception as e:
+            log(f"OpenHardwareMonitor WMI not available: {e}", "TEMP")
 
     return None
+
+
+class HardwareVisitor:
+    """Visitor pattern for LibreHardwareMonitor to traverse hardware tree."""
+    def VisitComputer(self, computer):
+        pass
+
+    def VisitHardware(self, hardware):
+        hardware.Update()
+        for subhardware in hardware.SubHardware:
+            subhardware.Accept(self)
+
+    def VisitSensor(self, sensor):
+        pass
+
+    def VisitParameter(self, parameter):
+        pass
 
 
 class TemperatureTracker:
@@ -975,8 +1085,10 @@ class TemperatureTracker:
         self._stop_event = None
         self._thread = None
         self._monitoring = False
+        self._enable_cpu = False
+        self._enable_gpu = True
 
-    def start_monitoring(self, stop_event):
+    def start_monitoring(self, stop_event, enable_cpu=False, enable_gpu=True):
         """Start temperature monitoring in a background thread."""
         if self._monitoring:
             return
@@ -985,10 +1097,23 @@ class TemperatureTracker:
         self.max_gpu_temp = None
         self._stop_event = stop_event
         self._monitoring = True
+        self._enable_cpu = enable_cpu
+        self._enable_gpu = enable_gpu
+
+        # Only start monitoring if at least one thermal type is enabled
+        if not enable_cpu and not enable_gpu:
+            log("Temperature monitoring disabled (both CPU and GPU disabled)", "TEMP")
+            self._monitoring = False
+            return
 
         self._thread = threading.Thread(target=self._monitor_loop, daemon=True)
         self._thread.start()
-        log("Temperature monitoring started", "TEMP")
+        enabled_types = []
+        if enable_cpu:
+            enabled_types.append("CPU")
+        if enable_gpu:
+            enabled_types.append("GPU")
+        log(f"Temperature monitoring started ({', '.join(enabled_types)})", "TEMP")
 
     def stop_monitoring(self):
         """Stop temperature monitoring and return max temps."""
@@ -1004,9 +1129,9 @@ class TemperatureTracker:
         poll_interval = 10  # seconds
 
         while self._monitoring:
-            # Get current temperatures
-            cpu_temp = get_cpu_temperature()
-            gpu_temp = get_gpu_temperature()
+            # Get current temperatures (only if enabled)
+            cpu_temp = get_cpu_temperature() if self._enable_cpu else None
+            gpu_temp = get_gpu_temperature() if self._enable_gpu else None
 
             # Update max values
             if cpu_temp is not None:
@@ -1224,7 +1349,7 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
      enable_playtime_summary, enable_system_audio, system_audio_level, enable_game_audio,
      game_audio_level, enable_during_power, during_power_plan, enable_after_power,
      after_power_plan, enable_game_mode_start, enable_game_mode_end,
-     enable_debug_mode) = load_process_names_and_startup()
+     enable_debug_mode, enable_cpu_thermal, enable_gpu_thermal) = load_process_names_and_startup()
 
     # Set console visibility based on debug mode
     set_console_visibility(enable_debug_mode)
@@ -1275,7 +1400,7 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
         if enable_game_mode_start:
             set_game_mode(True)
         # Start temperature monitoring for game already in progress
-        temperature_tracker.start_monitoring(stop_event)
+        temperature_tracker.start_monitoring(stop_event, enable_cpu_thermal, enable_gpu_thermal)
     else:
         log("No game running at startup", "GAME")
 
@@ -1288,7 +1413,8 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
             resource_close_on_hotkey, notification_relaunch_on_exit, resource_relaunch_on_exit, \
             enable_playtime_summary, enable_system_audio, system_audio_level, enable_game_audio, \
             game_audio_level, is_hotkey_registered, enable_during_power, during_power_plan, \
-            enable_after_power, after_power_plan, enable_game_mode_start, enable_game_mode_end, enable_debug_mode
+            enable_after_power, after_power_plan, enable_game_mode_start, enable_game_mode_end, enable_debug_mode, \
+            enable_cpu_thermal, enable_gpu_thermal
 
         log("Reloading settings...", "SETTINGS")
         (new_notification_processes, new_resource_processes, new_startup, new_launch_settings_on_start,
@@ -1297,7 +1423,8 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
          new_enable_playtime_summary, new_enable_system_audio, new_system_audio_level,
          new_enable_game_audio, new_game_audio_level, new_enable_during_power, new_during_power_plan,
          new_enable_after_power, new_after_power_plan, new_enable_game_mode_start,
-         new_enable_game_mode_end, new_enable_debug_mode) = load_process_names_and_startup()
+         new_enable_game_mode_end, new_enable_debug_mode,
+         new_enable_cpu_thermal, new_enable_gpu_thermal) = load_process_names_and_startup()
 
         notification_processes[:] = new_notification_processes
         resource_processes[:] = new_resource_processes
@@ -1348,6 +1475,8 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
         if new_enable_debug_mode != enable_debug_mode:
             set_console_visibility(new_enable_debug_mode)
         enable_debug_mode = new_enable_debug_mode
+        enable_cpu_thermal = new_enable_cpu_thermal
+        enable_gpu_thermal = new_enable_gpu_thermal
 
         log("Settings reloaded successfully", "SETTINGS")
 
@@ -1459,7 +1588,7 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
                             set_game_mode(True)
 
                         # Start temperature monitoring for new game session
-                        temperature_tracker.start_monitoring(stop_event)
+                        temperature_tracker.start_monitoring(stop_event, enable_cpu_thermal, enable_gpu_thermal)
 
                         log(f"Game session started for: {game_name}", "GAME")
 
@@ -1579,6 +1708,18 @@ if __name__ == '__main__':
             if is_first_run:
                 log("First run detected - creating default settings file", "INIT")
                 create_default_settings()
+
+            # Check if CPU thermal monitoring is enabled and we need admin privileges
+            if os.path.exists(SETTINGS_FILE):
+                try:
+                    with open(SETTINGS_FILE, 'r') as f:
+                        startup_settings = json.load(f)
+                    if startup_settings.get('enable_cpu_thermal', False) and not is_admin():
+                        log("CPU thermal monitoring enabled but not running as admin - requesting elevation", "INIT")
+                        if request_admin_restart():
+                            sys.exit(0)  # Exit current instance, elevated one will start
+                except Exception as e:
+                    log(f"Error checking thermal settings: {e}", "ERROR")
 
             # Check Windows notification settings and warn if disabled
             check_and_warn_notifications()
