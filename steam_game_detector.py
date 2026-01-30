@@ -1712,7 +1712,7 @@ def find_game_pids(game_folder):
         if base_procs:
             break
         log(f"No game processes found yet (attempt {attempt + 1}/10)...", "PROCESS")
-        time.sleep(3)
+        time.sleep(1)
 
     for proc in base_procs:
         pids.append(proc.pid)
@@ -1740,7 +1740,7 @@ def set_game_volume(game_pids, level):
     try:
         level = max(0, min(100, level)) / 100.0
         max_attempts = 30
-        retry_delay = 1
+        retry_delay = 0.5
 
         for attempt in range(max_attempts):
             sessions = AudioUtilities.GetAllSessions()
