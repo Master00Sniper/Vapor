@@ -645,6 +645,7 @@ def create_default_settings():
         'resource_close_on_hotkey': True,
         'resource_relaunch_on_exit': False,
         'enable_playtime_summary': True,
+        'playtime_summary_mode': 'brief',
         'enable_debug_mode': False,
         'system_audio_level': 33,
         'enable_system_audio': False,
@@ -682,6 +683,7 @@ def load_process_names_and_startup():
             notification_relaunch_on_exit = settings.get('relaunch_on_exit', True)
             resource_relaunch_on_exit = settings.get('resource_relaunch_on_exit', True)
             enable_playtime_summary = settings.get('enable_playtime_summary', True)
+            playtime_summary_mode = settings.get('playtime_summary_mode', 'brief')
             enable_system_audio = settings.get('enable_system_audio', False)
             system_audio_level = settings.get('system_audio_level', 50)
             enable_game_audio = settings.get('enable_game_audio', False)
@@ -699,8 +701,8 @@ def load_process_names_and_startup():
             return (notification_processes, resource_processes, startup, launch_settings_on_start,
                     notification_close_on_startup, resource_close_on_startup, notification_close_on_hotkey,
                     resource_close_on_hotkey, notification_relaunch_on_exit, resource_relaunch_on_exit,
-                    enable_playtime_summary, enable_system_audio, system_audio_level, enable_game_audio,
-                    game_audio_level, enable_during_power, during_power_plan, enable_after_power,
+                    enable_playtime_summary, playtime_summary_mode, enable_system_audio, system_audio_level,
+                    enable_game_audio, game_audio_level, enable_during_power, during_power_plan, enable_after_power,
                     after_power_plan, enable_game_mode_start, enable_game_mode_end, enable_debug_mode,
                     enable_cpu_thermal, enable_gpu_thermal)
     else:
@@ -709,8 +711,8 @@ def load_process_names_and_startup():
                                 'Signal.exe', 'WeChat.exe']
         default_resource = ['spotify.exe', 'OneDrive.exe', 'GoogleDriveFS.exe', 'Dropbox.exe', 'wallpaper64.exe']
         return (default_notification, default_resource, False, True, True, True, True, True, True, False,
-                True, False, 33, False, 100, False, 'High Performance', False, 'Balanced', True, False, False,
-                False, True)
+                True, 'brief', False, 33, False, 100, False, 'High Performance', False, 'Balanced', True, False,
+                False, False, True)
 
 
 # =============================================================================
@@ -854,6 +856,209 @@ def show_notification(message):
     icon_path = os.path.abspath(TRAY_ICON_PATH)
     win11toast.notify(body=message, app_id='Vapor - Streamline Gaming', duration='short', icon=icon_path,
                       audio={'silent': 'true'})
+
+
+def show_brief_summary(session_data):
+    """Display a brief toast notification with session summary."""
+    hours = session_data['hours']
+    minutes = session_data['minutes']
+    game_name = session_data['game_name']
+    closed_apps_count = session_data['closed_apps_count']
+    max_cpu_temp = session_data.get('max_cpu_temp')
+    max_gpu_temp = session_data.get('max_gpu_temp')
+
+    # Build playtime string
+    if hours == 0:
+        playtime_str = f"{minutes} minutes"
+    elif hours == 1:
+        playtime_str = f"{hours} hour and {minutes} minutes"
+    else:
+        playtime_str = f"{hours} hours and {minutes} minutes"
+
+    # Build temperature string
+    temp_parts = []
+    if max_cpu_temp is not None:
+        temp_parts.append(f"CPU: {max_cpu_temp}°C")
+    if max_gpu_temp is not None:
+        temp_parts.append(f"GPU: {max_gpu_temp}°C")
+
+    if temp_parts:
+        temp_str = f" Max temps: {', '.join(temp_parts)}."
+        log(f"Max temperatures - {', '.join(temp_parts)}", "GAME")
+    else:
+        temp_str = ""
+
+    message = f"You played {game_name} for {playtime_str}. Vapor closed {closed_apps_count} apps when you started.{temp_str}"
+    show_notification(message)
+
+
+def show_detailed_summary(session_data):
+    """Display a detailed popup window with session statistics."""
+    import customtkinter as ctk
+
+    game_name = session_data['game_name']
+    hours = session_data['hours']
+    minutes = session_data['minutes']
+    seconds = session_data['seconds']
+    closed_apps_count = session_data['closed_apps_count']
+    start_cpu_temp = session_data.get('start_cpu_temp')
+    start_gpu_temp = session_data.get('start_gpu_temp')
+    max_cpu_temp = session_data.get('max_cpu_temp')
+    max_gpu_temp = session_data.get('max_gpu_temp')
+
+    # Run popup in a separate thread to avoid blocking
+    def show_popup():
+        popup = ctk.CTk()
+        popup.title("Vapor - Game Session Summary")
+        popup.geometry("450x400")
+        popup.resizable(False, False)
+
+        # Center on screen
+        screen_width = popup.winfo_screenwidth()
+        screen_height = popup.winfo_screenheight()
+        x = (screen_width - 450) // 2
+        y = (screen_height - 400) // 2
+        popup.geometry(f"450x400+{x}+{y}")
+
+        # Set window icon
+        icon_path = os.path.join(base_dir, 'Images', 'exe_icon.ico')
+        if os.path.exists(icon_path):
+            try:
+                popup.iconbitmap(icon_path)
+            except Exception:
+                pass
+
+        # Title
+        title_label = ctk.CTkLabel(
+            master=popup,
+            text="Game Session Complete",
+            font=("Calibri", 22, "bold")
+        )
+        title_label.pack(pady=(20, 5))
+
+        # Game name
+        game_label = ctk.CTkLabel(
+            master=popup,
+            text=game_name,
+            font=("Calibri", 16),
+            text_color="gray70"
+        )
+        game_label.pack(pady=(0, 15))
+
+        # Separator
+        sep1 = ctk.CTkFrame(master=popup, height=2, fg_color="gray50")
+        sep1.pack(fill="x", padx=40, pady=10)
+
+        # Stats frame
+        stats_frame = ctk.CTkFrame(master=popup, fg_color="transparent")
+        stats_frame.pack(pady=10, padx=30, fill="x")
+
+        # Playtime
+        playtime_label = ctk.CTkLabel(
+            master=stats_frame,
+            text="Session Duration:",
+            font=("Calibri", 13, "bold"),
+            anchor="w"
+        )
+        playtime_label.grid(row=0, column=0, sticky="w", pady=5)
+        playtime_value = ctk.CTkLabel(
+            master=stats_frame,
+            text=f"{hours}h {minutes}m {seconds}s",
+            font=("Calibri", 13),
+            anchor="e"
+        )
+        playtime_value.grid(row=0, column=1, sticky="e", pady=5, padx=(20, 0))
+
+        # Apps closed
+        apps_label = ctk.CTkLabel(
+            master=stats_frame,
+            text="Apps Closed:",
+            font=("Calibri", 13, "bold"),
+            anchor="w"
+        )
+        apps_label.grid(row=1, column=0, sticky="w", pady=5)
+        apps_value = ctk.CTkLabel(
+            master=stats_frame,
+            text=str(closed_apps_count),
+            font=("Calibri", 13),
+            anchor="e"
+        )
+        apps_value.grid(row=1, column=1, sticky="e", pady=5, padx=(20, 0))
+
+        stats_frame.grid_columnconfigure(1, weight=1)
+
+        # Separator
+        sep2 = ctk.CTkFrame(master=popup, height=2, fg_color="gray50")
+        sep2.pack(fill="x", padx=40, pady=10)
+
+        # Temperature section
+        temp_title = ctk.CTkLabel(
+            master=popup,
+            text="Temperature Statistics",
+            font=("Calibri", 14, "bold")
+        )
+        temp_title.pack(pady=(5, 10))
+
+        temp_frame = ctk.CTkFrame(master=popup, fg_color="transparent")
+        temp_frame.pack(pady=5, padx=30, fill="x")
+
+        # CPU temps
+        if start_cpu_temp is not None or max_cpu_temp is not None:
+            cpu_header = ctk.CTkLabel(master=temp_frame, text="CPU:", font=("Calibri", 13, "bold"), anchor="w")
+            cpu_header.grid(row=0, column=0, sticky="w", pady=3)
+
+            cpu_start_text = f"{start_cpu_temp}°C" if start_cpu_temp is not None else "N/A"
+            cpu_max_text = f"{max_cpu_temp}°C" if max_cpu_temp is not None else "N/A"
+
+            cpu_start_label = ctk.CTkLabel(master=temp_frame, text=f"Start: {cpu_start_text}", font=("Calibri", 12))
+            cpu_start_label.grid(row=0, column=1, sticky="e", pady=3, padx=(10, 0))
+            cpu_max_label = ctk.CTkLabel(master=temp_frame, text=f"Max: {cpu_max_text}", font=("Calibri", 12))
+            cpu_max_label.grid(row=0, column=2, sticky="e", pady=3, padx=(15, 0))
+
+        # GPU temps
+        if start_gpu_temp is not None or max_gpu_temp is not None:
+            gpu_header = ctk.CTkLabel(master=temp_frame, text="GPU:", font=("Calibri", 13, "bold"), anchor="w")
+            gpu_header.grid(row=1, column=0, sticky="w", pady=3)
+
+            gpu_start_text = f"{start_gpu_temp}°C" if start_gpu_temp is not None else "N/A"
+            gpu_max_text = f"{max_gpu_temp}°C" if max_gpu_temp is not None else "N/A"
+
+            gpu_start_label = ctk.CTkLabel(master=temp_frame, text=f"Start: {gpu_start_text}", font=("Calibri", 12))
+            gpu_start_label.grid(row=1, column=1, sticky="e", pady=3, padx=(10, 0))
+            gpu_max_label = ctk.CTkLabel(master=temp_frame, text=f"Max: {gpu_max_text}", font=("Calibri", 12))
+            gpu_max_label.grid(row=1, column=2, sticky="e", pady=3, padx=(15, 0))
+
+        # No temps available message
+        if start_cpu_temp is None and max_cpu_temp is None and start_gpu_temp is None and max_gpu_temp is None:
+            no_temp_label = ctk.CTkLabel(
+                master=temp_frame,
+                text="No temperature data available",
+                font=("Calibri", 12),
+                text_color="gray60"
+            )
+            no_temp_label.grid(row=0, column=0, columnspan=3, pady=10)
+
+        temp_frame.grid_columnconfigure(2, weight=1)
+
+        # OK button
+        ok_button = ctk.CTkButton(
+            master=popup,
+            text="OK",
+            command=popup.destroy,
+            width=120,
+            height=35,
+            corner_radius=10,
+            fg_color="green",
+            hover_color="#228B22",
+            font=("Calibri", 14)
+        )
+        ok_button.pack(pady=(20, 20))
+
+        popup.mainloop()
+
+    # Run in a thread to avoid blocking the main monitoring loop
+    threading.Thread(target=show_popup, daemon=True).start()
+    log(f"Showing detailed summary for {game_name}", "NOTIFY")
 
 
 # =============================================================================
@@ -1075,11 +1280,13 @@ class HardwareVisitor:
 
 class TemperatureTracker:
     """
-    Tracks maximum CPU and GPU temperatures during a gaming session.
-    Polls temperatures periodically and records the highest values.
+    Tracks CPU and GPU temperatures during a gaming session.
+    Records starting temperatures and maximum temperatures reached.
     """
 
     def __init__(self):
+        self.start_cpu_temp = None
+        self.start_gpu_temp = None
         self.max_cpu_temp = None
         self.max_gpu_temp = None
         self._stop_event = None
@@ -1093,6 +1300,8 @@ class TemperatureTracker:
         if self._monitoring:
             return
 
+        self.start_cpu_temp = None
+        self.start_gpu_temp = None
         self.max_cpu_temp = None
         self.max_gpu_temp = None
         self._stop_event = stop_event
@@ -1106,6 +1315,19 @@ class TemperatureTracker:
             self._monitoring = False
             return
 
+        # Capture starting temperatures immediately
+        if enable_cpu:
+            self.start_cpu_temp = get_cpu_temperature()
+            self.max_cpu_temp = self.start_cpu_temp
+            if self.start_cpu_temp is not None:
+                log(f"Starting CPU temp: {self.start_cpu_temp}°C", "TEMP")
+
+        if enable_gpu:
+            self.start_gpu_temp = get_gpu_temperature()
+            self.max_gpu_temp = self.start_gpu_temp
+            if self.start_gpu_temp is not None:
+                log(f"Starting GPU temp: {self.start_gpu_temp}°C", "TEMP")
+
         self._thread = threading.Thread(target=self._monitor_loop, daemon=True)
         self._thread.start()
         enabled_types = []
@@ -1116,13 +1338,19 @@ class TemperatureTracker:
         log(f"Temperature monitoring started ({', '.join(enabled_types)})", "TEMP")
 
     def stop_monitoring(self):
-        """Stop temperature monitoring and return max temps."""
+        """Stop temperature monitoring and return temperature data."""
         self._monitoring = False
         if self._thread:
             self._thread.join(timeout=2)
             self._thread = None
-        log(f"Temperature monitoring stopped. Max CPU: {self.max_cpu_temp}°C, Max GPU: {self.max_gpu_temp}°C", "TEMP")
-        return self.max_cpu_temp, self.max_gpu_temp
+        log(f"Temperature monitoring stopped. Start CPU: {self.start_cpu_temp}°C, Max CPU: {self.max_cpu_temp}°C, "
+            f"Start GPU: {self.start_gpu_temp}°C, Max GPU: {self.max_gpu_temp}°C", "TEMP")
+        return {
+            'start_cpu': self.start_cpu_temp,
+            'start_gpu': self.start_gpu_temp,
+            'max_cpu': self.max_cpu_temp,
+            'max_gpu': self.max_gpu_temp
+        }
 
     def _monitor_loop(self):
         """Background loop that polls temperatures every 10 seconds."""
@@ -1346,8 +1574,8 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
     (notification_processes, resource_processes, launch_at_startup, launch_settings_on_start,
      notification_close_on_startup, resource_close_on_startup, notification_close_on_hotkey,
      resource_close_on_hotkey, notification_relaunch_on_exit, resource_relaunch_on_exit,
-     enable_playtime_summary, enable_system_audio, system_audio_level, enable_game_audio,
-     game_audio_level, enable_during_power, during_power_plan, enable_after_power,
+     enable_playtime_summary, playtime_summary_mode, enable_system_audio, system_audio_level,
+     enable_game_audio, game_audio_level, enable_during_power, during_power_plan, enable_after_power,
      after_power_plan, enable_game_mode_start, enable_game_mode_end,
      enable_debug_mode, enable_cpu_thermal, enable_gpu_thermal) = load_process_names_and_startup()
 
@@ -1411,8 +1639,8 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
         nonlocal notification_processes, resource_processes, launch_at_startup, launch_settings_on_start, \
             notification_close_on_startup, resource_close_on_startup, notification_close_on_hotkey, \
             resource_close_on_hotkey, notification_relaunch_on_exit, resource_relaunch_on_exit, \
-            enable_playtime_summary, enable_system_audio, system_audio_level, enable_game_audio, \
-            game_audio_level, is_hotkey_registered, enable_during_power, during_power_plan, \
+            enable_playtime_summary, playtime_summary_mode, enable_system_audio, system_audio_level, \
+            enable_game_audio, game_audio_level, is_hotkey_registered, enable_during_power, during_power_plan, \
             enable_after_power, after_power_plan, enable_game_mode_start, enable_game_mode_end, enable_debug_mode, \
             enable_cpu_thermal, enable_gpu_thermal
 
@@ -1420,7 +1648,7 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
         (new_notification_processes, new_resource_processes, new_startup, new_launch_settings_on_start,
          new_notification_close_startup, new_resource_close_startup, new_notification_close_hotkey,
          new_resource_close_hotkey, new_notification_relaunch, new_resource_relaunch,
-         new_enable_playtime_summary, new_enable_system_audio, new_system_audio_level,
+         new_enable_playtime_summary, new_playtime_summary_mode, new_enable_system_audio, new_system_audio_level,
          new_enable_game_audio, new_game_audio_level, new_enable_during_power, new_during_power_plan,
          new_enable_after_power, new_after_power_plan, new_enable_game_mode_start,
          new_enable_game_mode_end, new_enable_debug_mode,
@@ -1460,6 +1688,7 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
         notification_relaunch_on_exit = new_notification_relaunch
         resource_relaunch_on_exit = new_resource_relaunch
         enable_playtime_summary = new_enable_playtime_summary
+        playtime_summary_mode = new_playtime_summary_mode
         enable_system_audio = new_enable_system_audio
         system_audio_level = new_system_audio_level
         enable_game_audio = new_enable_game_audio
@@ -1506,41 +1735,38 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
                     log("=" * 40, "GAME")
 
                     if previous_app_id != 0:
-                        # Stop temperature monitoring and get max temps
-                        max_cpu_temp, max_gpu_temp = temperature_tracker.stop_monitoring()
+                        # Stop temperature monitoring and get temp data
+                        temp_data = temperature_tracker.stop_monitoring()
 
                         if enable_playtime_summary and start_time is not None:
                             end_time = time.time()
                             duration = end_time - start_time
                             hours = int(duration // 3600)
                             minutes = int((duration % 3600) // 60)
+                            seconds = int(duration % 60)
                             closed_apps_count = len(killed_notification) + len(killed_resource)
                             log(f"Session duration: {hours}h {minutes}m", "GAME")
                             log(f"Apps closed during session: {closed_apps_count}", "GAME")
 
-                            # Build playtime string
-                            if hours == 0:
-                                playtime_str = f"{minutes} minutes"
-                            elif hours == 1:
-                                playtime_str = f"{hours} hour and {minutes} minutes"
+                            # Build session data for summary
+                            session_data = {
+                                'game_name': current_game_name,
+                                'hours': hours,
+                                'minutes': minutes,
+                                'seconds': seconds,
+                                'closed_apps_count': closed_apps_count,
+                                'start_cpu_temp': temp_data.get('start_cpu'),
+                                'start_gpu_temp': temp_data.get('start_gpu'),
+                                'max_cpu_temp': temp_data.get('max_cpu'),
+                                'max_gpu_temp': temp_data.get('max_gpu')
+                            }
+
+                            if playtime_summary_mode == 'detailed':
+                                # Show detailed popup window
+                                show_detailed_summary(session_data)
                             else:
-                                playtime_str = f"{hours} hours and {minutes} minutes"
-
-                            # Build temperature string
-                            temp_parts = []
-                            if max_cpu_temp is not None:
-                                temp_parts.append(f"CPU: {max_cpu_temp}°C")
-                            if max_gpu_temp is not None:
-                                temp_parts.append(f"GPU: {max_gpu_temp}°C")
-
-                            if temp_parts:
-                                temp_str = f" Max temps: {', '.join(temp_parts)}."
-                                log(f"Max temperatures - {', '.join(temp_parts)}", "GAME")
-                            else:
-                                temp_str = ""
-
-                            message = f"You played {current_game_name} for {playtime_str}. Vapor closed {closed_apps_count} apps when you started.{temp_str}"
-                            show_notification(message)
+                                # Show brief toast notification
+                                show_brief_summary(session_data)
 
                         if notification_relaunch_on_exit:
                             relaunch_processes(killed_notification, notification_relaunch_on_exit, "notification")
