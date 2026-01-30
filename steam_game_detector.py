@@ -142,6 +142,31 @@ from watchdog.events import FileSystemEventHandler
 
 # Windows toast notifications
 import win11toast
+
+# =============================================================================
+# Temperature Monitoring (Optional - graceful fallback if unavailable)
+# =============================================================================
+
+# NVIDIA GPU temperature via nvidia-ml-py
+try:
+    import pynvml
+    NVML_AVAILABLE = True
+except ImportError:
+    NVML_AVAILABLE = False
+
+# AMD GPU temperature via pyadl
+try:
+    from pyadl import ADLManager
+    PYADL_AVAILABLE = True
+except ImportError:
+    PYADL_AVAILABLE = False
+
+# CPU temperature via WMI (requires LibreHardwareMonitor or OpenHardwareMonitor running)
+try:
+    import wmi
+    WMI_AVAILABLE = True
+except ImportError:
+    WMI_AVAILABLE = False
 import atexit
 import signal
 
@@ -853,6 +878,159 @@ def set_game_mode(enabled):
 
 
 # =============================================================================
+# Temperature Monitoring Functions
+# =============================================================================
+
+def get_gpu_temperature():
+    """
+    Get current GPU temperature in Celsius.
+    Tries NVIDIA (pynvml) first, then AMD (pyadl).
+    Returns None if temperature cannot be read.
+    """
+    # Try NVIDIA GPU first
+    if NVML_AVAILABLE:
+        try:
+            pynvml.nvmlInit()
+            device_count = pynvml.nvmlDeviceGetCount()
+            if device_count > 0:
+                # Get temperature of first GPU (primary gaming GPU)
+                handle = pynvml.nvmlDeviceGetHandleByIndex(0)
+                temp = pynvml.nvmlDeviceGetTemperature(handle, pynvml.NVML_TEMPERATURE_GPU)
+                pynvml.nvmlShutdown()
+                return temp
+        except Exception as e:
+            try:
+                pynvml.nvmlShutdown()
+            except:
+                pass
+            log(f"NVIDIA GPU temp read failed: {e}", "TEMP")
+
+    # Try AMD GPU
+    if PYADL_AVAILABLE:
+        try:
+            devices = ADLManager.getInstance().getDevices()
+            if devices:
+                # Get temperature of first GPU
+                temp = devices[0].getCurrentTemperature()
+                if temp is not None:
+                    return int(temp)
+        except Exception as e:
+            log(f"AMD GPU temp read failed: {e}", "TEMP")
+
+    return None
+
+
+def get_cpu_temperature():
+    """
+    Get current CPU temperature in Celsius.
+    Requires LibreHardwareMonitor or OpenHardwareMonitor running.
+    Returns None if temperature cannot be read.
+    """
+    if not WMI_AVAILABLE:
+        return None
+
+    # Try LibreHardwareMonitor first
+    try:
+        w = wmi.WMI(namespace="root\\LibreHardwareMonitor")
+        sensors = w.Sensor()
+        for sensor in sensors:
+            if sensor.SensorType == "Temperature" and "CPU" in sensor.Name:
+                # Prefer "CPU Package" or "Core" temperatures
+                if "Package" in sensor.Name or "Core" in sensor.Name:
+                    return int(sensor.Value)
+        # Fallback to any CPU temperature
+        for sensor in sensors:
+            if sensor.SensorType == "Temperature" and "CPU" in sensor.Name:
+                return int(sensor.Value)
+    except Exception as e:
+        log(f"LibreHardwareMonitor not available: {e}", "TEMP")
+
+    # Try OpenHardwareMonitor as fallback
+    try:
+        w = wmi.WMI(namespace="root\\OpenHardwareMonitor")
+        sensors = w.Sensor()
+        for sensor in sensors:
+            if sensor.SensorType == "Temperature" and "CPU" in sensor.Name:
+                if "Package" in sensor.Name or "Core" in sensor.Name:
+                    return int(sensor.Value)
+        for sensor in sensors:
+            if sensor.SensorType == "Temperature" and "CPU" in sensor.Name:
+                return int(sensor.Value)
+    except Exception as e:
+        log(f"OpenHardwareMonitor not available: {e}", "TEMP")
+
+    return None
+
+
+class TemperatureTracker:
+    """
+    Tracks maximum CPU and GPU temperatures during a gaming session.
+    Polls temperatures periodically and records the highest values.
+    """
+
+    def __init__(self):
+        self.max_cpu_temp = None
+        self.max_gpu_temp = None
+        self._stop_event = None
+        self._thread = None
+        self._monitoring = False
+
+    def start_monitoring(self, stop_event):
+        """Start temperature monitoring in a background thread."""
+        if self._monitoring:
+            return
+
+        self.max_cpu_temp = None
+        self.max_gpu_temp = None
+        self._stop_event = stop_event
+        self._monitoring = True
+
+        self._thread = threading.Thread(target=self._monitor_loop, daemon=True)
+        self._thread.start()
+        log("Temperature monitoring started", "TEMP")
+
+    def stop_monitoring(self):
+        """Stop temperature monitoring and return max temps."""
+        self._monitoring = False
+        if self._thread:
+            self._thread.join(timeout=2)
+            self._thread = None
+        log(f"Temperature monitoring stopped. Max CPU: {self.max_cpu_temp}°C, Max GPU: {self.max_gpu_temp}°C", "TEMP")
+        return self.max_cpu_temp, self.max_gpu_temp
+
+    def _monitor_loop(self):
+        """Background loop that polls temperatures every 10 seconds."""
+        poll_interval = 10  # seconds
+
+        while self._monitoring:
+            # Get current temperatures
+            cpu_temp = get_cpu_temperature()
+            gpu_temp = get_gpu_temperature()
+
+            # Update max values
+            if cpu_temp is not None:
+                if self.max_cpu_temp is None or cpu_temp > self.max_cpu_temp:
+                    self.max_cpu_temp = cpu_temp
+                    log(f"New max CPU temp: {cpu_temp}°C", "TEMP")
+
+            if gpu_temp is not None:
+                if self.max_gpu_temp is None or gpu_temp > self.max_gpu_temp:
+                    self.max_gpu_temp = gpu_temp
+                    log(f"New max GPU temp: {gpu_temp}°C", "TEMP")
+
+            # Wait for next poll or stop event
+            if self._stop_event:
+                if self._stop_event.wait(poll_interval):
+                    break
+            else:
+                time.sleep(poll_interval)
+
+
+# Global temperature tracker instance
+temperature_tracker = TemperatureTracker()
+
+
+# =============================================================================
 # Steam Path Detection
 # =============================================================================
 
@@ -1095,6 +1273,8 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
             set_power_plan(during_power_plan)
         if enable_game_mode_start:
             set_game_mode(True)
+        # Start temperature monitoring for game already in progress
+        temperature_tracker.start_monitoring(stop_event)
     else:
         log("No game running at startup", "GAME")
 
@@ -1196,6 +1376,9 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
                     log("=" * 40, "GAME")
 
                     if previous_app_id != 0:
+                        # Stop temperature monitoring and get max temps
+                        max_cpu_temp, max_gpu_temp = temperature_tracker.stop_monitoring()
+
                         if enable_playtime_summary and start_time is not None:
                             end_time = time.time()
                             duration = end_time - start_time
@@ -1205,12 +1388,28 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
                             log(f"Session duration: {hours}h {minutes}m", "GAME")
                             log(f"Apps closed during session: {closed_apps_count}", "GAME")
 
+                            # Build playtime string
                             if hours == 0:
-                                message = f"You played {current_game_name} for {minutes} minutes. Vapor closed {closed_apps_count} apps when you started."
+                                playtime_str = f"{minutes} minutes"
                             elif hours == 1:
-                                message = f"You played {current_game_name} for {hours} hour and {minutes} minutes. Vapor closed {closed_apps_count} apps when you started."
+                                playtime_str = f"{hours} hour and {minutes} minutes"
                             else:
-                                message = f"You played {current_game_name} for {hours} hours and {minutes} minutes. Vapor closed {closed_apps_count} apps when you started."
+                                playtime_str = f"{hours} hours and {minutes} minutes"
+
+                            # Build temperature string
+                            temp_parts = []
+                            if max_cpu_temp is not None:
+                                temp_parts.append(f"CPU: {max_cpu_temp}°C")
+                            if max_gpu_temp is not None:
+                                temp_parts.append(f"GPU: {max_gpu_temp}°C")
+
+                            if temp_parts:
+                                temp_str = f" Max temps: {', '.join(temp_parts)}."
+                                log(f"Max temperatures - {', '.join(temp_parts)}", "GAME")
+                            else:
+                                temp_str = ""
+
+                            message = f"You played {current_game_name} for {playtime_str}. Vapor closed {closed_apps_count} apps when you started.{temp_str}"
                             show_notification(message)
 
                         if notification_relaunch_on_exit:
@@ -1257,6 +1456,9 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
                             set_power_plan(during_power_plan)
                         if enable_game_mode_start:
                             set_game_mode(True)
+
+                        # Start temperature monitoring for new game session
+                        temperature_tracker.start_monitoring(stop_event)
 
                         log(f"Game session started for: {game_name}", "GAME")
 
