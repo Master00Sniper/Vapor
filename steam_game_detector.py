@@ -210,17 +210,20 @@ def request_admin_restart():
         return False  # Already admin, no need to restart
 
     try:
-        # Get the executable path
+        # Get the executable path and working directory
         if getattr(sys, 'frozen', False):
             executable = sys.executable
             params = ' '.join(sys.argv[1:])
+            work_dir = os.path.dirname(sys.executable)
         else:
             executable = sys.executable
-            params = f'"{os.path.abspath(__file__)}" ' + ' '.join(sys.argv[1:])
+            script_path = os.path.abspath(__file__)
+            params = f'"{script_path}" ' + ' '.join(sys.argv[1:])
+            work_dir = os.path.dirname(script_path)
 
         # Request elevation using ShellExecute with 'runas'
         result = ctypes.windll.shell32.ShellExecuteW(
-            None, "runas", executable, params, None, 1
+            None, "runas", executable, params, work_dir, 1
         )
 
         # ShellExecuteW returns > 32 on success
