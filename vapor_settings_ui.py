@@ -156,26 +156,20 @@ def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=N
     y = (screen_height - height) // 2
     dialog.geometry(f"{width}x{height}+{x}+{y}")
 
-    # Set window icon - try multiple methods for CTkToplevel compatibility
-    icon_path = os.path.join(base_dir, 'Images', 'exe_icon.ico')
-    if os.path.exists(icon_path):
-        def set_icon():
-            try:
-                dialog.iconbitmap(icon_path)
-            except Exception:
-                pass
-            try:
-                dialog.wm_iconbitmap(icon_path)
-            except Exception:
-                pass
-        # Use after with longer delay to ensure window is fully initialized
-        dialog.after(50, set_icon)
-        dialog.after(200, set_icon)  # Try again after window is more stable
-
     # Make dialog modal
     if parent:
         dialog.transient(parent)
     dialog.grab_set()
+
+    # Set window icon AFTER transient relationship (important for CTkToplevel)
+    icon_path = os.path.join(base_dir, 'Images', 'exe_icon.ico')
+    if os.path.exists(icon_path):
+        try:
+            dialog.iconbitmap(icon_path)
+        except Exception:
+            pass
+        # Also try after a short delay for reliability
+        dialog.after(50, lambda: dialog.iconbitmap(icon_path) if dialog.winfo_exists() else None)
 
     # Lift dialog to top and focus
     dialog.lift()
