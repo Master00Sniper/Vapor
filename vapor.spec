@@ -14,7 +14,7 @@ a = Analysis(
         ('updater.py', '.'),
         # CPU temperature monitoring (requires LibreHardwareMonitorLib.dll from https://github.com/LibreHardwareMonitor/LibreHardwareMonitor)
         # Uncomment the line below after placing the DLL in the project root
-        # ('LibreHardwareMonitorLib.dll', '.'),
+        ('LibreHardwareMonitorLib.dll', '.'),
     ],
     hiddenimports=[
         # Windows API
