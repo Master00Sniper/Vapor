@@ -151,7 +151,8 @@ def load_settings():
                 'launch_at_startup': False, 'launch_settings_on_start': True,
                 'close_on_startup': True, 'close_on_hotkey': True, 'relaunch_on_exit': True,
                 'resource_close_on_startup': True, 'resource_close_on_hotkey': True, 'resource_relaunch_on_exit': False,
-                'enable_playtime_summary': True, 'enable_debug_mode': False, 'system_audio_level': 33,
+                'enable_playtime_summary': True, 'playtime_summary_mode': 'brief',
+                'enable_debug_mode': False, 'system_audio_level': 33,
                 'enable_system_audio': False,
                 'game_audio_level': 100, 'enable_game_audio': False,
                 'enable_during_power': False, 'during_power_plan': 'High Performance',
@@ -163,8 +164,8 @@ def load_settings():
 def save_settings(selected_notification_apps, customs, selected_resource_apps, resource_customs, launch_startup,
                   launch_settings_on_start, close_on_startup, close_on_hotkey, relaunch_on_exit,
                   resource_close_on_startup, resource_close_on_hotkey, resource_relaunch_on_exit,
-                  enable_playtime_summary, enable_debug_mode, system_audio_level, enable_system_audio,
-                  game_audio_level, enable_game_audio, enable_during_power, during_power_plan,
+                  enable_playtime_summary, playtime_summary_mode, enable_debug_mode, system_audio_level,
+                  enable_system_audio, game_audio_level, enable_game_audio, enable_during_power, during_power_plan,
                   enable_after_power, after_power_plan, enable_game_mode_start, enable_game_mode_end,
                   enable_cpu_thermal, enable_gpu_thermal):
     """Save all settings to the JSON configuration file."""
@@ -197,6 +198,7 @@ def save_settings(selected_notification_apps, customs, selected_resource_apps, r
         'resource_close_on_hotkey': resource_close_on_hotkey,
         'resource_relaunch_on_exit': resource_relaunch_on_exit,
         'enable_playtime_summary': enable_playtime_summary,
+        'playtime_summary_mode': playtime_summary_mode,
         'enable_debug_mode': enable_debug_mode,
         'system_audio_level': system_audio_level,
         'enable_system_audio': enable_system_audio,
@@ -270,6 +272,7 @@ resource_close_on_startup = current_settings.get('resource_close_on_startup', Tr
 resource_close_on_hotkey = current_settings.get('resource_close_on_hotkey', False)
 resource_relaunch_on_exit = current_settings.get('resource_relaunch_on_exit', True)
 enable_playtime_summary = current_settings.get('enable_playtime_summary', True)
+playtime_summary_mode = current_settings.get('playtime_summary_mode', 'brief')
 enable_debug_mode = current_settings.get('enable_debug_mode', False)
 system_audio_level = current_settings.get('system_audio_level', 50)
 enable_system_audio = current_settings.get('enable_system_audio', False)
@@ -500,6 +503,20 @@ playtime_summary_var = tk.BooleanVar(value=enable_playtime_summary)
 playtime_summary_switch = ctk.CTkSwitch(master=general_frame, text="Show Playtime Summary After Gaming",
                                         variable=playtime_summary_var, font=("Calibri", 13))
 playtime_summary_switch.pack(pady=5, anchor='w')
+
+# Playtime summary mode selection (Brief vs Detailed)
+summary_mode_frame = ctk.CTkFrame(master=general_frame, fg_color="transparent")
+summary_mode_frame.pack(pady=(0, 5), anchor='w', padx=(30, 0))
+
+summary_mode_label = ctk.CTkLabel(master=summary_mode_frame, text="Summary Style:",
+                                  font=("Calibri", 12))
+summary_mode_label.pack(side="left", padx=(0, 10))
+
+playtime_summary_mode_var = tk.StringVar(value=playtime_summary_mode)
+ctk.CTkRadioButton(master=summary_mode_frame, text="Brief (Toast)", variable=playtime_summary_mode_var,
+                   value="brief", font=("Calibri", 12)).pack(side="left", padx=10)
+ctk.CTkRadioButton(master=summary_mode_frame, text="Detailed (Popup)", variable=playtime_summary_mode_var,
+                   value="detailed", font=("Calibri", 12)).pack(side="left", padx=10)
 
 startup_var = tk.BooleanVar(value=launch_at_startup)
 startup_switch = ctk.CTkSwitch(master=general_frame, text="Launch Vapor at System Startup", variable=startup_var,
@@ -964,6 +981,7 @@ def rebuild_settings():
     resource_close_hotkey_var.set("Enabled")
     resource_relaunch_exit_var.set("Disabled")
     playtime_summary_var.set(True)
+    playtime_summary_mode_var.set('brief')
     debug_mode_var.set(False)
     system_audio_slider_var.set(33)
     update_system_audio_label(33)
@@ -1161,6 +1179,7 @@ def on_save():
     new_resource_close_on_hotkey = resource_close_hotkey_var.get() == "Enabled"
     new_resource_relaunch_on_exit = resource_relaunch_exit_var.get() == "Enabled"
     new_enable_playtime_summary = playtime_summary_var.get()
+    new_playtime_summary_mode = playtime_summary_mode_var.get()
     new_enable_debug_mode = debug_mode_var.get()
     new_system_audio_level = system_audio_slider_var.get()
     new_enable_system_audio = enable_system_audio_var.get()
@@ -1177,10 +1196,11 @@ def on_save():
     save_settings(new_selected_notification_apps, new_customs, new_selected_resource_apps, new_resource_customs,
                   new_launch_startup, new_launch_settings_on_start, new_close_on_startup, new_close_on_hotkey,
                   new_relaunch_on_exit, new_resource_close_on_startup, new_resource_close_on_hotkey,
-                  new_resource_relaunch_on_exit, new_enable_playtime_summary, new_enable_debug_mode,
-                  new_system_audio_level, new_enable_system_audio, new_game_audio_level, new_enable_game_audio,
-                  new_enable_during_power, new_during_power_plan, new_enable_after_power, new_after_power_plan,
-                  new_enable_game_mode_start, new_enable_game_mode_end, new_enable_cpu_thermal, new_enable_gpu_thermal)
+                  new_resource_relaunch_on_exit, new_enable_playtime_summary, new_playtime_summary_mode,
+                  new_enable_debug_mode, new_system_audio_level, new_enable_system_audio, new_game_audio_level,
+                  new_enable_game_audio, new_enable_during_power, new_during_power_plan, new_enable_after_power,
+                  new_after_power_plan, new_enable_game_mode_start, new_enable_game_mode_end, new_enable_cpu_thermal,
+                  new_enable_gpu_thermal)
 
 
 def on_save_and_close():
