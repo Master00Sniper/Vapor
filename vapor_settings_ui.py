@@ -156,7 +156,8 @@ def load_settings():
                 'game_audio_level': 100, 'enable_game_audio': False,
                 'enable_during_power': False, 'during_power_plan': 'High Performance',
                 'enable_after_power': False, 'after_power_plan': 'Balanced',
-                'enable_game_mode_start': True, 'enable_game_mode_end': False}
+                'enable_game_mode_start': True, 'enable_game_mode_end': False,
+                'enable_cpu_thermal': False, 'enable_gpu_thermal': True}
 
 
 def save_settings(selected_notification_apps, customs, selected_resource_apps, resource_customs, launch_startup,
@@ -164,7 +165,8 @@ def save_settings(selected_notification_apps, customs, selected_resource_apps, r
                   resource_close_on_startup, resource_close_on_hotkey, resource_relaunch_on_exit,
                   enable_playtime_summary, enable_debug_mode, system_audio_level, enable_system_audio,
                   game_audio_level, enable_game_audio, enable_during_power, during_power_plan,
-                  enable_after_power, after_power_plan, enable_game_mode_start, enable_game_mode_end):
+                  enable_after_power, after_power_plan, enable_game_mode_start, enable_game_mode_end,
+                  enable_cpu_thermal, enable_gpu_thermal):
     """Save all settings to the JSON configuration file."""
     # Build process lists from selected apps
     notification_processes = []
@@ -205,7 +207,9 @@ def save_settings(selected_notification_apps, customs, selected_resource_apps, r
         'enable_after_power': enable_after_power,
         'after_power_plan': after_power_plan,
         'enable_game_mode_start': enable_game_mode_start,
-        'enable_game_mode_end': enable_game_mode_end
+        'enable_game_mode_end': enable_game_mode_end,
+        'enable_cpu_thermal': enable_cpu_thermal,
+        'enable_gpu_thermal': enable_gpu_thermal
     }
     with open(SETTINGS_FILE, 'w') as f:
         json.dump(settings, f)
@@ -277,6 +281,8 @@ enable_after_power = current_settings.get('enable_after_power', False)
 after_power_plan = current_settings.get('after_power_plan', 'Balanced')
 enable_game_mode_start = current_settings.get('enable_game_mode_start', False)
 enable_game_mode_end = current_settings.get('enable_game_mode_end', False)
+enable_cpu_thermal = current_settings.get('enable_cpu_thermal', False)
+enable_gpu_thermal = current_settings.get('enable_gpu_thermal', True)
 
 # Get main process PID for communication with main app
 main_pid = None
@@ -646,6 +652,36 @@ enable_game_mode_end_switch = ctk.CTkSwitch(master=game_mode_frame, text="Disabl
                                             variable=enable_game_mode_end_var, font=("Calibri", 13))
 enable_game_mode_end_switch.pack(pady=5, anchor='w')
 
+pref_sep5 = ctk.CTkFrame(master=pref_scroll_frame, height=2, fg_color="gray50")
+pref_sep5.pack(fill="x", padx=40, pady=15)
+
+thermal_title = ctk.CTkLabel(master=pref_scroll_frame, text="Thermal Monitoring", font=("Calibri", 16, "bold"))
+thermal_title.pack(pady=(10, 5), anchor='center')
+
+thermal_hint = ctk.CTkLabel(master=pref_scroll_frame,
+                            text="Track maximum CPU and GPU temperatures during gaming sessions.",
+                            font=("Calibri", 11), text_color="gray60")
+thermal_hint.pack(pady=(0, 10), anchor='center')
+
+thermal_frame = ctk.CTkFrame(master=pref_scroll_frame, fg_color="transparent")
+thermal_frame.pack(pady=10, anchor='center')
+
+enable_gpu_thermal_var = tk.BooleanVar(value=enable_gpu_thermal)
+enable_gpu_thermal_switch = ctk.CTkSwitch(master=thermal_frame, text="Capture GPU Temperature",
+                                          variable=enable_gpu_thermal_var, font=("Calibri", 13))
+enable_gpu_thermal_switch.pack(pady=5, anchor='w')
+
+enable_cpu_thermal_var = tk.BooleanVar(value=enable_cpu_thermal)
+enable_cpu_thermal_switch = ctk.CTkSwitch(master=thermal_frame, text="Capture CPU Temperature",
+                                          variable=enable_cpu_thermal_var, font=("Calibri", 13))
+enable_cpu_thermal_switch.pack(pady=5, anchor='w')
+
+cpu_thermal_disclaimer = ctk.CTkLabel(master=thermal_frame,
+                                      text="Note: CPU temperature monitoring requires administrator privileges.\n"
+                                           "Vapor will prompt for admin access when this option is enabled.",
+                                      font=("Calibri", 10), text_color="orange", justify="left")
+cpu_thermal_disclaimer.pack(pady=(5, 0), anchor='w')
+
 # =============================================================================
 # Resources Tab
 # =============================================================================
@@ -941,6 +977,8 @@ def rebuild_settings():
     after_power_var.set("Balanced")
     enable_game_mode_start_var.set(True)
     enable_game_mode_end_var.set(False)
+    enable_cpu_thermal_var.set(False)
+    enable_gpu_thermal_var.set(True)
 
     on_save()
 
@@ -1134,13 +1172,15 @@ def on_save():
     new_after_power_plan = after_power_var.get()
     new_enable_game_mode_start = enable_game_mode_start_var.get()
     new_enable_game_mode_end = enable_game_mode_end_var.get()
+    new_enable_cpu_thermal = enable_cpu_thermal_var.get()
+    new_enable_gpu_thermal = enable_gpu_thermal_var.get()
     save_settings(new_selected_notification_apps, new_customs, new_selected_resource_apps, new_resource_customs,
                   new_launch_startup, new_launch_settings_on_start, new_close_on_startup, new_close_on_hotkey,
                   new_relaunch_on_exit, new_resource_close_on_startup, new_resource_close_on_hotkey,
                   new_resource_relaunch_on_exit, new_enable_playtime_summary, new_enable_debug_mode,
                   new_system_audio_level, new_enable_system_audio, new_game_audio_level, new_enable_game_audio,
                   new_enable_during_power, new_during_power_plan, new_enable_after_power, new_after_power_plan,
-                  new_enable_game_mode_start, new_enable_game_mode_end)
+                  new_enable_game_mode_start, new_enable_game_mode_end, new_enable_cpu_thermal, new_enable_gpu_thermal)
 
 
 def on_save_and_close():

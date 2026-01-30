@@ -8,6 +8,7 @@ psutil==7.2.1
 pyadl>=0.1
 pycaw==20251023
 pystray==0.19.5
+pythonnet>=3.0.0
 pywin32==311
 pywin32-ctypes==0.2.3
 requests==2.32.5
