@@ -2124,10 +2124,11 @@ def on_save():
                 show_vapor_dialog(
                     title="Installation Failed",
                     message="Failed to install the PawnIO driver.\n\n"
-                            "You can try installing it manually:\n"
+                            "If you recently uninstalled PawnIO, try rebooting your\n"
+                            "computer first - driver uninstalls often require a restart.\n\n"
+                            "You can also try installing manually:\n"
                             "1. Run: winget install namazso.PawnIO\n"
-                            "2. Or download from: https://pawnio.eu/\n\n"
-                            "Then restart Vapor to enable CPU temperature monitoring.",
+                            "2. Or download from: https://pawnio.eu/",
                     dialog_type="error",
                     parent=root
                 )
@@ -2345,10 +2346,11 @@ def check_pending_pawnio_install():
             show_vapor_dialog(
                 title="Installation Failed",
                 message="Failed to install the PawnIO driver.\n\n"
-                        "You can try installing it manually:\n"
+                        "If you recently uninstalled PawnIO, try rebooting your\n"
+                        "computer first - driver uninstalls often require a restart.\n\n"
+                        "You can also try installing manually:\n"
                         "1. Run: winget install namazso.PawnIO\n"
-                        "2. Or download from: https://pawnio.eu/\n\n"
-                        "Then restart Vapor to enable CPU temperature monitoring.",
+                        "2. Or download from: https://pawnio.eu/",
                 dialog_type="error",
                 parent=root
             )
