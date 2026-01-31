@@ -78,6 +78,8 @@ def restart_vapor_as_admin(main_pid):
     Restart the main Vapor process with admin privileges.
     Terminates the current main process and starts a new elevated one.
     """
+    import time
+
     # Terminate current main process if running
     if main_pid:
         try:
@@ -86,6 +88,10 @@ def restart_vapor_as_admin(main_pid):
             main_process.wait(timeout=5)  # Wait for process to terminate
         except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.TimeoutExpired):
             pass
+
+    # Give Windows time to release file handles from the old process
+    # This prevents "Failed to remove temporary directory" errors
+    time.sleep(1)
 
     # Determine the executable to run
     if getattr(sys, 'frozen', False):
@@ -174,10 +180,14 @@ def install_pawnio_silent():
         return False
 
 
-def install_pawnio_with_elevation():
+def install_pawnio_with_elevation(progress_callback=None):
     """
     Install PawnIO driver with UAC elevation prompt.
     Uses ShellExecuteW with 'runas' to properly trigger UAC.
+
+    Args:
+        progress_callback: Optional function(message, progress_pct) to update UI during install
+
     Returns True if installation succeeded.
     """
     # First check if already installed
@@ -189,6 +199,9 @@ def install_pawnio_with_elevation():
         return False
 
     try:
+        if progress_callback:
+            progress_callback("Requesting administrator approval...", 5)
+
         # Use ShellExecuteW with 'runas' to trigger UAC prompt
         # This runs PowerShell elevated with the install script
         result = ctypes.windll.shell32.ShellExecuteW(
@@ -202,13 +215,24 @@ def install_pawnio_with_elevation():
 
         # ShellExecuteW returns > 32 on success (process was started)
         if result > 32:
-            # Wait a bit for installation to complete
-            import time
+            if progress_callback:
+                progress_callback("Installing PawnIO driver...", 15)
+
             # Check periodically if PawnIO is installed (up to 60 seconds)
-            for _ in range(30):
+            import time
+            for i in range(30):
                 time.sleep(2)
+
+                # Update progress
+                if progress_callback:
+                    pct = 15 + int((i / 30) * 80)  # Progress from 15% to 95%
+                    progress_callback(f"Installing PawnIO driver... ({(i+1)*2}s)", pct)
+
                 if is_pawnio_installed():
+                    if progress_callback:
+                        progress_callback("Installation complete!", 100)
                     return True
+
             # Final check
             return is_pawnio_installed()
         else:
@@ -221,12 +245,34 @@ def install_pawnio_with_elevation():
 def set_vapor_icon(window):
     """Set the Vapor icon on a window. Call this after window is created."""
     icon_path = os.path.join(base_dir, 'Images', 'exe_icon.ico')
-    if os.path.exists(icon_path):
+    if not os.path.exists(icon_path):
+        return
+
+    def apply_icon():
         try:
-            # Use after() to ensure window is fully initialized
-            window.after(10, lambda: window.iconbitmap(icon_path))
+            if window.winfo_exists():
+                window.iconbitmap(icon_path)
         except Exception:
             pass
+
+    # Try multiple approaches for reliability
+    try:
+        window.iconbitmap(icon_path)  # Direct call
+    except Exception:
+        pass
+
+    try:
+        window.update_idletasks()
+        window.iconbitmap(icon_path)  # After update
+    except Exception:
+        pass
+
+    # Also schedule for later in case window isn't fully ready
+    try:
+        window.after(50, apply_icon)
+        window.after(150, apply_icon)
+    except Exception:
+        pass
 
 
 # =============================================================================
@@ -1715,10 +1761,10 @@ def on_save():
             parent=root
         )
         if response:
-            # Show installing message
+            # Show installing message with progress bar
             installing_dialog = ctk.CTkToplevel(root)
             installing_dialog.title("Vapor - Installing Driver")
-            installing_dialog.geometry("350x120")
+            installing_dialog.geometry("400x160")
             installing_dialog.resizable(False, False)
             installing_dialog.transient(root)
             installing_dialog.grab_set()
@@ -1726,25 +1772,50 @@ def on_save():
 
             # Center on parent
             installing_dialog.update_idletasks()
-            x = root.winfo_x() + (root.winfo_width() - 350) // 2
-            y = root.winfo_y() + (root.winfo_height() - 120) // 2
+            x = root.winfo_x() + (root.winfo_width() - 400) // 2
+            y = root.winfo_y() + (root.winfo_height() - 160) // 2
             installing_dialog.geometry(f"+{x}+{y}")
 
             msg_label = ctk.CTkLabel(
                 installing_dialog,
-                text="Installing PawnIO driver...\n\nPlease approve the administrator prompt.",
+                text="Requesting administrator approval...",
                 font=("Calibri", 13),
                 justify="center"
             )
-            msg_label.pack(expand=True, padx=20, pady=20)
+            msg_label.pack(padx=20, pady=(25, 10))
+
+            progress_bar = ctk.CTkProgressBar(installing_dialog, width=300)
+            progress_bar.pack(padx=20, pady=10)
+            progress_bar.set(0)
+
+            status_label = ctk.CTkLabel(
+                installing_dialog,
+                text="Please approve the administrator prompt when it appears.",
+                font=("Calibri", 11),
+                text_color="gray"
+            )
+            status_label.pack(padx=20, pady=(5, 15))
 
             installing_dialog.update()
 
-            # Run silent installer with elevation
-            install_success = install_pawnio_with_elevation()
+            # Progress callback to update the dialog
+            def update_progress(message, pct):
+                try:
+                    if installing_dialog.winfo_exists():
+                        msg_label.configure(text=message)
+                        progress_bar.set(pct / 100)
+                        installing_dialog.update()
+                except Exception:
+                    pass
+
+            # Run installer with progress updates
+            install_success = install_pawnio_with_elevation(progress_callback=update_progress)
 
             # Close installing dialog
-            installing_dialog.destroy()
+            try:
+                installing_dialog.destroy()
+            except Exception:
+                pass
 
             if install_success:
                 # Ask user to restart Vapor
