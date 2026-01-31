@@ -67,11 +67,20 @@ PAWNIO_LOG_FILE = os.path.join(appdata_dir, 'pawnio_install.log')
 
 
 def log_pawnio(message):
-    """Write a message to the PawnIO installation log file."""
+    """Write a message to the PawnIO installation log file and console."""
+    timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
+    formatted = f"[{timestamp}] [PawnIO] {message}"
+
+    # Print to console (visible if debug mode enabled)
+    try:
+        print(formatted)
+    except Exception:
+        pass
+
+    # Also write to file as backup
     try:
         with open(PAWNIO_LOG_FILE, 'a', encoding='utf-8') as f:
-            timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
-            f.write(f"[{timestamp}] {message}\n")
+            f.write(f"{formatted}\n")
     except Exception:
         pass
 
@@ -758,6 +767,19 @@ resource_relaunch_on_exit = current_settings.get('resource_relaunch_on_exit', Tr
 enable_playtime_summary = current_settings.get('enable_playtime_summary', True)
 playtime_summary_mode = current_settings.get('playtime_summary_mode', 'brief')
 enable_debug_mode = current_settings.get('enable_debug_mode', False)
+
+# If debug mode is enabled, allocate a console for the settings UI so print() output is visible
+if enable_debug_mode:
+    try:
+        kernel32 = ctypes.windll.kernel32
+        kernel32.AllocConsole()
+        sys.stdout = open('CONOUT$', 'w')
+        sys.stderr = open('CONOUT$', 'w')
+        kernel32.SetConsoleTitleW("Vapor Settings - Debug Console")
+        print("Vapor Settings debug console initialized")
+    except Exception as e:
+        pass  # Console allocation failed, continue without it
+
 system_audio_level = current_settings.get('system_audio_level', 50)
 enable_system_audio = current_settings.get('enable_system_audio', False)
 game_audio_level = current_settings.get('game_audio_level', 50)
