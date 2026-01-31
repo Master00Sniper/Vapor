@@ -1805,6 +1805,8 @@ class TemperatureTracker:
         self.start_gpu_temp = None
         self.max_cpu_temp = None
         self.max_gpu_temp = None
+        self.last_cpu_temp = None  # Most recent CPU temp reading
+        self.last_gpu_temp = None  # Most recent GPU temp reading
         self._stop_event = None
         self._thread = None
         self._monitoring = False
@@ -1836,6 +1838,8 @@ class TemperatureTracker:
         self.start_gpu_temp = None
         self.max_cpu_temp = None
         self.max_gpu_temp = None
+        self.last_cpu_temp = None
+        self.last_gpu_temp = None
         self._stop_event = stop_event
         self._monitoring = True
         self._enable_cpu = enable_cpu
@@ -1889,9 +1893,9 @@ class TemperatureTracker:
             self._thread.join(timeout=2)
             self._thread = None
 
-        # Capture ending temperatures
-        end_cpu_temp = get_cpu_temperature() if self._enable_cpu else None
-        end_gpu_temp = get_gpu_temperature() if self._enable_gpu else None
+        # Use last recorded temperatures from monitoring loop (more accurate than fresh read after game closes)
+        end_cpu_temp = self.last_cpu_temp
+        end_gpu_temp = self.last_gpu_temp
 
         log(f"Temperature monitoring stopped. Start CPU: {self.start_cpu_temp}°C, End CPU: {end_cpu_temp}°C, "
             f"Start GPU: {self.start_gpu_temp}°C, End GPU: {end_gpu_temp}°C", "TEMP")
@@ -1933,6 +1937,12 @@ class TemperatureTracker:
             # Get current temperatures (only if enabled)
             cpu_temp = get_cpu_temperature() if self._enable_cpu else None
             gpu_temp = get_gpu_temperature() if self._enable_gpu else None
+
+            # Save last readings for use when monitoring stops
+            if cpu_temp is not None:
+                self.last_cpu_temp = cpu_temp
+            if gpu_temp is not None:
+                self.last_gpu_temp = gpu_temp
 
             # Update max values
             if cpu_temp is not None:
