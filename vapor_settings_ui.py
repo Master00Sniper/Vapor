@@ -43,6 +43,7 @@ import win32gui
 import win32con
 import win11toast
 import ctypes
+import subprocess
 
 try:
     from updater import CURRENT_VERSION
@@ -114,6 +115,49 @@ def restart_vapor_as_admin(main_pid):
             None, "runas", executable, params, base_dir, 1
         )
         return result > 32  # ShellExecuteW returns > 32 on success
+    except Exception:
+        return False
+
+
+# =============================================================================
+# PawnIO Driver Functions (for CPU temperature monitoring)
+# =============================================================================
+
+def is_pawnio_installed():
+    """Check if PawnIO driver is installed."""
+    try:
+        result = subprocess.run(
+            ['winget', 'list', '--id', 'PawnIO.PawnIO'],
+            capture_output=True, text=True, timeout=10,
+            creationflags=subprocess.CREATE_NO_WINDOW
+        )
+        return 'PawnIO' in result.stdout
+    except Exception:
+        return False
+
+
+def get_pawnio_installer_path():
+    """Get the path to the PawnIO installer script."""
+    return os.path.join(base_dir, 'install_pawnio.ps1')
+
+
+def run_pawnio_installer():
+    """Run the PawnIO installer script with admin privileges."""
+    script_path = get_pawnio_installer_path()
+
+    if not os.path.exists(script_path):
+        return False
+
+    try:
+        result = ctypes.windll.shell32.ShellExecuteW(
+            None,
+            "runas",
+            "powershell.exe",
+            f'-ExecutionPolicy Bypass -File "{script_path}"',
+            os.path.dirname(script_path),
+            1  # SW_SHOWNORMAL
+        )
+        return result > 32
     except Exception:
         return False
 
@@ -1592,6 +1636,44 @@ def on_save():
                             "Please try running Vapor as administrator manually by\n"
                             "right-clicking the Vapor shortcut and selecting\n"
                             "'Run as administrator'.",
+                    dialog_type="error",
+                    parent=root
+                )
+
+    # Check if CPU thermal is enabled and PawnIO driver needs to be installed
+    if new_enable_cpu_thermal and not is_pawnio_installed():
+        response = show_vapor_dialog(
+            title="CPU Temperature Driver Required",
+            message="CPU temperature monitoring requires the PawnIO driver.\n\n"
+                    "This driver provides low-level hardware access needed to\n"
+                    "read CPU temperature sensors.\n\n"
+                    "Would you like to install the PawnIO driver now?\n"
+                    "(Requires administrator approval)",
+            dialog_type="warning",
+            buttons=[
+                {"text": "Install Driver", "value": True, "color": "green"},
+                {"text": "Not Now", "value": False, "color": "gray"}
+            ],
+            parent=root
+        )
+        if response:
+            if run_pawnio_installer():
+                show_vapor_dialog(
+                    title="Driver Installation",
+                    message="The PawnIO driver installer has been launched.\n\n"
+                            "Please follow the prompts in the PowerShell window.\n"
+                            "After installation completes, restart Vapor for\n"
+                            "CPU temperature monitoring to work.",
+                    dialog_type="info",
+                    parent=root
+                )
+            else:
+                show_vapor_dialog(
+                    title="Installation Failed",
+                    message="Failed to launch the PawnIO driver installer.\n\n"
+                            "You can install it manually by running:\n"
+                            "winget install PawnIO.PawnIO\n\n"
+                            "in an administrator PowerShell window.",
                     dialog_type="error",
                     parent=root
                 )

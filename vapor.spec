@@ -12,13 +12,8 @@ a = Analysis(
     datas=[
         ('vapor_settings_ui.py', '.'),
         ('updater.py', '.'),
-        # CPU temperature monitoring - now handled by HardwareMonitor PyPI package
-        # The HardwareMonitor package uses the PawnIO driver (replaces WinRing0)
-        # Install PawnIO driver: winget install pawnio
-        # Fallback: LibreHardwareMonitor DLL files (optional, only if HardwareMonitor unavailable)
-        # ('lib/LibreHardwareMonitorLib.dll', 'lib'),
-        # ('lib/HidSharp.dll', 'lib'),
-        # ('lib/System.Memory.dll', 'lib'),
+        # PawnIO driver installer script for CPU temperature monitoring
+        ('install_pawnio.ps1', '.'),
     ],
     hiddenimports=[
         # Windows API
