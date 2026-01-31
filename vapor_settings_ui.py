@@ -109,13 +109,18 @@ def is_admin():
         return False
 
 
-def restart_vapor_as_admin(main_pid):
+def restart_vapor(main_pid, require_admin=False):
     """
-    Restart the main Vapor process with admin privileges.
-    Terminates the current main process and starts a new elevated one.
+    Restart the main Vapor process.
+
+    Args:
+        main_pid: PID of the main Vapor process to terminate before restart
+        require_admin: If True and not already admin, will request elevation.
+                      If False, restarts without elevation prompt.
+
     Uses a delayed start via PowerShell to avoid MEI folder cleanup errors.
     """
-    debug_log(f"Restarting Vapor (main_pid={main_pid})", "Restart")
+    debug_log(f"Restarting Vapor (main_pid={main_pid}, require_admin={require_admin})", "Restart")
 
     # Terminate current main process if running
     if main_pid:
@@ -128,14 +133,17 @@ def restart_vapor_as_admin(main_pid):
         except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.TimeoutExpired) as e:
             debug_log(f"Could not terminate main process: {e}", "Restart")
 
-    # Determine the executable and arguments to run
+    # Determine the executable path
     # Use VAPOR_EXE_PATH if available (passed from main process)
     vapor_exe_from_env = os.environ.get('VAPOR_EXE_PATH', '')
+    executable = None
+    args_part = ""
+    working_dir = None
 
     if vapor_exe_from_env and os.path.exists(vapor_exe_from_env):
         # Use the path passed from the main Vapor process
         executable = vapor_exe_from_env
-        args_part = ""
+        working_dir = os.path.dirname(executable)
         debug_log(f"Using VAPOR_EXE_PATH: {executable}", "Restart")
     elif getattr(sys, 'frozen', False):
         # Fallback: try to find Vapor.exe in common locations
@@ -144,15 +152,14 @@ def restart_vapor_as_admin(main_pid):
             os.path.join(os.path.dirname(os.path.dirname(sys.executable)), 'Vapor.exe'),
             os.path.join(os.getcwd(), 'Vapor.exe'),
         ]
-        executable = None
         for path in possible_paths:
             if os.path.exists(path):
                 executable = path
+                working_dir = os.path.dirname(executable)
                 break
         if not executable:
             debug_log("ERROR: Could not find Vapor.exe for restart", "Restart")
             return False
-        args_part = ""
     else:
         # Running from Python - use pythonw.exe to avoid console window
         python_dir = os.path.dirname(sys.executable)
@@ -161,10 +168,15 @@ def restart_vapor_as_admin(main_pid):
             executable = pythonw_exe
         else:
             executable = sys.executable
-        main_script = os.path.join(base_dir, 'steam_game_detector.py')
+        # For Python mode, use the actual source directory (not temp MEI folder)
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        main_script = os.path.join(script_dir, 'steam_game_detector.py')
         args_part = f' -ArgumentList \\"{main_script}\\"'
+        working_dir = script_dir
 
     debug_log(f"Executable: {executable}", "Restart")
+    debug_log(f"Working dir: {working_dir}", "Restart")
+    debug_log(f"Already admin: {is_admin()}", "Restart")
 
     # Use PowerShell with a delay to start the new process
     # This ensures the old process (settings UI) has fully exited before new Vapor starts
@@ -172,13 +184,19 @@ def restart_vapor_as_admin(main_pid):
     ps_command = f'Start-Sleep -Seconds 2; Start-Process -FilePath \\"{executable}\\"{args_part}'
 
     try:
+        # Only use "runas" if elevation is required AND we're not already admin
+        # This avoids unnecessary UAC prompts
+        need_elevation = require_admin and not is_admin()
+        verb = "runas" if need_elevation else "open"
+        debug_log(f"Using verb: {verb} (need_elevation={need_elevation})", "Restart")
+
         # Launch PowerShell hidden - it will wait 2 seconds then start Vapor
         result = ctypes.windll.shell32.ShellExecuteW(
             None,
-            "runas",
+            verb,
             "powershell.exe",
             f'-WindowStyle Hidden -Command "{ps_command}"',
-            base_dir,
+            working_dir,
             0  # SW_HIDE
         )
         debug_log(f"ShellExecuteW result: {result}", "Restart")
@@ -186,6 +204,12 @@ def restart_vapor_as_admin(main_pid):
     except Exception as e:
         debug_log(f"Restart failed: {e}", "Restart")
         return False
+
+
+# Backwards-compatible alias
+def restart_vapor_as_admin(main_pid):
+    """Restart Vapor with admin privileges. Use restart_vapor() for more control."""
+    return restart_vapor(main_pid, require_admin=True)
 
 
 # =============================================================================
@@ -1696,7 +1720,7 @@ def reset_settings_and_restart():
         win11toast.notify(body="Settings reset. Restarting Vapor...", app_id='Vapor - Streamline Gaming',
                           duration='short', icon=TRAY_ICON_PATH, audio={'silent': 'true'})
 
-        restart_vapor_as_admin(main_pid)
+        restart_vapor(main_pid, require_admin=False)
         root.destroy()
     else:
         debug_log("User cancelled reset settings", "Reset")
@@ -1743,7 +1767,7 @@ def reset_all_data_and_restart():
         win11toast.notify(body="All data deleted. Restarting Vapor...", app_id='Vapor - Streamline Gaming',
                           duration='short', icon=TRAY_ICON_PATH, audio={'silent': 'true'})
 
-        restart_vapor_as_admin(main_pid)
+        restart_vapor(main_pid, require_admin=False)
         root.destroy()
     else:
         debug_log("User cancelled reset all data", "Reset")
@@ -1890,7 +1914,7 @@ button_frame.grid_columnconfigure(4, weight=1)
 
 
 def on_save():
-    """Save current settings to file."""
+    """Save current settings to file. Returns True if saved successfully, False if cancelled."""
     debug_log("Save button clicked", "Settings")
     new_selected_notification_apps = [name for name, var in switch_vars.items() if var.get()]
     raw_customs = [c.strip() for c in custom_entry.get().split(',') if c.strip()]
@@ -1990,18 +2014,18 @@ def on_save():
             dialog_type="warning",
             buttons=[
                 {"text": "Restart as Admin", "value": True, "color": "green"},
-                {"text": "Not Now", "value": False, "color": "gray"}
+                {"text": "Cancel", "value": False, "color": "gray"}
             ],
             parent=root
         )
-        if response:
+        if response is True:
             # User agreed to restart with admin
             # Set flag to trigger PawnIO check after restart
             set_pending_pawnio_check(True)
-            if restart_vapor_as_admin(main_pid):
+            if restart_vapor(main_pid, require_admin=True):
                 # Successfully requested elevation, close settings window
                 root.destroy()
-                return
+                return True
             else:
                 # Restart failed, clear the pending flag
                 set_pending_pawnio_check(False)
@@ -2016,10 +2040,12 @@ def on_save():
                 )
                 # Elevation failed - toggle CPU temp switch back to disabled
                 enable_cpu_thermal_var.set(False)
+                return False
         else:
-            # User clicked "Not Now" - toggle CPU temp switch back to disabled
+            # User clicked "Cancel" or closed dialog - toggle CPU temp switch back to disabled
+            # Return False to indicate save was cancelled (settings window stays open)
             enable_cpu_thermal_var.set(False)
-            return
+            return False
 
     # Check if CPU thermal is being NEWLY enabled and PawnIO driver needs to be installed
     # Only check when changing from disabled to enabled (avoids slow winget check on every save)
@@ -2117,9 +2143,9 @@ def on_save():
                 )
                 if restart_response:
                     # Restart Vapor (already running as admin if we got here)
-                    if restart_vapor_as_admin(main_pid):
+                    if restart_vapor(main_pid, require_admin=False):
                         root.destroy()
-                        return
+                        return True
             else:
                 show_vapor_dialog(
                     title="Installation Failed",
@@ -2154,16 +2180,19 @@ def on_save():
             parent=root
         )
         if response:
-            restart_vapor_as_admin(main_pid)
+            restart_vapor(main_pid, require_admin=False)
             root.destroy()
-            return
+            return True
+
+    return True
 
 
 def on_save_and_close():
     """Save settings and close the window."""
     debug_log("Save & Close clicked", "Settings")
-    on_save()
-    root.destroy()
+    if on_save():
+        root.destroy()
+    # If on_save() returns False, the user cancelled - keep window open
 
 
 def on_discard_and_close():
@@ -2339,7 +2368,7 @@ def check_pending_pawnio_install():
                 parent=root
             )
             if restart_response:
-                if restart_vapor_as_admin(main_pid):
+                if restart_vapor(main_pid, require_admin=False):
                     root.destroy()
                     return
         else:
