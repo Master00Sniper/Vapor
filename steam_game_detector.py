@@ -1807,7 +1807,8 @@ class TemperatureTracker:
         self.max_gpu_temp = None
         self.last_cpu_temp = None  # Most recent CPU temp reading
         self.last_gpu_temp = None  # Most recent GPU temp reading
-        self._stop_event = None
+        self._stop_event = None  # Global stop event (Vapor quitting)
+        self._internal_stop = None  # Internal stop event (game ended)
         self._thread = None
         self._monitoring = False
         self._enable_cpu = False
@@ -1841,6 +1842,7 @@ class TemperatureTracker:
         self.last_cpu_temp = None
         self.last_gpu_temp = None
         self._stop_event = stop_event
+        self._internal_stop = threading.Event()  # Create fresh event for this session
         self._monitoring = True
         self._enable_cpu = enable_cpu
         self._enable_gpu = enable_gpu
@@ -1889,8 +1891,11 @@ class TemperatureTracker:
     def stop_monitoring(self):
         """Stop temperature monitoring and return temperature data."""
         self._monitoring = False
+        # Signal internal stop event to wake up the monitoring thread immediately
+        if self._internal_stop:
+            self._internal_stop.set()
         if self._thread:
-            self._thread.join(timeout=2)
+            self._thread.join(timeout=0.5)  # Should be nearly instant now
             self._thread = None
 
         # Use last recorded temperatures from monitoring loop (more accurate than fresh read after game closes)
@@ -1991,8 +1996,11 @@ class TemperatureTracker:
                     show_temperature_alert(f"GPU Temperature Warning: {gpu_temp}°C{game_info}. "
                                            f"Warning threshold of {self._gpu_warning_threshold}°C exceeded.")
 
-            # Wait for next poll or stop event
-            if self._stop_event:
+            # Wait for next poll or stop event (internal event wakes immediately when game ends)
+            if self._internal_stop:
+                if self._internal_stop.wait(poll_interval):
+                    break
+            elif self._stop_event:
                 if self._stop_event.wait(poll_interval):
                     break
             else:
