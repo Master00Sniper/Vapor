@@ -192,6 +192,12 @@ def restart_vapor_as_admin(main_pid):
 # PawnIO Driver Functions (for CPU temperature monitoring)
 # =============================================================================
 
+# Cache for PawnIO installation status (to avoid repeated slow winget calls)
+_pawnio_installed_cache = None
+_pawnio_cache_time = 0
+PAWNIO_CACHE_DURATION = 60  # Cache for 60 seconds
+
+
 def is_winget_available():
     """Check if winget is available on this system."""
     try:
@@ -208,8 +214,17 @@ def is_winget_available():
         return False
 
 
-def is_pawnio_installed():
-    """Check if PawnIO driver is installed."""
+def is_pawnio_installed(use_cache=True):
+    """Check if PawnIO driver is installed. Uses cache to avoid slow winget calls."""
+    global _pawnio_installed_cache, _pawnio_cache_time
+
+    # Return cached result if still valid
+    if use_cache and _pawnio_installed_cache is not None:
+        if time.time() - _pawnio_cache_time < PAWNIO_CACHE_DURATION:
+            debug_log(f"Using cached PawnIO status: {_pawnio_installed_cache}", "PawnIO")
+            return _pawnio_installed_cache
+
+    debug_log("Checking PawnIO installation (winget list)...", "PawnIO")
     try:
         result = subprocess.run(
             ['winget', 'list', '--id', 'namazso.PawnIO'],
@@ -218,10 +233,22 @@ def is_pawnio_installed():
         )
         installed = 'PawnIO' in result.stdout
         debug_log(f"Installed: {installed}", "PawnIO")
+
+        # Update cache
+        _pawnio_installed_cache = installed
+        _pawnio_cache_time = time.time()
+
         return installed
     except Exception as e:
         debug_log(f"Check error: {e}", "PawnIO")
         return False
+
+
+def clear_pawnio_cache():
+    """Clear the PawnIO installation cache (call after installation)."""
+    global _pawnio_installed_cache, _pawnio_cache_time
+    _pawnio_installed_cache = None
+    _pawnio_cache_time = 0
 
 
 def get_pawnio_installer_path():
@@ -1968,8 +1995,9 @@ def on_save():
                     parent=root
                 )
 
-    # Check if CPU thermal is enabled and PawnIO driver needs to be installed
-    if new_enable_cpu_thermal and not is_pawnio_installed():
+    # Check if CPU thermal is being NEWLY enabled and PawnIO driver needs to be installed
+    # Only check when changing from disabled to enabled (avoids slow winget check on every save)
+    if new_enable_cpu_thermal and not enable_cpu_thermal and not is_pawnio_installed():
         response = show_vapor_dialog(
             title="CPU Temperature Driver Required",
             message="CPU temperature monitoring requires the PawnIO driver.\n\n"
@@ -2033,6 +2061,9 @@ def on_save():
 
             # Run installer with progress updates
             install_success = install_pawnio_with_elevation(progress_callback=update_progress)
+
+            # Clear cache after installation attempt
+            clear_pawnio_cache()
 
             # Close installing dialog
             try:
