@@ -1303,6 +1303,10 @@ def get_cpu_temperature():
                 LHM_COMPUTER = Computer()
                 LHM_COMPUTER.IsCpuEnabled = True
                 LHM_COMPUTER.Open()
+                # Initial update and delay to let sensors populate
+                for hardware in LHM_COMPUTER.Hardware:
+                    hardware.Update()
+                time.sleep(0.5)  # Give sensors time to initialize
                 log("LibreHardwareMonitor initialized successfully", "TEMP")
 
             # Update all hardware (don't use visitor pattern - doesn't work well with pythonnet)
@@ -1313,17 +1317,26 @@ def get_cpu_temperature():
 
             for hardware in LHM_COMPUTER.Hardware:
                 if hardware.HardwareType == HardwareType.Cpu:
+                    # First try to find Package or Core temperature
                     for sensor in hardware.Sensors:
                         if sensor.SensorType == SensorType.Temperature:
                             name = str(sensor.Name)
-                            if "Package" in name or "Core" in name:
-                                if sensor.Value is not None:
-                                    return int(sensor.Value)
-                    # Fallback to any CPU temperature
+                            value = sensor.Value
+                            if ("Package" in name or "Core" in name) and value is not None and value > 0:
+                                return int(value)
+                    # Fallback to any CPU temperature with a valid reading
                     for sensor in hardware.Sensors:
                         if sensor.SensorType == SensorType.Temperature:
-                            if sensor.Value is not None:
-                                return int(sensor.Value)
+                            value = sensor.Value
+                            if value is not None and value > 0:
+                                return int(value)
+                    # Log available sensors for debugging if no valid reading found
+                    sensor_info = []
+                    for sensor in hardware.Sensors:
+                        if sensor.SensorType == SensorType.Temperature:
+                            sensor_info.append(f"{sensor.Name}={sensor.Value}")
+                    if sensor_info:
+                        log(f"CPU temp sensors found but no valid reading: {', '.join(sensor_info)}", "TEMP")
         except Exception as e:
             log(f"LibreHardwareMonitorLib read failed: {e}", "TEMP")
     elif not LHM_AVAILABLE:
