@@ -135,6 +135,22 @@ def restart_vapor_as_admin(main_pid):
 # PawnIO Driver Functions (for CPU temperature monitoring)
 # =============================================================================
 
+def is_winget_available():
+    """Check if winget is available on this system."""
+    try:
+        result = subprocess.run(
+            ['winget', '--version'],
+            capture_output=True, text=True, timeout=10,
+            creationflags=subprocess.CREATE_NO_WINDOW
+        )
+        available = result.returncode == 0
+        print(f"[Winget Check] Available: {available}, Version: {result.stdout.strip() if available else 'N/A'}")
+        return available
+    except Exception as e:
+        print(f"[Winget Check] Error: {e}")
+        return False
+
+
 def is_pawnio_installed():
     """Check if PawnIO driver is installed."""
     try:
@@ -143,8 +159,11 @@ def is_pawnio_installed():
             capture_output=True, text=True, timeout=15,
             creationflags=subprocess.CREATE_NO_WINDOW
         )
-        return 'PawnIO' in result.stdout
-    except Exception:
+        installed = 'PawnIO' in result.stdout
+        print(f"[PawnIO Check] Installed: {installed}")
+        return installed
+    except Exception as e:
+        print(f"[PawnIO Check] Error: {e}")
         return False
 
 
@@ -194,35 +213,53 @@ def install_pawnio_with_elevation(progress_callback=None):
 
     Returns True if installation succeeded.
     """
+    print("[PawnIO Install] Starting installation process...")
+
+    # Check if winget is available
+    if not is_winget_available():
+        print("[PawnIO Install] ERROR: winget not available!")
+        if progress_callback:
+            progress_callback("Error: Windows Package Manager (winget) not found", 0)
+        return False
+
     # First check if already installed
     if is_pawnio_installed():
+        print("[PawnIO Install] Already installed, skipping.")
         return True
 
     script_path = get_pawnio_installer_path()
+    print(f"[PawnIO Install] Script path: {script_path}")
+
     if not os.path.exists(script_path):
+        print("[PawnIO Install] ERROR: Script not found!")
+        if progress_callback:
+            progress_callback("Error: Installation script not found", 0)
         return False
 
+    process = None
     try:
         if progress_callback:
             progress_callback("Starting installation...", 5)
 
-        # If already running as admin, run directly without ShellExecute
+        # If already running as admin, run directly and capture output
         if is_admin():
-            # Run PowerShell directly with hidden window
+            print("[PawnIO Install] Running as admin, executing directly...")
+            # Run PowerShell directly and capture output for debugging
             process = subprocess.Popen(
                 [
                     'powershell.exe',
                     '-ExecutionPolicy', 'Bypass',
-                    '-WindowStyle', 'Hidden',
-                    '-File', script_path,
-                    '-Silent'
+                    '-File', script_path
+                    # Note: removed -Silent so we get output for debugging
                 ],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
+                text=True,
                 creationflags=subprocess.CREATE_NO_WINDOW
             )
         else:
             # Need elevation - use ShellExecuteW with 'runas'
+            print("[PawnIO Install] Not admin, requesting elevation...")
             if progress_callback:
                 progress_callback("Requesting administrator approval...", 5)
 
@@ -230,12 +267,14 @@ def install_pawnio_with_elevation(progress_callback=None):
                 None,
                 "runas",
                 "powershell.exe",
-                f'-ExecutionPolicy Bypass -WindowStyle Hidden -File "{script_path}" -Silent',
+                f'-ExecutionPolicy Bypass -File "{script_path}"',
                 os.path.dirname(script_path),
                 0  # SW_HIDE
             )
 
+            print(f"[PawnIO Install] ShellExecuteW result: {result}")
             if result <= 32:
+                print("[PawnIO Install] ERROR: ShellExecuteW failed!")
                 return False
 
         if progress_callback:
@@ -245,6 +284,26 @@ def install_pawnio_with_elevation(progress_callback=None):
         for i in range(45):
             time.sleep(2)
 
+            # Check if process completed (when running as admin)
+            if process is not None:
+                poll_result = process.poll()
+                if poll_result is not None:
+                    # Process finished, get output
+                    stdout, stderr = process.communicate()
+                    print(f"[PawnIO Install] Process exited with code: {poll_result}")
+                    if stdout:
+                        print(f"[PawnIO Install] stdout: {stdout}")
+                    if stderr:
+                        print(f"[PawnIO Install] stderr: {stderr}")
+
+                    if poll_result == 0:
+                        if progress_callback:
+                            progress_callback("Installation complete!", 100)
+                        return True
+                    else:
+                        print("[PawnIO Install] Process failed!")
+                        return False
+
             # Update progress
             if progress_callback:
                 pct = 15 + int((i / 45) * 80)  # Progress from 15% to 95%
@@ -253,12 +312,17 @@ def install_pawnio_with_elevation(progress_callback=None):
             if is_pawnio_installed():
                 if progress_callback:
                     progress_callback("Installation complete!", 100)
+                print("[PawnIO Install] Verified installed!")
                 return True
 
         # Final check
-        return is_pawnio_installed()
+        print("[PawnIO Install] Timeout reached, doing final check...")
+        result = is_pawnio_installed()
+        print(f"[PawnIO Install] Final result: {result}")
+        return result
 
     except Exception as e:
+        print(f"[PawnIO Install] ERROR: {e}")
         return False
 
 
