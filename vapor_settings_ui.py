@@ -177,7 +177,7 @@ def install_pawnio_silent():
 def install_pawnio_with_elevation():
     """
     Install PawnIO driver with UAC elevation prompt.
-    Shows a brief installing message, runs installer, verifies success.
+    Uses ShellExecuteW with 'runas' to properly trigger UAC.
     Returns True if installation succeeded.
     """
     # First check if already installed
@@ -189,42 +189,44 @@ def install_pawnio_with_elevation():
         return False
 
     try:
-        # Run elevated PowerShell with hidden window
-        # ShellExecuteW with 'runas' triggers UAC prompt
-
-        # Create a wrapper script that runs silently and signals completion
-        wrapper_content = f'''
-$ErrorActionPreference = "SilentlyContinue"
-Start-Process -FilePath "powershell.exe" -ArgumentList "-ExecutionPolicy Bypass -WindowStyle Hidden -File `"{script_path}`" -Silent" -Verb RunAs -Wait
-'''
-        wrapper_path = os.path.join(tempfile.gettempdir(), 'vapor_pawnio_install.ps1')
-        with open(wrapper_path, 'w') as f:
-            f.write(wrapper_content)
-
-        # Run the wrapper which triggers UAC and waits
-        result = subprocess.run(
-            [
-                'powershell.exe',
-                '-ExecutionPolicy', 'Bypass',
-                '-WindowStyle', 'Hidden',
-                '-File', wrapper_path
-            ],
-            capture_output=True,
-            timeout=180,  # 3 minute timeout
-            creationflags=subprocess.CREATE_NO_WINDOW
+        # Use ShellExecuteW with 'runas' to trigger UAC prompt
+        # This runs PowerShell elevated with the install script
+        result = ctypes.windll.shell32.ShellExecuteW(
+            None,
+            "runas",
+            "powershell.exe",
+            f'-ExecutionPolicy Bypass -WindowStyle Hidden -File "{script_path}" -Silent',
+            os.path.dirname(script_path),
+            0  # SW_HIDE - hide the PowerShell window
         )
 
-        # Clean up wrapper
-        try:
-            os.remove(wrapper_path)
-        except:
-            pass
-
-        # Verify installation
-        return is_pawnio_installed()
+        # ShellExecuteW returns > 32 on success (process was started)
+        if result > 32:
+            # Wait a bit for installation to complete
+            import time
+            # Check periodically if PawnIO is installed (up to 60 seconds)
+            for _ in range(30):
+                time.sleep(2)
+                if is_pawnio_installed():
+                    return True
+            # Final check
+            return is_pawnio_installed()
+        else:
+            return False
 
     except Exception:
         return False
+
+
+def set_vapor_icon(window):
+    """Set the Vapor icon on a window. Call this after window is created."""
+    icon_path = os.path.join(base_dir, 'Images', 'exe_icon.ico')
+    if os.path.exists(icon_path):
+        try:
+            # Use after() to ensure window is fully initialized
+            window.after(10, lambda: window.iconbitmap(icon_path))
+        except Exception:
+            pass
 
 
 # =============================================================================
@@ -270,13 +272,8 @@ def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=N
         dialog.transient(parent)
     dialog.grab_set()
 
-    # Set window icon AFTER transient relationship (important for CTkToplevel)
-    icon_path = os.path.join(base_dir, 'Images', 'exe_icon.ico')
-    if os.path.exists(icon_path):
-        try:
-            dialog.iconbitmap(icon_path)
-        except Exception:
-            pass
+    # Set Vapor icon
+    set_vapor_icon(dialog)
         # Also try after a short delay for reliability
         dialog.after(50, lambda: dialog.iconbitmap(icon_path) if dialog.winfo_exists() else None)
 
@@ -1727,6 +1724,7 @@ def on_save():
             installing_dialog.resizable(False, False)
             installing_dialog.transient(root)
             installing_dialog.grab_set()
+            set_vapor_icon(installing_dialog)
 
             # Center on parent
             installing_dialog.update_idletasks()
