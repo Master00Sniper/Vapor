@@ -983,6 +983,49 @@ def get_game_header_image(app_id):
     return None
 
 
+# Directory for cached game header images
+HEADER_IMAGE_CACHE_DIR = os.path.join(appdata_dir, 'images')
+os.makedirs(HEADER_IMAGE_CACHE_DIR, exist_ok=True)
+
+
+def get_cached_header_image_path(app_id):
+    """Get the path to the cached header image for a game."""
+    return os.path.join(HEADER_IMAGE_CACHE_DIR, f"{app_id}.jpg")
+
+
+def cache_game_header_image(app_id):
+    """Download and cache the game header image for later use.
+
+    Should be called when a game starts so the image is ready when the game ends.
+    Runs in the background to avoid blocking.
+    """
+    if app_id == 0:
+        return
+
+    cache_path = get_cached_header_image_path(app_id)
+
+    # Skip if already cached
+    if os.path.exists(cache_path):
+        log(f"Header image already cached for AppID {app_id}", "CACHE")
+        return
+
+    try:
+        # Get the image URL from Steam API
+        header_image_url = get_game_header_image(app_id)
+        if not header_image_url:
+            return
+
+        # Download the image
+        response = requests.get(header_image_url, timeout=10)
+        if response.status_code == 200:
+            # Save to cache
+            with open(cache_path, 'wb') as f:
+                f.write(response.content)
+            log(f"Cached header image for AppID {app_id}", "CACHE")
+    except Exception as e:
+        log(f"Failed to cache header image for AppID {app_id}: {e}", "ERROR")
+
+
 # =============================================================================
 # Process Management
 # =============================================================================
@@ -1202,44 +1245,25 @@ def show_detailed_summary(session_data):
         )
         game_label.pack(pady=(0, 10))
 
-        # Game header image placeholder - image loads asynchronously after window appears
-        image_container = ctk.CTkFrame(master=content_frame, fg_color="transparent")
-        image_container.pack(pady=(5, 10))
-        # Store image reference to prevent garbage collection
-        image_container.ctk_image = None
-
-        def fetch_and_display_image():
-            """Fetch image in background thread, then update GUI."""
+        # Game header image from cache (pre-downloaded when game started)
+        cached_image_path = get_cached_header_image_path(app_id) if app_id else None
+        if cached_image_path and os.path.exists(cached_image_path):
             try:
-                header_image_url = get_game_header_image(app_id) if app_id else None
-                if header_image_url:
-                    response = requests.get(header_image_url, timeout=5)
-                    if response.status_code == 200:
-                        img_data = BytesIO(response.content)
-                        pil_image = Image.open(img_data)
-                        # Resize to fit nicely (Steam headers are 460x215)
-                        aspect_ratio = pil_image.height / pil_image.width
-                        new_width = 400
-                        new_height = int(new_width * aspect_ratio)
-                        pil_image = pil_image.resize((new_width, new_height), Image.LANCZOS)
+                pil_image = Image.open(cached_image_path)
+                # Resize to fit nicely (Steam headers are 460x215)
+                # Scale to 400px wide while maintaining aspect ratio
+                aspect_ratio = pil_image.height / pil_image.width
+                new_width = 400
+                new_height = int(new_width * aspect_ratio)
+                pil_image = pil_image.resize((new_width, new_height), Image.LANCZOS)
 
-                        # Schedule GUI update on main thread
-                        def update_gui():
-                            try:
-                                ctk_image = ctk.CTkImage(light_image=pil_image, dark_image=pil_image,
-                                                         size=(new_width, new_height))
-                                image_container.ctk_image = ctk_image  # Keep reference
-                                image_label = ctk.CTkLabel(master=image_container, image=ctk_image, text="")
-                                image_label.pack()
-                            except Exception:
-                                pass  # Window may have been closed
-
-                        popup.after(0, update_gui)
+                ctk_image = ctk.CTkImage(light_image=pil_image, dark_image=pil_image,
+                                         size=(new_width, new_height))
+                image_label = ctk.CTkLabel(master=content_frame, image=ctk_image, text="")
+                image_label.image = ctk_image  # Keep reference to prevent garbage collection
+                image_label.pack(pady=(5, 10))
             except Exception as e:
-                log(f"Failed to load game header image: {e}", "NOTIFY")
-
-        # Start background thread to fetch image without blocking GUI
-        threading.Thread(target=fetch_and_display_image, daemon=True).start()
+                log(f"Failed to load cached game header image: {e}", "NOTIFY")
 
         # Separator
         sep1 = ctk.CTkFrame(master=content_frame, height=2, fg_color="gray50")
@@ -2272,6 +2296,8 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
                                              cpu_temp_critical_threshold, enable_gpu_temp_alert,
                                              gpu_temp_warning_threshold, gpu_temp_critical_threshold,
                                              game_name=current_game_name)
+        # Pre-cache game header image in background for session summary
+        threading.Thread(target=cache_game_header_image, args=(previous_app_id,), daemon=True).start()
     else:
         log("No game running at startup", "GAME")
 
@@ -2485,6 +2511,9 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
                                                              cpu_temp_critical_threshold, enable_gpu_temp_alert,
                                                              gpu_temp_warning_threshold, gpu_temp_critical_threshold,
                                                              game_name=game_name)
+
+                        # Pre-cache game header image in background for session summary
+                        threading.Thread(target=cache_game_header_image, args=(current_app_id,), daemon=True).start()
 
                         log(f"Game session started for: {game_name}", "GAME")
 
