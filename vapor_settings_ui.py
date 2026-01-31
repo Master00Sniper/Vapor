@@ -372,6 +372,7 @@ def set_vapor_icon(window):
     """Set the Vapor icon on a window. Call this after window is created."""
     icon_path = os.path.join(base_dir, 'Images', 'exe_icon.ico')
     if not os.path.exists(icon_path):
+        debug_log(f"Icon file not found: {icon_path}", "Icon")
         return
 
     def apply_icon():
@@ -381,17 +382,19 @@ def set_vapor_icon(window):
         except Exception:
             pass
 
-    # For CTkToplevel, we need to withdraw, set icon, then show
+    # Try setting icon immediately
     try:
-        window.withdraw()
         window.iconbitmap(icon_path)
-        window.deiconify()
     except Exception:
         pass
 
-    # Also schedule for later as backup
+    # CTkToplevel windows often need the icon set after they're fully rendered
+    # Schedule multiple attempts to ensure it sticks
     try:
+        window.after(10, apply_icon)
         window.after(50, apply_icon)
+        window.after(100, apply_icon)
+        window.after(200, apply_icon)
     except Exception:
         pass
 
@@ -438,9 +441,6 @@ def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=N
     if parent:
         dialog.transient(parent)
     dialog.grab_set()
-
-    # Set Vapor icon
-    set_vapor_icon(dialog)
 
     # Lift dialog to top and focus
     dialog.lift()
@@ -529,6 +529,10 @@ def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=N
 
     # Handle window close button (X)
     dialog.protocol("WM_DELETE_WINDOW", lambda: (result.__setitem__(0, None), dialog.destroy()))
+
+    # Update the dialog and set icon after all widgets are added
+    dialog.update()
+    set_vapor_icon(dialog)
 
     # Wait for dialog to close
     if parent:
@@ -1951,7 +1955,6 @@ def on_save():
             installing_dialog.resizable(False, False)
             installing_dialog.transient(root)
             installing_dialog.grab_set()
-            set_vapor_icon(installing_dialog)
 
             # Center on parent
             installing_dialog.update_idletasks()
@@ -1980,6 +1983,8 @@ def on_save():
             status_label.pack(padx=20, pady=(5, 15))
 
             installing_dialog.update()
+            # Set icon after all widgets added and window updated
+            set_vapor_icon(installing_dialog)
 
             # Progress callback to update the dialog
             def update_progress(message, pct):
