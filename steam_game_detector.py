@@ -171,6 +171,7 @@ except ImportError:
     WMI_AVAILABLE = False
 
 # HardwareMonitor package (PyPI) - handles LibreHardwareMonitor + PawnIO driver
+# Note: This may fail in PyInstaller builds if DLLs aren't bundled, falls back to manual DLL loading
 HWMON_AVAILABLE = False
 HWMON_COMPUTER = None
 CPU_TEMP_ERRORS_LOGGED = False  # Only log WMI/fallback errors once
@@ -178,7 +179,8 @@ try:
     from HardwareMonitor.Hardware import Computer, IVisitor, IComputer, IHardware, IParameter, ISensor
     from HardwareMonitor.Hardware import HardwareType, SensorType
     HWMON_AVAILABLE = True
-except ImportError:
+except Exception:
+    # Catches ImportError, FileNotFoundException, and any .NET exceptions
     pass
 
 # Fallback: LibreHardwareMonitorLib via pythonnet (bundled DLL approach)

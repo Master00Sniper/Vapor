@@ -44,6 +44,7 @@ import win32con
 import win11toast
 import ctypes
 import subprocess
+import tempfile
 
 try:
     from updater import CURRENT_VERSION
@@ -128,7 +129,7 @@ def is_pawnio_installed():
     try:
         result = subprocess.run(
             ['winget', 'list', '--id', 'PawnIO.PawnIO'],
-            capture_output=True, text=True, timeout=10,
+            capture_output=True, text=True, timeout=15,
             creationflags=subprocess.CREATE_NO_WINDOW
         )
         return 'PawnIO' in result.stdout
@@ -141,23 +142,87 @@ def get_pawnio_installer_path():
     return os.path.join(base_dir, 'install_pawnio.ps1')
 
 
-def run_pawnio_installer():
-    """Run the PawnIO installer script with admin privileges."""
+def install_pawnio_silent():
+    """
+    Install PawnIO driver silently with admin elevation.
+    Returns True if installation succeeded, False otherwise.
+    """
     script_path = get_pawnio_installer_path()
 
     if not os.path.exists(script_path):
         return False
 
     try:
-        result = ctypes.windll.shell32.ShellExecuteW(
-            None,
-            "runas",
-            "powershell.exe",
-            f'-ExecutionPolicy Bypass -File "{script_path}"',
-            os.path.dirname(script_path),
-            1  # SW_SHOWNORMAL
+        # Run PowerShell elevated and hidden, wait for completion
+        # Using -WindowStyle Hidden to hide the PowerShell window
+        result = subprocess.run(
+            [
+                'powershell.exe',
+                '-ExecutionPolicy', 'Bypass',
+                '-WindowStyle', 'Hidden',
+                '-File', script_path,
+                '-Silent'
+            ],
+            capture_output=True,
+            timeout=120,  # 2 minute timeout for winget install
+            creationflags=subprocess.CREATE_NO_WINDOW
         )
-        return result > 32
+        return result.returncode == 0
+    except subprocess.TimeoutExpired:
+        return False
+    except Exception:
+        return False
+
+
+def install_pawnio_with_elevation():
+    """
+    Install PawnIO driver with UAC elevation prompt.
+    Shows a brief installing message, runs installer, verifies success.
+    Returns True if installation succeeded.
+    """
+    # First check if already installed
+    if is_pawnio_installed():
+        return True
+
+    script_path = get_pawnio_installer_path()
+    if not os.path.exists(script_path):
+        return False
+
+    try:
+        # Run elevated PowerShell with hidden window
+        # ShellExecuteW with 'runas' triggers UAC prompt
+
+        # Create a wrapper script that runs silently and signals completion
+        wrapper_content = f'''
+$ErrorActionPreference = "SilentlyContinue"
+Start-Process -FilePath "powershell.exe" -ArgumentList "-ExecutionPolicy Bypass -WindowStyle Hidden -File `"{script_path}`" -Silent" -Verb RunAs -Wait
+'''
+        wrapper_path = os.path.join(tempfile.gettempdir(), 'vapor_pawnio_install.ps1')
+        with open(wrapper_path, 'w') as f:
+            f.write(wrapper_content)
+
+        # Run the wrapper which triggers UAC and waits
+        result = subprocess.run(
+            [
+                'powershell.exe',
+                '-ExecutionPolicy', 'Bypass',
+                '-WindowStyle', 'Hidden',
+                '-File', wrapper_path
+            ],
+            capture_output=True,
+            timeout=180,  # 3 minute timeout
+            creationflags=subprocess.CREATE_NO_WINDOW
+        )
+
+        # Clean up wrapper
+        try:
+            os.remove(wrapper_path)
+        except:
+            pass
+
+        # Verify installation
+        return is_pawnio_installed()
+
     except Exception:
         return False
 
@@ -1645,33 +1710,70 @@ def on_save():
         response = show_vapor_dialog(
             title="CPU Temperature Driver Required",
             message="CPU temperature monitoring requires the PawnIO driver.\n\n"
-                    "This driver provides low-level hardware access needed to\n"
-                    "read CPU temperature sensors.\n\n"
-                    "Would you like to install the PawnIO driver now?\n"
-                    "(Requires administrator approval)",
+                    "Click 'Install' to automatically install the driver.\n"
+                    "You will be prompted for administrator approval.",
             dialog_type="warning",
             buttons=[
-                {"text": "Install Driver", "value": True, "color": "green"},
+                {"text": "Install", "value": True, "color": "green"},
                 {"text": "Not Now", "value": False, "color": "gray"}
             ],
             parent=root
         )
         if response:
-            if run_pawnio_installer():
-                show_vapor_dialog(
-                    title="Driver Installation",
-                    message="The PawnIO driver installer has been launched.\n\n"
-                            "Please follow the prompts in the PowerShell window.\n"
-                            "After installation completes, restart Vapor for\n"
-                            "CPU temperature monitoring to work.",
+            # Show installing message
+            installing_dialog = ctk.CTkToplevel(root)
+            installing_dialog.title("Vapor - Installing Driver")
+            installing_dialog.geometry("350x120")
+            installing_dialog.resizable(False, False)
+            installing_dialog.transient(root)
+            installing_dialog.grab_set()
+
+            # Center on parent
+            installing_dialog.update_idletasks()
+            x = root.winfo_x() + (root.winfo_width() - 350) // 2
+            y = root.winfo_y() + (root.winfo_height() - 120) // 2
+            installing_dialog.geometry(f"+{x}+{y}")
+
+            msg_label = ctk.CTkLabel(
+                installing_dialog,
+                text="Installing PawnIO driver...\n\nPlease approve the administrator prompt.",
+                font=("Calibri", 13),
+                justify="center"
+            )
+            msg_label.pack(expand=True, padx=20, pady=20)
+
+            installing_dialog.update()
+
+            # Run silent installer with elevation
+            install_success = install_pawnio_with_elevation()
+
+            # Close installing dialog
+            installing_dialog.destroy()
+
+            if install_success:
+                # Ask user to restart Vapor
+                restart_response = show_vapor_dialog(
+                    title="Driver Installed",
+                    message="PawnIO driver installed successfully!\n\n"
+                            "Vapor needs to restart to enable CPU temperature monitoring.\n"
+                            "Restart now?",
                     dialog_type="info",
+                    buttons=[
+                        {"text": "Restart Vapor", "value": True, "color": "green"},
+                        {"text": "Later", "value": False, "color": "gray"}
+                    ],
                     parent=root
                 )
+                if restart_response:
+                    # Restart Vapor (already running as admin if we got here)
+                    if restart_vapor_as_admin(main_pid):
+                        root.destroy()
+                        return
             else:
                 show_vapor_dialog(
                     title="Installation Failed",
-                    message="Failed to launch the PawnIO driver installer.\n\n"
-                            "You can install it manually by running:\n"
+                    message="Failed to install the PawnIO driver.\n\n"
+                            "You can try installing it manually by running:\n"
                             "winget install PawnIO.PawnIO\n\n"
                             "in an administrator PowerShell window.",
                     dialog_type="error",
