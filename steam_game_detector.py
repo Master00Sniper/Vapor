@@ -620,6 +620,15 @@ def show_notification_warning_popup(reason="notifications_disabled"):
     # Create popup window
     popup = ctk.CTk()
 
+    # Register popup for cleanup on quit
+    register_popup(popup)
+
+    def on_close():
+        unregister_popup(popup)
+        popup.destroy()
+
+    popup.protocol("WM_DELETE_WINDOW", on_close)
+
     if reason == "do_not_disturb":
         popup.title("Vapor - Do Not Disturb Enabled")
         title_text = "Do Not Disturb is Enabled"
@@ -691,10 +700,12 @@ Windows Settings > System > Notifications"""
     button_frame.pack(pady=(0, 25))
 
     def on_ok():
+        unregister_popup(popup)
         popup.destroy()
 
     def on_dont_show_again():
         mark_notification_warning_dismissed()
+        unregister_popup(popup)
         popup.destroy()
 
     ok_button = ctk.CTkButton(
@@ -983,6 +994,49 @@ def get_game_header_image(app_id):
     return None
 
 
+# Directory for cached game header images
+HEADER_IMAGE_CACHE_DIR = os.path.join(appdata_dir, 'images')
+os.makedirs(HEADER_IMAGE_CACHE_DIR, exist_ok=True)
+
+
+def get_cached_header_image_path(app_id):
+    """Get the path to the cached header image for a game."""
+    return os.path.join(HEADER_IMAGE_CACHE_DIR, f"{app_id}.jpg")
+
+
+def cache_game_header_image(app_id):
+    """Download and cache the game header image for later use.
+
+    Should be called when a game starts so the image is ready when the game ends.
+    Runs in the background to avoid blocking.
+    """
+    if app_id == 0:
+        return
+
+    cache_path = get_cached_header_image_path(app_id)
+
+    # Skip if already cached
+    if os.path.exists(cache_path):
+        log(f"Header image already cached for AppID {app_id}", "CACHE")
+        return
+
+    try:
+        # Get the image URL from Steam API
+        header_image_url = get_game_header_image(app_id)
+        if not header_image_url:
+            return
+
+        # Download the image
+        response = requests.get(header_image_url, timeout=10)
+        if response.status_code == 200:
+            # Save to cache
+            with open(cache_path, 'wb') as f:
+                f.write(response.content)
+            log(f"Cached header image for AppID {app_id}", "CACHE")
+    except Exception as e:
+        log(f"Failed to cache header image for AppID {app_id}: {e}", "ERROR")
+
+
 # =============================================================================
 # Process Management
 # =============================================================================
@@ -1132,6 +1186,15 @@ def show_detailed_summary(session_data):
         popup = ctk.CTk()
         popup.title("Vapor - Game Session Details")
 
+        # Register popup for cleanup on quit
+        register_popup(popup)
+
+        def on_close():
+            unregister_popup(popup)
+            popup.destroy()
+
+        popup.protocol("WM_DELETE_WINDOW", on_close)
+
         # Window dimensions - similar to settings window, use screen-based height
         window_width = 550
         screen_height = popup.winfo_screenheight()
@@ -1171,7 +1234,7 @@ def show_detailed_summary(session_data):
         ok_button = ctk.CTkButton(
             master=button_container,
             text="OK",
-            command=popup.destroy,
+            command=on_close,
             width=150,
             height=35,
             corner_radius=10,
@@ -1202,44 +1265,25 @@ def show_detailed_summary(session_data):
         )
         game_label.pack(pady=(0, 10))
 
-        # Game header image placeholder - image loads asynchronously after window appears
-        image_container = ctk.CTkFrame(master=content_frame, fg_color="transparent")
-        image_container.pack(pady=(5, 10))
-        # Store image reference to prevent garbage collection
-        image_container.ctk_image = None
-
-        def fetch_and_display_image():
-            """Fetch image in background thread, then update GUI."""
+        # Game header image from cache (pre-downloaded when game started)
+        cached_image_path = get_cached_header_image_path(app_id) if app_id else None
+        if cached_image_path and os.path.exists(cached_image_path):
             try:
-                header_image_url = get_game_header_image(app_id) if app_id else None
-                if header_image_url:
-                    response = requests.get(header_image_url, timeout=5)
-                    if response.status_code == 200:
-                        img_data = BytesIO(response.content)
-                        pil_image = Image.open(img_data)
-                        # Resize to fit nicely (Steam headers are 460x215)
-                        aspect_ratio = pil_image.height / pil_image.width
-                        new_width = 400
-                        new_height = int(new_width * aspect_ratio)
-                        pil_image = pil_image.resize((new_width, new_height), Image.LANCZOS)
+                pil_image = Image.open(cached_image_path)
+                # Resize to fit nicely (Steam headers are 460x215)
+                # Scale to 400px wide while maintaining aspect ratio
+                aspect_ratio = pil_image.height / pil_image.width
+                new_width = 400
+                new_height = int(new_width * aspect_ratio)
+                pil_image = pil_image.resize((new_width, new_height), Image.LANCZOS)
 
-                        # Schedule GUI update on main thread
-                        def update_gui():
-                            try:
-                                ctk_image = ctk.CTkImage(light_image=pil_image, dark_image=pil_image,
-                                                         size=(new_width, new_height))
-                                image_container.ctk_image = ctk_image  # Keep reference
-                                image_label = ctk.CTkLabel(master=image_container, image=ctk_image, text="")
-                                image_label.pack()
-                            except Exception:
-                                pass  # Window may have been closed
-
-                        popup.after(0, update_gui)
+                ctk_image = ctk.CTkImage(light_image=pil_image, dark_image=pil_image,
+                                         size=(new_width, new_height))
+                image_label = ctk.CTkLabel(master=content_frame, image=ctk_image, text="")
+                image_label.image = ctk_image  # Keep reference to prevent garbage collection
+                image_label.pack(pady=(5, 10))
             except Exception as e:
-                log(f"Failed to load game header image: {e}", "NOTIFY")
-
-        # Start background thread to fetch image without blocking GUI
-        threading.Thread(target=fetch_and_display_image, daemon=True).start()
+                log(f"Failed to load cached game header image: {e}", "NOTIFY")
 
         # Separator
         sep1 = ctk.CTkFrame(master=content_frame, height=2, fg_color="gray50")
@@ -1936,6 +1980,34 @@ class TemperatureTracker:
 # Global temperature tracker instance
 temperature_tracker = TemperatureTracker()
 
+# Track open popup windows for cleanup on quit
+_open_popups = []
+_open_popups_lock = threading.Lock()
+
+
+def register_popup(popup):
+    """Register a popup window for cleanup on quit."""
+    with _open_popups_lock:
+        _open_popups.append(popup)
+
+
+def unregister_popup(popup):
+    """Unregister a popup window when it's closed."""
+    with _open_popups_lock:
+        if popup in _open_popups:
+            _open_popups.remove(popup)
+
+
+def close_all_popups():
+    """Close all registered popup windows."""
+    with _open_popups_lock:
+        for popup in _open_popups[:]:  # Copy list to avoid modification during iteration
+            try:
+                popup.after(0, popup.destroy)
+            except Exception:
+                pass
+        _open_popups.clear()
+
 
 # =============================================================================
 # Temperature History Logging
@@ -2272,6 +2344,8 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
                                              cpu_temp_critical_threshold, enable_gpu_temp_alert,
                                              gpu_temp_warning_threshold, gpu_temp_critical_threshold,
                                              game_name=current_game_name)
+        # Pre-cache game header image in background for session summary
+        threading.Thread(target=cache_game_header_image, args=(previous_app_id,), daemon=True).start()
     else:
         log("No game running at startup", "GAME")
 
@@ -2486,6 +2560,9 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
                                                              gpu_temp_warning_threshold, gpu_temp_critical_threshold,
                                                              game_name=game_name)
 
+                        # Pre-cache game header image in background for session summary
+                        threading.Thread(target=cache_game_header_image, args=(current_app_id,), daemon=True).start()
+
                         log(f"Game session started for: {game_name}", "GAME")
 
                 previous_app_id = current_app_id
@@ -2520,6 +2597,10 @@ def quit_app(icon, query):
     """Shut down Vapor gracefully."""
     log("Quit requested - shutting down...", "SHUTDOWN")
     stop_event.set()
+
+    # Close any open popup windows to release file handles
+    close_all_popups()
+
     try:
         keyboard.unhook_all()
     except:
@@ -2531,6 +2612,10 @@ def quit_app(icon, query):
             ctypes.windll.kernel32.FreeConsole()
     except:
         pass
+
+    # Brief delay to allow background threads to clean up
+    time.sleep(0.5)
+
     icon.stop()
 
 
