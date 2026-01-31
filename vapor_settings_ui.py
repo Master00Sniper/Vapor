@@ -2001,16 +2001,20 @@ def on_save():
         response = show_vapor_dialog(
             title="CPU Temperature Driver Required",
             message="CPU temperature monitoring requires the PawnIO driver.\n\n"
+                    "PawnIO is a secure, signed kernel driver that allows applications\n"
+                    "to safely read hardware sensors like CPU temperatures. It replaces\n"
+                    "the older WinRing0 driver which is now flagged by antivirus software.\n\n"
+                    "Learn more: https://pawnio.eu\n\n"
                     "Click 'Install' to automatically install the driver.\n"
                     "You will be prompted for administrator approval.",
             dialog_type="warning",
             buttons=[
-                {"text": "Install", "value": True, "color": "green"},
-                {"text": "Not Now", "value": False, "color": "gray"}
+                {"text": "Install", "value": "install", "color": "green"},
+                {"text": "Not Now", "value": "cancel", "color": "gray"}
             ],
             parent=root
         )
-        if response:
+        if response == "install":
             # Show installing message with progress bar
             installing_dialog = ctk.CTkToplevel(root)
             installing_dialog.title("Vapor - Installing Driver")
@@ -2101,6 +2105,11 @@ def on_save():
                     dialog_type="error",
                     parent=root
                 )
+                # Installation failed - toggle CPU temp switch back to disabled
+                enable_cpu_thermal_var.set(False)
+        else:
+            # User clicked "Not Now" - toggle CPU temp switch back to disabled
+            enable_cpu_thermal_var.set(False)
 
     # Check if debug mode was changed - requires restart to take effect
     if new_enable_debug_mode != enable_debug_mode:
