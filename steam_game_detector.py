@@ -173,6 +173,7 @@ except ImportError:
 # LibreHardwareMonitorLib via pythonnet (bundled DLL for CPU temps without external app)
 LHM_AVAILABLE = False
 LHM_COMPUTER = None
+CPU_TEMP_ERRORS_LOGGED = False  # Only log WMI/fallback errors once
 try:
     import clr
     import System
@@ -1302,84 +1303,37 @@ def get_cpu_temperature():
                 log("Initializing LibreHardwareMonitor Computer object...", "TEMP")
                 LHM_COMPUTER = Computer()
                 LHM_COMPUTER.IsCpuEnabled = True
-                LHM_COMPUTER.IsMotherboardEnabled = True  # AMD CPUs often report temps via motherboard
                 LHM_COMPUTER.Open()
-                # Multiple updates with delay for AMD CPUs (Tctl/Tdie sensors need time)
-                for _ in range(3):
-                    for hardware in LHM_COMPUTER.Hardware:
-                        hardware.Update()
-                        for subhardware in hardware.SubHardware:
-                            subhardware.Update()
-                    time.sleep(0.5)
+                # Single update cycle with brief delay
+                for hardware in LHM_COMPUTER.Hardware:
+                    hardware.Update()
+                    for subhardware in hardware.SubHardware:
+                        subhardware.Update()
+                time.sleep(0.2)
                 log("LibreHardwareMonitor initialized successfully", "TEMP")
 
-            # Update all hardware (don't use visitor pattern - doesn't work well with pythonnet)
+            # Update all hardware
             for hardware in LHM_COMPUTER.Hardware:
                 hardware.Update()
                 for subhardware in hardware.SubHardware:
                     subhardware.Update()
 
-            # Helper function to find temp in a hardware object
-            def find_cpu_temp(hw, require_cpu_name=False):
-                # First try Package or Core/Tctl temperature
-                for sensor in hw.Sensors:
-                    if sensor.SensorType == SensorType.Temperature:
-                        name = str(sensor.Name)
-                        value = sensor.Value
-                        if value is not None and value > 0:
-                            # Prioritize Package, Tctl, Tdie, or Core temps
-                            if "Package" in name or "Tctl" in name or "Tdie" in name:
-                                return int(value)
-                            if "Core" in name and (not require_cpu_name or "CPU" in name):
-                                return int(value)
-                # Fallback to any CPU-related temperature with valid reading
-                for sensor in hw.Sensors:
-                    if sensor.SensorType == SensorType.Temperature:
-                        name = str(sensor.Name)
-                        value = sensor.Value
-                        if value is not None and value > 0:
-                            if not require_cpu_name or "CPU" in name:
-                                return int(value)
-                return None
-
-            # First check CPU hardware
+            # Look for CPU temperature
             for hardware in LHM_COMPUTER.Hardware:
                 if hardware.HardwareType == HardwareType.Cpu:
-                    # Check main hardware
-                    temp = find_cpu_temp(hardware)
-                    if temp:
-                        return temp
-                    # Check subhardware (some CPUs report temps here)
-                    for subhardware in hardware.SubHardware:
-                        temp = find_cpu_temp(subhardware)
-                        if temp:
-                            return temp
-
-            # Fallback: Check motherboard for CPU temperature (common on AMD)
-            for hardware in LHM_COMPUTER.Hardware:
-                if hardware.HardwareType == HardwareType.Motherboard:
-                    # Look for CPU temp in motherboard sensors
-                    temp = find_cpu_temp(hardware, require_cpu_name=True)
-                    if temp:
-                        return temp
-                    for subhardware in hardware.SubHardware:
-                        temp = find_cpu_temp(subhardware, require_cpu_name=True)
-                        if temp:
-                            return temp
-
-            # Log all available temperature sensors for debugging
-            sensor_info = []
-            for hardware in LHM_COMPUTER.Hardware:
-                hw_type = str(hardware.HardwareType)
-                for sensor in hardware.Sensors:
-                    if sensor.SensorType == SensorType.Temperature:
-                        sensor_info.append(f"{hw_type}/{sensor.Name}={sensor.Value}")
-                for subhw in hardware.SubHardware:
-                    for sensor in subhw.Sensors:
+                    # Check all temperature sensors
+                    for sensor in hardware.Sensors:
                         if sensor.SensorType == SensorType.Temperature:
-                            sensor_info.append(f"{hw_type}/{subhw.Name}/{sensor.Name}={sensor.Value}")
-            if sensor_info:
-                log(f"CPU temp sensors found but no valid reading: {', '.join(sensor_info)}", "TEMP")
+                            value = sensor.Value
+                            if value is not None and value > 0:
+                                return int(value)
+                    # Check subhardware
+                    for subhardware in hardware.SubHardware:
+                        for sensor in subhardware.Sensors:
+                            if sensor.SensorType == SensorType.Temperature:
+                                value = sensor.Value
+                                if value is not None and value > 0:
+                                    return int(value)
         except Exception as e:
             log(f"LibreHardwareMonitorLib read failed: {e}", "TEMP")
     elif not LHM_AVAILABLE:
@@ -1388,6 +1342,7 @@ def get_cpu_temperature():
         pass  # Silently skip - admin status already logged at startup
 
     # Fallback: Try WMI with external LibreHardwareMonitor/OpenHardwareMonitor
+    global CPU_TEMP_ERRORS_LOGGED
     if WMI_AVAILABLE:
         # Try LibreHardwareMonitor WMI
         try:
@@ -1400,8 +1355,8 @@ def get_cpu_temperature():
             for sensor in sensors:
                 if sensor.SensorType == "Temperature" and "CPU" in sensor.Name:
                     return int(sensor.Value)
-        except Exception as e:
-            log(f"LibreHardwareMonitor WMI not available: {e}", "TEMP")
+        except Exception:
+            pass  # WMI namespace not available
 
         # Try OpenHardwareMonitor WMI
         try:
@@ -1414,8 +1369,8 @@ def get_cpu_temperature():
             for sensor in sensors:
                 if sensor.SensorType == "Temperature" and "CPU" in sensor.Name:
                     return int(sensor.Value)
-        except Exception as e:
-            log(f"OpenHardwareMonitor WMI not available: {e}", "TEMP")
+        except Exception:
+            pass  # WMI namespace not available
 
         # Fallback: Try Windows native thermal zone (requires admin)
         if is_admin():
@@ -1429,8 +1384,13 @@ def get_cpu_temperature():
                             celsius = (temp.CurrentTemperature / 10.0) - 273.15
                             if 0 < celsius < 150:  # Sanity check for valid temp range
                                 return int(celsius)
-            except Exception as e:
-                log(f"Windows thermal zone not available: {e}", "TEMP")
+            except Exception:
+                pass  # Thermal zone not available
+
+    # Log once that CPU temp is unavailable
+    if not CPU_TEMP_ERRORS_LOGGED:
+        log("CPU temperature monitoring unavailable on this system", "TEMP")
+        CPU_TEMP_ERRORS_LOGGED = True
 
     return None
 
