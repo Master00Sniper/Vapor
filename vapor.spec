@@ -56,7 +56,7 @@ a.datas += Tree('Images', prefix='Images')
 
 # Add sound files for critical temperature alerts
 # Create a 'sounds' folder with critical_alert.wav, then uncomment:
-# a.datas += Tree('sounds', prefix='sounds')
+a.datas += Tree('sounds', prefix='sounds')
 
 pyz = PYZ(a.pure)
 
