@@ -1914,7 +1914,7 @@ button_frame.grid_columnconfigure(4, weight=1)
 
 
 def on_save():
-    """Save current settings to file."""
+    """Save current settings to file. Returns True if saved successfully, False if cancelled."""
     debug_log("Save button clicked", "Settings")
     new_selected_notification_apps = [name for name, var in switch_vars.items() if var.get()]
     raw_customs = [c.strip() for c in custom_entry.get().split(',') if c.strip()]
@@ -2014,18 +2014,18 @@ def on_save():
             dialog_type="warning",
             buttons=[
                 {"text": "Restart as Admin", "value": True, "color": "green"},
-                {"text": "Not Now", "value": False, "color": "gray"}
+                {"text": "Cancel", "value": False, "color": "gray"}
             ],
             parent=root
         )
-        if response:
+        if response is True:
             # User agreed to restart with admin
             # Set flag to trigger PawnIO check after restart
             set_pending_pawnio_check(True)
             if restart_vapor(main_pid, require_admin=True):
                 # Successfully requested elevation, close settings window
                 root.destroy()
-                return
+                return True
             else:
                 # Restart failed, clear the pending flag
                 set_pending_pawnio_check(False)
@@ -2040,10 +2040,12 @@ def on_save():
                 )
                 # Elevation failed - toggle CPU temp switch back to disabled
                 enable_cpu_thermal_var.set(False)
+                return False
         else:
-            # User clicked "Not Now" - toggle CPU temp switch back to disabled
+            # User clicked "Cancel" or closed dialog - toggle CPU temp switch back to disabled
+            # Return False to indicate save was cancelled (settings window stays open)
             enable_cpu_thermal_var.set(False)
-            return
+            return False
 
     # Check if CPU thermal is being NEWLY enabled and PawnIO driver needs to be installed
     # Only check when changing from disabled to enabled (avoids slow winget check on every save)
@@ -2143,7 +2145,7 @@ def on_save():
                     # Restart Vapor (already running as admin if we got here)
                     if restart_vapor(main_pid, require_admin=False):
                         root.destroy()
-                        return
+                        return True
             else:
                 show_vapor_dialog(
                     title="Installation Failed",
@@ -2180,14 +2182,17 @@ def on_save():
         if response:
             restart_vapor(main_pid, require_admin=False)
             root.destroy()
-            return
+            return True
+
+    return True
 
 
 def on_save_and_close():
     """Save settings and close the window."""
     debug_log("Save & Close clicked", "Settings")
-    on_save()
-    root.destroy()
+    if on_save():
+        root.destroy()
+    # If on_save() returns False, the user cancelled - keep window open
 
 
 def on_discard_and_close():
