@@ -1037,6 +1037,78 @@ def cache_game_header_image(app_id):
         log(f"Failed to cache header image for AppID {app_id}: {e}", "ERROR")
 
 
+# Pre-loaded image for instant popup display
+_preloaded_header_image = None
+_preloaded_header_image_lock = threading.Lock()
+
+
+def preload_header_image(app_id):
+    """Pre-load and resize the header image into memory for instant display.
+
+    Should be called after cache_game_header_image() completes.
+    """
+    global _preloaded_header_image
+    from PIL import Image
+
+    if app_id == 0:
+        return
+
+    cache_path = get_cached_header_image_path(app_id)
+    if not os.path.exists(cache_path):
+        return
+
+    try:
+        pil_image = Image.open(cache_path)
+        # Pre-resize to the exact size needed for the popup
+        aspect_ratio = pil_image.height / pil_image.width
+        new_width = 400
+        new_height = int(new_width * aspect_ratio)
+        pil_image = pil_image.resize((new_width, new_height), Image.LANCZOS)
+
+        with _preloaded_header_image_lock:
+            _preloaded_header_image = pil_image
+        log(f"Pre-loaded header image for AppID {app_id}", "CACHE")
+    except Exception as e:
+        log(f"Failed to pre-load header image: {e}", "ERROR")
+
+
+def get_preloaded_header_image():
+    """Get the pre-loaded header image (or None if not available)."""
+    global _preloaded_header_image
+    with _preloaded_header_image_lock:
+        img = _preloaded_header_image
+        _preloaded_header_image = None  # Clear after use
+        return img
+
+
+def warmup_customtkinter():
+    """Pre-initialize CustomTkinter by creating and destroying a hidden window.
+
+    This loads themes, fonts, etc. so the actual popup appears faster.
+    """
+    try:
+        import customtkinter as ctk
+        # Create a tiny hidden window to trigger CTk initialization
+        root = ctk.CTk()
+        root.withdraw()  # Hide immediately
+        root.update()    # Process initialization
+        root.destroy()   # Clean up
+        log("CustomTkinter pre-initialized", "CACHE")
+    except Exception as e:
+        log(f"Failed to pre-initialize CustomTkinter: {e}", "ERROR")
+
+
+def prepare_session_popup(app_id):
+    """Background task to prepare everything needed for the session popup.
+
+    Called when a game starts. Downloads/caches image, pre-loads it into memory,
+    and warms up CustomTkinter so the popup appears instantly when the game ends.
+    """
+    cache_game_header_image(app_id)
+    preload_header_image(app_id)
+    warmup_customtkinter()
+
+
 # =============================================================================
 # Process Management
 # =============================================================================
@@ -1277,25 +1349,33 @@ def show_detailed_summary(session_data):
         )
         game_label.pack(pady=(0, 10))
 
-        # Game header image from cache (pre-downloaded when game started)
-        cached_image_path = get_cached_header_image_path(app_id) if app_id else None
-        if cached_image_path and os.path.exists(cached_image_path):
-            try:
-                pil_image = Image.open(cached_image_path)
-                # Resize to fit nicely (Steam headers are 460x215)
-                # Scale to 400px wide while maintaining aspect ratio
-                aspect_ratio = pil_image.height / pil_image.width
-                new_width = 400
-                new_height = int(new_width * aspect_ratio)
-                pil_image = pil_image.resize((new_width, new_height), Image.LANCZOS)
+        # Game header image (try pre-loaded first, fall back to cache)
+        pil_image = get_preloaded_header_image()
+        if pil_image is None and app_id:
+            # Fallback: load from cache if pre-loaded image not available
+            cached_image_path = get_cached_header_image_path(app_id)
+            if cached_image_path and os.path.exists(cached_image_path):
+                try:
+                    pil_image = Image.open(cached_image_path)
+                    aspect_ratio = pil_image.height / pil_image.width
+                    new_width = 400
+                    new_height = int(new_width * aspect_ratio)
+                    pil_image = pil_image.resize((new_width, new_height), Image.LANCZOS)
+                except Exception as e:
+                    log(f"Failed to load cached game header image: {e}", "NOTIFY")
+                    pil_image = None
 
+        if pil_image is not None:
+            try:
+                new_width = pil_image.width
+                new_height = pil_image.height
                 ctk_image = ctk.CTkImage(light_image=pil_image, dark_image=pil_image,
                                          size=(new_width, new_height))
                 image_label = ctk.CTkLabel(master=content_frame, image=ctk_image, text="")
                 image_label.image = ctk_image  # Keep reference to prevent garbage collection
                 image_label.pack(pady=(5, 10))
             except Exception as e:
-                log(f"Failed to load cached game header image: {e}", "NOTIFY")
+                log(f"Failed to display game header image: {e}", "NOTIFY")
 
         # Separator
         sep1 = ctk.CTkFrame(master=content_frame, height=2, fg_color="gray50")
@@ -2374,8 +2454,8 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
                                              cpu_temp_critical_threshold, enable_gpu_temp_alert,
                                              gpu_temp_warning_threshold, gpu_temp_critical_threshold,
                                              game_name=current_game_name)
-        # Pre-cache game header image in background for session summary
-        threading.Thread(target=cache_game_header_image, args=(previous_app_id,), daemon=True).start()
+        # Pre-cache image, pre-load into memory, and warm up CTk for instant session popup
+        threading.Thread(target=prepare_session_popup, args=(previous_app_id,), daemon=True).start()
     else:
         log("No game running at startup", "GAME")
 
@@ -2590,8 +2670,8 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
                                                              gpu_temp_warning_threshold, gpu_temp_critical_threshold,
                                                              game_name=game_name)
 
-                        # Pre-cache game header image in background for session summary
-                        threading.Thread(target=cache_game_header_image, args=(current_app_id,), daemon=True).start()
+                        # Pre-cache image, pre-load into memory, and warm up CTk for instant session popup
+                        threading.Thread(target=prepare_session_popup, args=(current_app_id,), daemon=True).start()
 
                         log(f"Game session started for: {game_name}", "GAME")
 
