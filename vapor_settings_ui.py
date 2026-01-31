@@ -1994,6 +1994,12 @@ def on_save():
                     dialog_type="error",
                     parent=root
                 )
+                # Elevation failed - toggle CPU temp switch back to disabled
+                enable_cpu_thermal_var.set(False)
+        else:
+            # User clicked "Not Now" - toggle CPU temp switch back to disabled
+            enable_cpu_thermal_var.set(False)
+            return
 
     # Check if CPU thermal is being NEWLY enabled and PawnIO driver needs to be installed
     # Only check when changing from disabled to enabled (avoids slow winget check on every save)
