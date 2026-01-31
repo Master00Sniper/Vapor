@@ -31,13 +31,49 @@ pending_update_path = None
 
 
 # =============================================================================
-# Utility Functions
+# Logging
 # =============================================================================
 
+# Log file for debugging (stored in %APPDATA%/Vapor)
+_appdata_dir = os.path.join(os.getenv('APPDATA', ''), 'Vapor')
+os.makedirs(_appdata_dir, exist_ok=True)
+DEBUG_LOG_FILE = os.path.join(_appdata_dir, 'vapor_updater.log')
+
+# Maximum log file size (2 MB) - will be truncated when exceeded
+MAX_LOG_SIZE = 2 * 1024 * 1024
+
+
 def log(message, category="UPDATE"):
-    """Print timestamped log message."""
-    timestamp = time.strftime("%H:%M:%S")
-    print(f"[{timestamp}] [{category}] {message}")
+    """Print timestamped log message and write to log file."""
+    timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+    formatted = f"[{timestamp}] [{category}] {message}"
+
+    # Print to console (if available)
+    try:
+        print(formatted)
+    except (OSError, ValueError):
+        pass
+
+    # Also write to log file
+    try:
+        # Check if log file is too large and truncate if needed
+        if os.path.exists(DEBUG_LOG_FILE):
+            if os.path.getsize(DEBUG_LOG_FILE) > MAX_LOG_SIZE:
+                # Keep last 500 lines
+                with open(DEBUG_LOG_FILE, 'r', encoding='utf-8', errors='ignore') as f:
+                    lines = f.readlines()[-500:]
+                with open(DEBUG_LOG_FILE, 'w', encoding='utf-8') as f:
+                    f.writelines(lines)
+
+        with open(DEBUG_LOG_FILE, 'a', encoding='utf-8') as f:
+            f.write(f"{formatted}\n")
+    except Exception:
+        pass
+
+
+# =============================================================================
+# Utility Functions
+# =============================================================================
 
 
 def is_development_mode():

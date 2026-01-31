@@ -65,6 +65,9 @@ TRAY_ICON_PATH = os.path.join(base_dir, 'Images', 'tray_icon.png')
 # Log file for debugging
 DEBUG_LOG_FILE = os.path.join(appdata_dir, 'vapor_settings_debug.log')
 
+# Maximum log file size (2 MB) - will be truncated when exceeded
+MAX_LOG_SIZE = 2 * 1024 * 1024
+
 
 def debug_log(message, category="General"):
     """Write a debug message to the console and log file."""
@@ -79,6 +82,15 @@ def debug_log(message, category="General"):
 
     # Also write to file as backup
     try:
+        # Check if log file is too large and truncate if needed
+        if os.path.exists(DEBUG_LOG_FILE):
+            if os.path.getsize(DEBUG_LOG_FILE) > MAX_LOG_SIZE:
+                # Keep last 500 lines
+                with open(DEBUG_LOG_FILE, 'r', encoding='utf-8', errors='ignore') as f:
+                    lines = f.readlines()[-500:]
+                with open(DEBUG_LOG_FILE, 'w', encoding='utf-8') as f:
+                    f.writelines(lines)
+
         with open(DEBUG_LOG_FILE, 'a', encoding='utf-8') as f:
             f.write(f"{formatted}\n")
     except Exception:
