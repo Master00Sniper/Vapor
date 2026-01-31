@@ -29,10 +29,12 @@ else:
 os.chdir(application_path)
 sys.path.append(application_path)
 
-# Import shared utilities (logging, constants, paths)
+# Import shared utilities (logging, constants, paths, settings)
 from utils import (
     base_dir, appdata_dir, SETTINGS_FILE,
-    TRAY_ICON_PATH, PROTECTED_PROCESSES, log
+    TRAY_ICON_PATH, PROTECTED_PROCESSES, log,
+    load_settings as load_settings_dict, save_settings as save_settings_dict,
+    DEFAULT_SETTINGS, set_setting
 )
 
 # Alias for backward compatibility with existing code
@@ -648,34 +650,8 @@ BUILT_IN_RESOURCE_APPS = [
 # =============================================================================
 
 def load_settings():
-    """Load settings from file or return defaults."""
-    if os.path.exists(SETTINGS_FILE):
-        debug_log(f"Loading settings from {SETTINGS_FILE}", "Settings")
-        with open(SETTINGS_FILE, 'r') as f:
-            return json.load(f)
-    else:
-        debug_log("Settings file not found, using defaults", "Settings")
-        default_selected = ["WhatsApp", "Telegram", "Microsoft Teams", "Facebook Messenger", "Slack", "Signal",
-                            "WeChat"]
-        default_resource_selected = ["Spotify", "OneDrive", "Google Drive", "Dropbox", "Wallpaper Engine",
-                                     "iCUE", "Razer Synapse", "NZXT CAM"]
-        return {'selected_notification_apps': default_selected, 'custom_processes': [],
-                'selected_resource_apps': default_resource_selected, 'custom_resource_processes': [],
-                'launch_at_startup': False, 'launch_settings_on_start': True,
-                'close_on_startup': True, 'close_on_hotkey': True, 'relaunch_on_exit': True,
-                'resource_close_on_startup': True, 'resource_close_on_hotkey': True, 'resource_relaunch_on_exit': False,
-                'enable_playtime_summary': True, 'playtime_summary_mode': 'brief',
-                'enable_debug_mode': False, 'system_audio_level': 33,
-                'enable_system_audio': False,
-                'game_audio_level': 100, 'enable_game_audio': False,
-                'enable_during_power': False, 'during_power_plan': 'High Performance',
-                'enable_after_power': False, 'after_power_plan': 'Balanced',
-                'enable_game_mode_start': True, 'enable_game_mode_end': False,
-                'enable_cpu_thermal': False, 'enable_gpu_thermal': True,
-                'enable_cpu_temp_alert': False, 'cpu_temp_warning_threshold': 85,
-                'cpu_temp_critical_threshold': 95,
-                'enable_gpu_temp_alert': False, 'gpu_temp_warning_threshold': 80,
-                'gpu_temp_critical_threshold': 90}
+    """Load settings from file or return defaults. Uses shared settings module."""
+    return load_settings_dict()
 
 
 def save_settings(selected_notification_apps, customs, selected_resource_apps, resource_customs, launch_startup,
@@ -688,7 +664,7 @@ def save_settings(selected_notification_apps, customs, selected_resource_apps, r
                   cpu_temp_critical_threshold, enable_gpu_temp_alert, gpu_temp_warning_threshold,
                   gpu_temp_critical_threshold):
     """Save all settings to the JSON configuration file."""
-    # Build process lists from selected apps
+    # Build process lists from selected apps (UI-specific logic)
     notification_processes = []
     for app in BUILT_IN_APPS:
         if app['display_name'] in selected_notification_apps:
@@ -701,6 +677,7 @@ def save_settings(selected_notification_apps, customs, selected_resource_apps, r
             resource_processes.extend(app['processes'])
     resource_processes.extend(resource_customs)
 
+    # Build settings dict and save using shared module
     settings = {
         'notification_processes': notification_processes,
         'selected_notification_apps': selected_notification_apps,
@@ -738,25 +715,14 @@ def save_settings(selected_notification_apps, customs, selected_resource_apps, r
         'gpu_temp_warning_threshold': gpu_temp_warning_threshold,
         'gpu_temp_critical_threshold': gpu_temp_critical_threshold
     }
-    with open(SETTINGS_FILE, 'w') as f:
-        json.dump(settings, f)
-    debug_log(f"Settings saved to {SETTINGS_FILE}", "Settings")
+    save_settings_dict(settings)
 
 
 def set_pending_pawnio_check(value=True):
     """Set or clear the pending PawnIO check flag in settings.
     This flag triggers automatic PawnIO installation prompt after admin restart."""
     debug_log(f"Setting pending_pawnio_check to {value}", "Settings")
-    try:
-        settings = {}
-        if os.path.exists(SETTINGS_FILE):
-            with open(SETTINGS_FILE, 'r') as f:
-                settings = json.load(f)
-        settings['pending_pawnio_check'] = value
-        with open(SETTINGS_FILE, 'w') as f:
-            json.dump(settings, f)
-    except Exception as e:
-        debug_log(f"Error setting pending_pawnio_check: {e}", "Settings")
+    set_setting('pending_pawnio_check', value)
 
 
 # =============================================================================

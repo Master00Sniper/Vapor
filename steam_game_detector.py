@@ -424,10 +424,12 @@ else:
 os.chdir(application_path)
 sys.path.append(application_path)
 
-# Import shared utilities (logging, constants, paths)
+# Import shared utilities (logging, constants, paths, settings)
 from utils import (
     base_dir, appdata_dir, SETTINGS_FILE, DEBUG_LOG_FILE,
-    MAX_LOG_SIZE, TRAY_ICON_PATH, PROTECTED_PROCESSES, log
+    MAX_LOG_SIZE, TRAY_ICON_PATH, PROTECTED_PROCESSES, log,
+    load_settings as load_settings_dict, save_settings as save_settings_dict,
+    create_default_settings as create_default_settings_shared, DEFAULT_SETTINGS
 )
 
 # Additional paths specific to main application
@@ -752,103 +754,53 @@ def set_console_visibility(visible):
 # =============================================================================
 
 def create_default_settings():
-    """Create default settings file on first run."""
-    log("Creating default settings file...", "SETTINGS")
-    default_settings = {
-        'notification_processes': ['WhatsApp.Root.exe', 'Telegram.exe', 'ms-teams.exe', 'Messenger.exe', 'slack.exe',
-                                   'Signal.exe', 'WeChat.exe'],
-        'selected_notification_apps': ['WhatsApp', 'Telegram', 'Microsoft Teams', 'Facebook Messenger', 'Slack',
-                                       'Signal', 'WeChat'],
-        'custom_processes': [],
-        'resource_processes': ['spotify.exe', 'OneDrive.exe', 'GoogleDriveFS.exe', 'Dropbox.exe', 'wallpaper64.exe'],
-        'selected_resource_apps': ['Spotify', 'OneDrive', 'Google Drive', 'Dropbox', 'Wallpaper Engine',
-                                   'iCUE', 'Razer Synapse', 'NZXT CAM'],
-        'custom_resource_processes': [],
-        'launch_at_startup': False,
-        'launch_settings_on_start': True,
-        'close_on_startup': True,
-        'close_on_hotkey': True,
-        'relaunch_on_exit': True,
-        'resource_close_on_startup': True,
-        'resource_close_on_hotkey': True,
-        'resource_relaunch_on_exit': False,
-        'enable_playtime_summary': True,
-        'playtime_summary_mode': 'brief',
-        'enable_debug_mode': False,
-        'system_audio_level': 33,
-        'enable_system_audio': False,
-        'game_audio_level': 100,
-        'enable_game_audio': False,
-        'enable_during_power': False,
-        'during_power_plan': 'High Performance',
-        'enable_after_power': False,
-        'after_power_plan': 'Balanced',
-        'enable_game_mode_start': True,
-        'enable_game_mode_end': False,
-        'enable_cpu_thermal': False,
-        'enable_gpu_thermal': True
-    }
-    with open(SETTINGS_FILE, 'w') as f:
-        json.dump(default_settings, f)
-    log("Default settings file created", "SETTINGS")
+    """Create default settings file on first run. Uses shared settings module."""
+    create_default_settings_shared()
 
 
 def load_process_names_and_startup():
-    """Load all settings from JSON file and return as tuple."""
-    log("Loading settings from file...", "SETTINGS")
-    if os.path.exists(SETTINGS_FILE):
-        log(f"Settings file found: {SETTINGS_FILE}", "SETTINGS")
-        with open(SETTINGS_FILE, 'r') as f:
-            settings = json.load(f)
-            notification_processes = settings.get('notification_processes', [])
-            resource_processes = settings.get('resource_processes', [])
-            startup = settings.get('launch_at_startup', False)
-            launch_settings_on_start = settings.get('launch_settings_on_start', True)
-            notification_close_on_startup = settings.get('close_on_startup', True)
-            resource_close_on_startup = settings.get('resource_close_on_startup', True)
-            notification_close_on_hotkey = settings.get('close_on_hotkey', False)
-            resource_close_on_hotkey = settings.get('resource_close_on_hotkey', False)
-            notification_relaunch_on_exit = settings.get('relaunch_on_exit', True)
-            resource_relaunch_on_exit = settings.get('resource_relaunch_on_exit', True)
-            enable_playtime_summary = settings.get('enable_playtime_summary', True)
-            playtime_summary_mode = settings.get('playtime_summary_mode', 'brief')
-            enable_system_audio = settings.get('enable_system_audio', False)
-            system_audio_level = settings.get('system_audio_level', 50)
-            enable_game_audio = settings.get('enable_game_audio', False)
-            game_audio_level = settings.get('game_audio_level', 50)
-            enable_during_power = settings.get('enable_during_power', False)
-            during_power_plan = settings.get('during_power_plan', 'High Performance')
-            enable_after_power = settings.get('enable_after_power', False)
-            after_power_plan = settings.get('after_power_plan', 'Balanced')
-            enable_game_mode_start = settings.get('enable_game_mode_start', False)
-            enable_game_mode_end = settings.get('enable_game_mode_end', False)
-            enable_debug_mode = settings.get('enable_debug_mode', False)
-            enable_cpu_thermal = settings.get('enable_cpu_thermal', False)
-            enable_gpu_thermal = settings.get('enable_gpu_thermal', True)
-            enable_cpu_temp_alert = settings.get('enable_cpu_temp_alert', False)
-            cpu_temp_warning_threshold = settings.get('cpu_temp_warning_threshold', 85)
-            cpu_temp_critical_threshold = settings.get('cpu_temp_critical_threshold', 95)
-            enable_gpu_temp_alert = settings.get('enable_gpu_temp_alert', False)
-            gpu_temp_warning_threshold = settings.get('gpu_temp_warning_threshold', 80)
-            gpu_temp_critical_threshold = settings.get('gpu_temp_critical_threshold', 90)
-            log("Settings loaded successfully", "SETTINGS")
-            return (notification_processes, resource_processes, startup, launch_settings_on_start,
-                    notification_close_on_startup, resource_close_on_startup, notification_close_on_hotkey,
-                    resource_close_on_hotkey, notification_relaunch_on_exit, resource_relaunch_on_exit,
-                    enable_playtime_summary, playtime_summary_mode, enable_system_audio, system_audio_level,
-                    enable_game_audio, game_audio_level, enable_during_power, during_power_plan, enable_after_power,
-                    after_power_plan, enable_game_mode_start, enable_game_mode_end, enable_debug_mode,
-                    enable_cpu_thermal, enable_gpu_thermal, enable_cpu_temp_alert, cpu_temp_warning_threshold,
-                    cpu_temp_critical_threshold, enable_gpu_temp_alert, gpu_temp_warning_threshold,
-                    gpu_temp_critical_threshold)
-    else:
-        log("No settings file found - using defaults", "SETTINGS")
-        default_notification = ['WhatsApp.Root.exe', 'Telegram.exe', 'ms-teams.exe', 'Messenger.exe', 'slack.exe',
-                                'Signal.exe', 'WeChat.exe']
-        default_resource = ['spotify.exe', 'OneDrive.exe', 'GoogleDriveFS.exe', 'Dropbox.exe', 'wallpaper64.exe']
-        return (default_notification, default_resource, False, True, True, True, True, True, True, False,
-                True, 'brief', False, 33, False, 100, False, 'High Performance', False, 'Balanced', True, False,
-                False, False, True, False, 85, 95, False, 80, 90)
+    """
+    Load all settings from JSON file and return as tuple.
+
+    Uses the shared load_settings() function internally but maintains
+    the tuple return format for backward compatibility.
+    """
+    settings = load_settings_dict()
+
+    # Extract all settings with appropriate defaults
+    return (
+        settings.get('notification_processes', DEFAULT_SETTINGS['notification_processes']),
+        settings.get('resource_processes', DEFAULT_SETTINGS['resource_processes']),
+        settings.get('launch_at_startup', DEFAULT_SETTINGS['launch_at_startup']),
+        settings.get('launch_settings_on_start', DEFAULT_SETTINGS['launch_settings_on_start']),
+        settings.get('close_on_startup', DEFAULT_SETTINGS['close_on_startup']),
+        settings.get('resource_close_on_startup', DEFAULT_SETTINGS['resource_close_on_startup']),
+        settings.get('close_on_hotkey', DEFAULT_SETTINGS['close_on_hotkey']),
+        settings.get('resource_close_on_hotkey', DEFAULT_SETTINGS['resource_close_on_hotkey']),
+        settings.get('relaunch_on_exit', DEFAULT_SETTINGS['relaunch_on_exit']),
+        settings.get('resource_relaunch_on_exit', DEFAULT_SETTINGS['resource_relaunch_on_exit']),
+        settings.get('enable_playtime_summary', DEFAULT_SETTINGS['enable_playtime_summary']),
+        settings.get('playtime_summary_mode', DEFAULT_SETTINGS['playtime_summary_mode']),
+        settings.get('enable_system_audio', DEFAULT_SETTINGS['enable_system_audio']),
+        settings.get('system_audio_level', DEFAULT_SETTINGS['system_audio_level']),
+        settings.get('enable_game_audio', DEFAULT_SETTINGS['enable_game_audio']),
+        settings.get('game_audio_level', DEFAULT_SETTINGS['game_audio_level']),
+        settings.get('enable_during_power', DEFAULT_SETTINGS['enable_during_power']),
+        settings.get('during_power_plan', DEFAULT_SETTINGS['during_power_plan']),
+        settings.get('enable_after_power', DEFAULT_SETTINGS['enable_after_power']),
+        settings.get('after_power_plan', DEFAULT_SETTINGS['after_power_plan']),
+        settings.get('enable_game_mode_start', DEFAULT_SETTINGS['enable_game_mode_start']),
+        settings.get('enable_game_mode_end', DEFAULT_SETTINGS['enable_game_mode_end']),
+        settings.get('enable_debug_mode', DEFAULT_SETTINGS['enable_debug_mode']),
+        settings.get('enable_cpu_thermal', DEFAULT_SETTINGS['enable_cpu_thermal']),
+        settings.get('enable_gpu_thermal', DEFAULT_SETTINGS['enable_gpu_thermal']),
+        settings.get('enable_cpu_temp_alert', DEFAULT_SETTINGS['enable_cpu_temp_alert']),
+        settings.get('cpu_temp_warning_threshold', DEFAULT_SETTINGS['cpu_temp_warning_threshold']),
+        settings.get('cpu_temp_critical_threshold', DEFAULT_SETTINGS['cpu_temp_critical_threshold']),
+        settings.get('enable_gpu_temp_alert', DEFAULT_SETTINGS['enable_gpu_temp_alert']),
+        settings.get('gpu_temp_warning_threshold', DEFAULT_SETTINGS['gpu_temp_warning_threshold']),
+        settings.get('gpu_temp_critical_threshold', DEFAULT_SETTINGS['gpu_temp_critical_threshold']),
+    )
 
 
 # =============================================================================
