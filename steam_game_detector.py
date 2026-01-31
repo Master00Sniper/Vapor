@@ -1123,21 +1123,21 @@ def show_detailed_summary(session_data):
         popup = ctk.CTk()
         popup.title("Vapor - Game Session Details")
 
-        # Window dimensions - taller to accommodate image and bottom bar
+        # Window dimensions - similar to settings window, use screen-based height
         window_width = 550
-        base_height = 580
-        if closed_apps_list:
-            base_height += min(len(closed_apps_list) * 18, 80)
+        screen_height = popup.winfo_screenheight()
+        # Use 70% of screen height, clamped between 600 and 850
+        window_height = int(screen_height * 0.70)
+        window_height = max(600, min(window_height, 850))
 
-        popup.geometry(f"{window_width}x{base_height}")
+        popup.geometry(f"{window_width}x{window_height}")
         popup.resizable(False, False)
 
         # Center on screen
         screen_width = popup.winfo_screenwidth()
-        screen_height = popup.winfo_screenheight()
         x = (screen_width - window_width) // 2
-        y = (screen_height - base_height) // 2
-        popup.geometry(f"{window_width}x{base_height}+{x}+{y}")
+        y = (screen_height - window_height) // 2
+        popup.geometry(f"{window_width}x{window_height}+{x}+{y}")
 
         # Set window icon
         icon_path = os.path.join(base_dir, 'Images', 'exe_icon.ico')
@@ -1147,9 +1147,34 @@ def show_detailed_summary(session_data):
             except Exception:
                 pass
 
-        # Main scrollable content frame (fills everything except bottom bar)
-        content_frame = ctk.CTkFrame(master=popup, fg_color="transparent")
-        content_frame.pack(fill="both", expand=True, padx=25, pady=(20, 0))
+        # IMPORTANT: Pack bottom bar FIRST so it reserves space at the bottom
+        bottom_bar = ctk.CTkFrame(master=popup, fg_color="transparent")
+        bottom_bar.pack(side="bottom", fill="x")
+
+        # Separator above button bar
+        sep_bottom = ctk.CTkFrame(master=bottom_bar, height=2, fg_color="gray50")
+        sep_bottom.pack(fill="x", padx=40, pady=(10, 0))
+
+        # Button container
+        button_container = ctk.CTkFrame(master=bottom_bar, fg_color="transparent")
+        button_container.pack(pady=15)
+
+        ok_button = ctk.CTkButton(
+            master=button_container,
+            text="OK",
+            command=popup.destroy,
+            width=150,
+            height=35,
+            corner_radius=10,
+            fg_color="green",
+            hover_color="#228B22",
+            font=("Calibri", 14)
+        )
+        ok_button.pack()
+
+        # Scrollable content frame (fills remaining space above bottom bar)
+        content_frame = ctk.CTkScrollableFrame(master=popup, fg_color="transparent")
+        content_frame.pack(fill="both", expand=True, padx=15, pady=(20, 10))
 
         # Title
         title_label = ctk.CTkLabel(
@@ -1313,31 +1338,6 @@ def show_detailed_summary(session_data):
             ).grid(row=0, column=0, columnspan=4, pady=10)
 
         temp_frame.grid_columnconfigure(3, weight=1)
-
-        # Bottom bar with separator and button (fixed at bottom like Vapor Settings UI)
-        bottom_bar = ctk.CTkFrame(master=popup, fg_color="transparent")
-        bottom_bar.pack(side="bottom", fill="x", pady=(0, 0))
-
-        # Separator above button bar
-        sep3 = ctk.CTkFrame(master=bottom_bar, height=2, fg_color="gray50")
-        sep3.pack(fill="x", padx=40, pady=(10, 0))
-
-        # Button container
-        button_container = ctk.CTkFrame(master=bottom_bar, fg_color="transparent")
-        button_container.pack(pady=15)
-
-        ok_button = ctk.CTkButton(
-            master=button_container,
-            text="OK",
-            command=popup.destroy,
-            width=150,
-            height=35,
-            corner_radius=10,
-            fg_color="green",
-            hover_color="#228B22",
-            font=("Calibri", 14)
-        )
-        ok_button.pack()
 
         popup.mainloop()
 
