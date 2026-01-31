@@ -111,7 +111,7 @@ def is_admin():
 
 def restart_vapor_as_admin(main_pid):
     """
-    Restart the main Vapor process with admin privileges.
+    Restart the main Vapor process, requesting admin privileges if needed.
     Terminates the current main process and starts a new elevated one.
     Uses a delayed start via PowerShell to avoid MEI folder cleanup errors.
     """
@@ -128,14 +128,17 @@ def restart_vapor_as_admin(main_pid):
         except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.TimeoutExpired) as e:
             debug_log(f"Could not terminate main process: {e}", "Restart")
 
-    # Determine the executable and arguments to run
+    # Determine the executable path
     # Use VAPOR_EXE_PATH if available (passed from main process)
     vapor_exe_from_env = os.environ.get('VAPOR_EXE_PATH', '')
+    executable = None
+    args_part = ""
+    working_dir = None
 
     if vapor_exe_from_env and os.path.exists(vapor_exe_from_env):
         # Use the path passed from the main Vapor process
         executable = vapor_exe_from_env
-        args_part = ""
+        working_dir = os.path.dirname(executable)
         debug_log(f"Using VAPOR_EXE_PATH: {executable}", "Restart")
     elif getattr(sys, 'frozen', False):
         # Fallback: try to find Vapor.exe in common locations
@@ -144,15 +147,14 @@ def restart_vapor_as_admin(main_pid):
             os.path.join(os.path.dirname(os.path.dirname(sys.executable)), 'Vapor.exe'),
             os.path.join(os.getcwd(), 'Vapor.exe'),
         ]
-        executable = None
         for path in possible_paths:
             if os.path.exists(path):
                 executable = path
+                working_dir = os.path.dirname(executable)
                 break
         if not executable:
             debug_log("ERROR: Could not find Vapor.exe for restart", "Restart")
             return False
-        args_part = ""
     else:
         # Running from Python - use pythonw.exe to avoid console window
         python_dir = os.path.dirname(sys.executable)
@@ -161,10 +163,15 @@ def restart_vapor_as_admin(main_pid):
             executable = pythonw_exe
         else:
             executable = sys.executable
-        main_script = os.path.join(base_dir, 'steam_game_detector.py')
+        # For Python mode, use the actual source directory (not temp MEI folder)
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        main_script = os.path.join(script_dir, 'steam_game_detector.py')
         args_part = f' -ArgumentList \\"{main_script}\\"'
+        working_dir = script_dir
 
     debug_log(f"Executable: {executable}", "Restart")
+    debug_log(f"Working dir: {working_dir}", "Restart")
+    debug_log(f"Already admin: {is_admin()}", "Restart")
 
     # Use PowerShell with a delay to start the new process
     # This ensures the old process (settings UI) has fully exited before new Vapor starts
@@ -172,13 +179,18 @@ def restart_vapor_as_admin(main_pid):
     ps_command = f'Start-Sleep -Seconds 2; Start-Process -FilePath \\"{executable}\\"{args_part}'
 
     try:
+        # Only use "runas" if we need elevation, otherwise use "open"
+        # This avoids unnecessary UAC prompts when already admin
+        verb = "open" if is_admin() else "runas"
+        debug_log(f"Using verb: {verb}", "Restart")
+
         # Launch PowerShell hidden - it will wait 2 seconds then start Vapor
         result = ctypes.windll.shell32.ShellExecuteW(
             None,
-            "runas",
+            verb,
             "powershell.exe",
             f'-WindowStyle Hidden -Command "{ps_command}"',
-            base_dir,
+            working_dir,
             0  # SW_HIDE
         )
         debug_log(f"ShellExecuteW result: {result}", "Restart")
