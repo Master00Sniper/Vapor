@@ -965,6 +965,24 @@ def get_game_name(app_id):
     return "Unknown"
 
 
+def get_game_header_image(app_id):
+    """Fetch game header image URL from Steam API for given AppID."""
+    if app_id == 0:
+        return None
+    try:
+        url = f"http://store.steampowered.com/api/appdetails?appids={app_id}"
+        response = requests.get(url, timeout=5)
+        data = response.json()
+        if response.status_code == 200 and str(app_id) in data and data[str(app_id)]["success"]:
+            header_image = data[str(app_id)]["data"].get("header_image")
+            if header_image:
+                log(f"Got header image URL for AppID {app_id}", "STEAM")
+                return header_image
+    except Exception as e:
+        log(f"Failed to fetch game header image: {e}", "ERROR")
+    return None
+
+
 # =============================================================================
 # Process Management
 # =============================================================================
@@ -1080,7 +1098,10 @@ def show_brief_summary(session_data):
 def show_detailed_summary(session_data):
     """Display a detailed popup window with session statistics."""
     import customtkinter as ctk
+    from PIL import Image
+    from io import BytesIO
 
+    app_id = session_data.get('app_id', 0)
     game_name = session_data['game_name']
     hours = session_data['hours']
     minutes = session_data['minutes']
@@ -1094,24 +1115,29 @@ def show_detailed_summary(session_data):
     lifetime_max_cpu = session_data.get('lifetime_max_cpu')
     lifetime_max_gpu = session_data.get('lifetime_max_gpu')
 
+    # Fetch game header image URL
+    header_image_url = get_game_header_image(app_id) if app_id else None
+
     # Run popup in a separate thread to avoid blocking
     def show_popup():
         popup = ctk.CTk()
-        popup.title("Vapor - Game Session Summary")
+        popup.title("Vapor - Game Session Details")
 
-        # Calculate height based on content
-        base_height = 450  # Slightly taller to accommodate lifetime temps
+        # Window dimensions - taller to accommodate image and bottom bar
+        window_width = 550
+        base_height = 580
         if closed_apps_list:
-            base_height += min(len(closed_apps_list) * 18, 100)  # Add space for apps list
-        popup.geometry(f"550x{base_height}")
+            base_height += min(len(closed_apps_list) * 18, 80)
+
+        popup.geometry(f"{window_width}x{base_height}")
         popup.resizable(False, False)
 
         # Center on screen
         screen_width = popup.winfo_screenwidth()
         screen_height = popup.winfo_screenheight()
-        x = (screen_width - 550) // 2
+        x = (screen_width - window_width) // 2
         y = (screen_height - base_height) // 2
-        popup.geometry(f"550x{base_height}+{x}+{y}")
+        popup.geometry(f"{window_width}x{base_height}+{x}+{y}")
 
         # Set window icon
         icon_path = os.path.join(base_dir, 'Images', 'exe_icon.ico')
@@ -1121,14 +1147,14 @@ def show_detailed_summary(session_data):
             except Exception:
                 pass
 
-        # Main content frame
+        # Main scrollable content frame (fills everything except bottom bar)
         content_frame = ctk.CTkFrame(master=popup, fg_color="transparent")
-        content_frame.pack(fill="both", expand=True, padx=25, pady=(20, 10))
+        content_frame.pack(fill="both", expand=True, padx=25, pady=(20, 0))
 
         # Title
         title_label = ctk.CTkLabel(
             master=content_frame,
-            text="Game Session Complete",
+            text="Game Session Details",
             font=("Calibri", 22, "bold")
         )
         title_label.pack(pady=(0, 5))
@@ -1140,7 +1166,28 @@ def show_detailed_summary(session_data):
             font=("Calibri", 16),
             text_color="gray70"
         )
-        game_label.pack(pady=(0, 15))
+        game_label.pack(pady=(0, 10))
+
+        # Game header image from Steam
+        if header_image_url:
+            try:
+                response = requests.get(header_image_url, timeout=5)
+                if response.status_code == 200:
+                    img_data = BytesIO(response.content)
+                    pil_image = Image.open(img_data)
+                    # Resize to fit nicely (Steam headers are 460x215)
+                    # Scale to 400px wide while maintaining aspect ratio
+                    aspect_ratio = pil_image.height / pil_image.width
+                    new_width = 400
+                    new_height = int(new_width * aspect_ratio)
+                    pil_image = pil_image.resize((new_width, new_height), Image.LANCZOS)
+
+                    ctk_image = ctk.CTkImage(light_image=pil_image, dark_image=pil_image,
+                                             size=(new_width, new_height))
+                    image_label = ctk.CTkLabel(master=content_frame, image=ctk_image, text="")
+                    image_label.pack(pady=(5, 10))
+            except Exception as e:
+                log(f"Failed to load game header image: {e}", "NOTIFY")
 
         # Separator
         sep1 = ctk.CTkFrame(master=content_frame, height=2, fg_color="gray50")
@@ -1195,22 +1242,31 @@ def show_detailed_summary(session_data):
             text="Temperatures",
             font=("Calibri", 14, "bold")
         )
-        temp_title.pack(pady=(5, 8))
+        temp_title.pack(pady=(5, 3))
+
+        # Subtitle explaining lifetime max
+        temp_subtitle = ctk.CTkLabel(
+            master=content_frame,
+            text=f"Lifetime Max = highest recorded temperature for {game_name}",
+            font=("Calibri", 10),
+            text_color="gray50"
+        )
+        temp_subtitle.pack(pady=(0, 8))
 
         temp_frame = ctk.CTkFrame(master=content_frame, fg_color="transparent")
         temp_frame.pack(pady=5, padx=20, fill="x")
 
         has_temps = False
 
-        # Column headers
+        # Column headers - changed "Lifetime" to "Lifetime Max"
         ctk.CTkLabel(master=temp_frame, text="", font=("Calibri", 11),
                      anchor="w").grid(row=0, column=0, sticky="w", pady=3)
         ctk.CTkLabel(master=temp_frame, text="Start", font=("Calibri", 11, "bold"),
                      text_color="gray60").grid(row=0, column=1, sticky="e", pady=3, padx=(15, 0))
-        ctk.CTkLabel(master=temp_frame, text="Max", font=("Calibri", 11, "bold"),
+        ctk.CTkLabel(master=temp_frame, text="Session Max", font=("Calibri", 11, "bold"),
                      text_color="gray60").grid(row=0, column=2, sticky="e", pady=3, padx=(15, 0))
-        ctk.CTkLabel(master=temp_frame, text="Lifetime", font=("Calibri", 11, "bold"),
-                     text_color="gray60").grid(row=0, column=3, sticky="e", pady=3, padx=(15, 0))
+        ctk.CTkLabel(master=temp_frame, text="Lifetime Max", font=("Calibri", 11, "bold"),
+                     text_color="#FFD700").grid(row=0, column=3, sticky="e", pady=3, padx=(15, 0))
 
         # CPU temps
         if start_cpu_temp is not None or max_cpu_temp is not None or lifetime_max_cpu is not None:
@@ -1258,16 +1314,20 @@ def show_detailed_summary(session_data):
 
         temp_frame.grid_columnconfigure(3, weight=1)
 
-        # Separator above button
-        sep3 = ctk.CTkFrame(master=popup, height=2, fg_color="gray50")
+        # Bottom bar with separator and button (fixed at bottom like Vapor Settings UI)
+        bottom_bar = ctk.CTkFrame(master=popup, fg_color="transparent")
+        bottom_bar.pack(side="bottom", fill="x", pady=(0, 0))
+
+        # Separator above button bar
+        sep3 = ctk.CTkFrame(master=bottom_bar, height=2, fg_color="gray50")
         sep3.pack(fill="x", padx=40, pady=(10, 0))
 
-        # Button frame at bottom
-        button_frame = ctk.CTkFrame(master=popup, fg_color="transparent")
-        button_frame.pack(pady=20)
+        # Button container
+        button_container = ctk.CTkFrame(master=bottom_bar, fg_color="transparent")
+        button_container.pack(pady=15)
 
         ok_button = ctk.CTkButton(
-            master=button_frame,
+            master=button_container,
             text="OK",
             command=popup.destroy,
             width=150,
@@ -2325,6 +2385,7 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
 
                             # Build session data for summary
                             session_data = {
+                                'app_id': previous_app_id,
                                 'game_name': current_game_name,
                                 'hours': hours,
                                 'minutes': minutes,
