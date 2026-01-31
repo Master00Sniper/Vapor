@@ -109,13 +109,18 @@ def is_admin():
         return False
 
 
-def restart_vapor_as_admin(main_pid):
+def restart_vapor(main_pid, require_admin=False):
     """
-    Restart the main Vapor process, requesting admin privileges if needed.
-    Terminates the current main process and starts a new elevated one.
+    Restart the main Vapor process.
+
+    Args:
+        main_pid: PID of the main Vapor process to terminate before restart
+        require_admin: If True and not already admin, will request elevation.
+                      If False, restarts without elevation prompt.
+
     Uses a delayed start via PowerShell to avoid MEI folder cleanup errors.
     """
-    debug_log(f"Restarting Vapor (main_pid={main_pid})", "Restart")
+    debug_log(f"Restarting Vapor (main_pid={main_pid}, require_admin={require_admin})", "Restart")
 
     # Terminate current main process if running
     if main_pid:
@@ -179,10 +184,11 @@ def restart_vapor_as_admin(main_pid):
     ps_command = f'Start-Sleep -Seconds 2; Start-Process -FilePath \\"{executable}\\"{args_part}'
 
     try:
-        # Only use "runas" if we need elevation, otherwise use "open"
-        # This avoids unnecessary UAC prompts when already admin
-        verb = "open" if is_admin() else "runas"
-        debug_log(f"Using verb: {verb}", "Restart")
+        # Only use "runas" if elevation is required AND we're not already admin
+        # This avoids unnecessary UAC prompts
+        need_elevation = require_admin and not is_admin()
+        verb = "runas" if need_elevation else "open"
+        debug_log(f"Using verb: {verb} (need_elevation={need_elevation})", "Restart")
 
         # Launch PowerShell hidden - it will wait 2 seconds then start Vapor
         result = ctypes.windll.shell32.ShellExecuteW(
@@ -198,6 +204,12 @@ def restart_vapor_as_admin(main_pid):
     except Exception as e:
         debug_log(f"Restart failed: {e}", "Restart")
         return False
+
+
+# Backwards-compatible alias
+def restart_vapor_as_admin(main_pid):
+    """Restart Vapor with admin privileges. Use restart_vapor() for more control."""
+    return restart_vapor(main_pid, require_admin=True)
 
 
 # =============================================================================
@@ -1708,7 +1720,7 @@ def reset_settings_and_restart():
         win11toast.notify(body="Settings reset. Restarting Vapor...", app_id='Vapor - Streamline Gaming',
                           duration='short', icon=TRAY_ICON_PATH, audio={'silent': 'true'})
 
-        restart_vapor_as_admin(main_pid)
+        restart_vapor(main_pid, require_admin=False)
         root.destroy()
     else:
         debug_log("User cancelled reset settings", "Reset")
@@ -1755,7 +1767,7 @@ def reset_all_data_and_restart():
         win11toast.notify(body="All data deleted. Restarting Vapor...", app_id='Vapor - Streamline Gaming',
                           duration='short', icon=TRAY_ICON_PATH, audio={'silent': 'true'})
 
-        restart_vapor_as_admin(main_pid)
+        restart_vapor(main_pid, require_admin=False)
         root.destroy()
     else:
         debug_log("User cancelled reset all data", "Reset")
@@ -2010,7 +2022,7 @@ def on_save():
             # User agreed to restart with admin
             # Set flag to trigger PawnIO check after restart
             set_pending_pawnio_check(True)
-            if restart_vapor_as_admin(main_pid):
+            if restart_vapor(main_pid, require_admin=True):
                 # Successfully requested elevation, close settings window
                 root.destroy()
                 return
@@ -2129,7 +2141,7 @@ def on_save():
                 )
                 if restart_response:
                     # Restart Vapor (already running as admin if we got here)
-                    if restart_vapor_as_admin(main_pid):
+                    if restart_vapor(main_pid, require_admin=False):
                         root.destroy()
                         return
             else:
@@ -2166,7 +2178,7 @@ def on_save():
             parent=root
         )
         if response:
-            restart_vapor_as_admin(main_pid)
+            restart_vapor(main_pid, require_admin=False)
             root.destroy()
             return
 
@@ -2351,7 +2363,7 @@ def check_pending_pawnio_install():
                 parent=root
             )
             if restart_response:
-                if restart_vapor_as_admin(main_pid):
+                if restart_vapor(main_pid, require_admin=False):
                     root.destroy()
                     return
         else:
