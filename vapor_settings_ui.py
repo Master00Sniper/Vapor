@@ -62,8 +62,8 @@ SETTINGS_FILE = os.path.join(appdata_dir, 'vapor_settings.json')
 
 TRAY_ICON_PATH = os.path.join(base_dir, 'Images', 'tray_icon.png')
 
-# Log file for debugging
-DEBUG_LOG_FILE = os.path.join(appdata_dir, 'vapor_settings_debug.log')
+# Log file for debugging (shared with main Vapor process)
+DEBUG_LOG_FILE = os.path.join(appdata_dir, 'vapor_logs.log')
 
 # Maximum log file size (2 MB) - will be truncated when exceeded
 MAX_LOG_SIZE = 2 * 1024 * 1024
@@ -197,7 +197,7 @@ def is_pawnio_installed():
     """Check if PawnIO driver is installed."""
     try:
         result = subprocess.run(
-            ['winget', 'list', '--id', 'PawnIO.PawnIO'],
+            ['winget', 'list', '--id', 'namazso.PawnIO'],
             capture_output=True, text=True, timeout=15,
             creationflags=subprocess.CREATE_NO_WINDOW
         )
@@ -2048,12 +2048,33 @@ def on_save():
                 show_vapor_dialog(
                     title="Installation Failed",
                     message="Failed to install the PawnIO driver.\n\n"
-                            "You can try installing it manually by running:\n"
-                            "winget install PawnIO.PawnIO\n\n"
-                            "in an administrator PowerShell window.",
+                            "You can try installing it manually:\n"
+                            "1. Run: winget install namazso.PawnIO\n"
+                            "2. Or download from: https://pawnio.eu/\n\n"
+                            "Then restart Vapor to enable CPU temperature monitoring.",
                     dialog_type="error",
                     parent=root
                 )
+
+    # Check if debug mode was changed - requires restart to take effect
+    if new_enable_debug_mode != enable_debug_mode:
+        debug_log(f"Debug mode changed from {enable_debug_mode} to {new_enable_debug_mode}", "Settings")
+        response = show_vapor_dialog(
+            title="Restart Required",
+            message="Debug console setting changed.\n\n"
+                    "Vapor needs to restart for this change to take effect.\n"
+                    "Restart now?",
+            dialog_type="info",
+            buttons=[
+                {"text": "Restart Now", "value": True, "color": "green"},
+                {"text": "Later", "value": False, "color": "gray"}
+            ],
+            parent=root
+        )
+        if response:
+            restart_vapor_as_admin(main_pid)
+            root.destroy()
+            return
 
 
 def on_save_and_close():

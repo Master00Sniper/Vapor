@@ -463,7 +463,7 @@ from updater import check_for_updates, CURRENT_VERSION
 # =============================================================================
 
 # Log file for debugging (stored in %APPDATA%/Vapor)
-DEBUG_LOG_FILE = os.path.join(appdata_dir, 'vapor_debug.log')
+DEBUG_LOG_FILE = os.path.join(appdata_dir, 'vapor_logs.log')
 
 # Maximum log file size (5 MB) - will be truncated when exceeded
 MAX_LOG_SIZE = 5 * 1024 * 1024

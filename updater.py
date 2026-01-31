@@ -37,7 +37,7 @@ pending_update_path = None
 # Log file for debugging (stored in %APPDATA%/Vapor)
 _appdata_dir = os.path.join(os.getenv('APPDATA', ''), 'Vapor')
 os.makedirs(_appdata_dir, exist_ok=True)
-DEBUG_LOG_FILE = os.path.join(_appdata_dir, 'vapor_updater.log')
+DEBUG_LOG_FILE = os.path.join(_appdata_dir, 'vapor_logs.log')
 
 # Maximum log file size (2 MB) - will be truncated when exceeded
 MAX_LOG_SIZE = 2 * 1024 * 1024
