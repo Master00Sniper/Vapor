@@ -1115,16 +1115,28 @@ def show_notification(message):
                       audio={'silent': 'true'})
 
 
-def show_temperature_alert(message):
+def show_temperature_alert(message, is_critical=False):
     """Display a high-priority temperature alert notification that can bypass Do Not Disturb.
 
     Uses the 'alarm' scenario to ensure the notification appears even when
     Windows Focus Assist / Do Not Disturb is enabled during gameplay.
+
+    Args:
+        message: The alert message to display
+        is_critical: If True, uses alarm sound; if False, uses reminder sound
     """
-    log(f"Showing temperature alert: {message}", "ALERT")
+    log(f"Showing temperature alert (critical={is_critical}): {message}", "ALERT")
     icon_path = os.path.abspath(TRAY_ICON_PATH)
+
+    if is_critical:
+        # Critical alerts use Windows alarm sound (non-looping)
+        audio = {'src': 'ms-winsoundevent:Notification.Looping.Alarm', 'loop': 'false'}
+    else:
+        # Warning alerts use Windows reminder sound (gentler)
+        audio = {'src': 'ms-winsoundevent:Notification.Reminder'}
+
     win11toast.notify(body=message, app_id='Vapor - Streamline Gaming', scenario='alarm', icon=icon_path,
-                      audio={'silent': 'true'})
+                      audio=audio)
 
 
 def show_brief_summary(session_data):
@@ -1942,8 +1954,8 @@ class TemperatureTracker:
                     self._cpu_warning_triggered = True  # Also mark warning as triggered
                     log(f"CPU CRITICAL alert: {cpu_temp}°C exceeds critical threshold of {self._cpu_critical_threshold}°C", "ALERT")
                     show_temperature_alert(f"⚠️ CRITICAL ALERT - CPU Temperature: {cpu_temp}°C{game_info}. "
-                                           f"Critical threshold of {self._cpu_critical_threshold}°C exceeded!")
-                    self._play_critical_alert_sound()
+                                           f"Critical threshold of {self._cpu_critical_threshold}°C exceeded!",
+                                           is_critical=True)
                 # Check warning level
                 elif not self._cpu_warning_triggered and cpu_temp >= self._cpu_warning_threshold:
                     self._cpu_warning_triggered = True
@@ -1960,8 +1972,8 @@ class TemperatureTracker:
                     self._gpu_warning_triggered = True  # Also mark warning as triggered
                     log(f"GPU CRITICAL alert: {gpu_temp}°C exceeds critical threshold of {self._gpu_critical_threshold}°C", "ALERT")
                     show_temperature_alert(f"⚠️ CRITICAL ALERT - GPU Temperature: {gpu_temp}°C{game_info}. "
-                                           f"Critical threshold of {self._gpu_critical_threshold}°C exceeded!")
-                    self._play_critical_alert_sound()
+                                           f"Critical threshold of {self._gpu_critical_threshold}°C exceeded!",
+                                           is_critical=True)
                 # Check warning level
                 elif not self._gpu_warning_triggered and gpu_temp >= self._gpu_warning_threshold:
                     self._gpu_warning_triggered = True
