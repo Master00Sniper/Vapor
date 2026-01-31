@@ -45,6 +45,8 @@ import win11toast
 import ctypes
 import subprocess
 import tempfile
+import shutil
+import time
 
 try:
     from updater import CURRENT_VERSION
@@ -182,8 +184,7 @@ def install_pawnio_silent():
 
 def install_pawnio_with_elevation(progress_callback=None):
     """
-    Install PawnIO driver with UAC elevation prompt.
-    Uses ShellExecuteW with 'runas' to properly trigger UAC.
+    Install PawnIO driver with UAC elevation prompt (or directly if already admin).
 
     Args:
         progress_callback: Optional function(message, progress_pct) to update UI during install
@@ -200,45 +201,61 @@ def install_pawnio_with_elevation(progress_callback=None):
 
     try:
         if progress_callback:
-            progress_callback("Requesting administrator approval...", 5)
+            progress_callback("Starting installation...", 5)
 
-        # Use ShellExecuteW with 'runas' to trigger UAC prompt
-        # This runs PowerShell elevated with the install script
-        result = ctypes.windll.shell32.ShellExecuteW(
-            None,
-            "runas",
-            "powershell.exe",
-            f'-ExecutionPolicy Bypass -WindowStyle Hidden -File "{script_path}" -Silent',
-            os.path.dirname(script_path),
-            0  # SW_HIDE - hide the PowerShell window
-        )
-
-        # ShellExecuteW returns > 32 on success (process was started)
-        if result > 32:
-            if progress_callback:
-                progress_callback("Installing PawnIO driver...", 15)
-
-            # Check periodically if PawnIO is installed (up to 60 seconds)
-            import time
-            for i in range(30):
-                time.sleep(2)
-
-                # Update progress
-                if progress_callback:
-                    pct = 15 + int((i / 30) * 80)  # Progress from 15% to 95%
-                    progress_callback(f"Installing PawnIO driver... ({(i+1)*2}s)", pct)
-
-                if is_pawnio_installed():
-                    if progress_callback:
-                        progress_callback("Installation complete!", 100)
-                    return True
-
-            # Final check
-            return is_pawnio_installed()
+        # If already running as admin, run directly without ShellExecute
+        if is_admin():
+            # Run PowerShell directly with hidden window
+            process = subprocess.Popen(
+                [
+                    'powershell.exe',
+                    '-ExecutionPolicy', 'Bypass',
+                    '-WindowStyle', 'Hidden',
+                    '-File', script_path,
+                    '-Silent'
+                ],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                creationflags=subprocess.CREATE_NO_WINDOW
+            )
         else:
-            return False
+            # Need elevation - use ShellExecuteW with 'runas'
+            if progress_callback:
+                progress_callback("Requesting administrator approval...", 5)
 
-    except Exception:
+            result = ctypes.windll.shell32.ShellExecuteW(
+                None,
+                "runas",
+                "powershell.exe",
+                f'-ExecutionPolicy Bypass -WindowStyle Hidden -File "{script_path}" -Silent',
+                os.path.dirname(script_path),
+                0  # SW_HIDE
+            )
+
+            if result <= 32:
+                return False
+
+        if progress_callback:
+            progress_callback("Installing PawnIO driver...", 15)
+
+        # Check periodically if PawnIO is installed (up to 90 seconds)
+        for i in range(45):
+            time.sleep(2)
+
+            # Update progress
+            if progress_callback:
+                pct = 15 + int((i / 45) * 80)  # Progress from 15% to 95%
+                progress_callback(f"Installing PawnIO driver... ({(i+1)*2}s)", pct)
+
+            if is_pawnio_installed():
+                if progress_callback:
+                    progress_callback("Installation complete!", 100)
+                return True
+
+        # Final check
+        return is_pawnio_installed()
+
+    except Exception as e:
         return False
 
 
@@ -255,22 +272,17 @@ def set_vapor_icon(window):
         except Exception:
             pass
 
-    # Try multiple approaches for reliability
+    # For CTkToplevel, we need to withdraw, set icon, then show
     try:
-        window.iconbitmap(icon_path)  # Direct call
+        window.withdraw()
+        window.iconbitmap(icon_path)
+        window.deiconify()
     except Exception:
         pass
 
-    try:
-        window.update_idletasks()
-        window.iconbitmap(icon_path)  # After update
-    except Exception:
-        pass
-
-    # Also schedule for later in case window isn't fully ready
+    # Also schedule for later as backup
     try:
         window.after(50, apply_icon)
-        window.after(150, apply_icon)
     except Exception:
         pass
 
@@ -1443,63 +1455,93 @@ reset_hint = ctk.CTkLabel(master=help_scroll_frame,
 reset_hint.pack(pady=(0, 10), anchor='center')
 
 
-def rebuild_settings():
-    """Reset all settings to default values."""
-    default_selected = ["WhatsApp", "Telegram", "Microsoft Teams", "Facebook Messenger", "Slack", "Signal", "WeChat"]
-    default_resource_selected = ["Spotify", "OneDrive", "Google Drive", "Dropbox", "Wallpaper Engine",
-                                 "iCUE", "Razer Synapse", "NZXT CAM"]
+def reset_settings_and_restart():
+    """Delete settings file and restart Vapor."""
+    response = show_vapor_dialog(
+        title="Reset Settings",
+        message="This will delete all settings and restart Vapor.\n\n"
+                "Your settings will be reset to defaults.\n"
+                "Are you sure?",
+        dialog_type="warning",
+        buttons=[
+            {"text": "Reset & Restart", "value": True, "color": "#c9302c"},
+            {"text": "Cancel", "value": False, "color": "gray"}
+        ],
+        parent=root
+    )
 
-    for display_name in switch_vars:
-        switch_vars[display_name].set(display_name in default_selected)
-    custom_entry.delete(0, 'end')
+    if response:
+        # Delete settings file
+        try:
+            if os.path.exists(SETTINGS_FILE):
+                os.remove(SETTINGS_FILE)
+        except Exception as e:
+            print(f"Error deleting settings: {e}")
 
-    for display_name in resource_switch_vars:
-        resource_switch_vars[display_name].set(display_name in default_resource_selected)
-    custom_resource_entry.delete(0, 'end')
+        # Restart Vapor
+        win11toast.notify(body="Settings reset. Restarting Vapor...", app_id='Vapor - Streamline Gaming',
+                          duration='short', icon=TRAY_ICON_PATH, audio={'silent': 'true'})
 
-    startup_var.set(False)
-    launch_settings_on_start_var.set(True)
-    close_startup_var.set("Enabled")
-    close_hotkey_var.set("Enabled")
-    relaunch_exit_var.set("Enabled")
-    resource_close_startup_var.set("Enabled")
-    resource_close_hotkey_var.set("Enabled")
-    resource_relaunch_exit_var.set("Disabled")
-    playtime_summary_var.set(True)
-    playtime_summary_mode_var.set('brief')
-    debug_mode_var.set(False)
-    system_audio_slider_var.set(33)
-    update_system_audio_label(33)
-    enable_system_audio_var.set(False)
-    game_audio_slider_var.set(100)
-    update_game_audio_label(100)
-    enable_game_audio_var.set(False)
-    enable_during_power_var.set(False)
-    during_power_var.set("High Performance")
-    enable_after_power_var.set(False)
-    after_power_var.set("Balanced")
-    enable_game_mode_start_var.set(True)
-    enable_game_mode_end_var.set(False)
-    enable_cpu_thermal_var.set(False)
-    enable_gpu_thermal_var.set(True)
-    enable_cpu_temp_alert_var.set(False)
-    cpu_temp_warning_threshold_var.set("85")
-    cpu_temp_critical_threshold_var.set("95")
-    enable_gpu_temp_alert_var.set(False)
-    gpu_temp_warning_threshold_var.set("80")
-    gpu_temp_critical_threshold_var.set("90")
-
-    on_save()
-
-    win11toast.notify(body="Settings have been reset to defaults.", app_id='Vapor - Streamline Gaming',
-                      duration='short', icon=TRAY_ICON_PATH, audio={'silent': 'true'})
+        restart_vapor_as_admin(main_pid)
+        root.destroy()
 
 
-rebuild_button = ctk.CTkButton(master=help_scroll_frame, text="Reset to Defaults", command=rebuild_settings,
+def reset_all_data_and_restart():
+    """Delete settings file and all temperature data, then restart Vapor."""
+    response = show_vapor_dialog(
+        title="Reset All Data",
+        message="This will delete ALL Vapor data including:\n\n"
+                "• All settings\n"
+                "• All temperature history\n"
+                "• Lifetime max temperatures for all games\n\n"
+                "This cannot be undone. Are you sure?",
+        dialog_type="warning",
+        buttons=[
+            {"text": "Delete All & Restart", "value": True, "color": "#c9302c"},
+            {"text": "Cancel", "value": False, "color": "gray"}
+        ],
+        parent=root
+    )
+
+    if response:
+        # Delete settings file
+        try:
+            if os.path.exists(SETTINGS_FILE):
+                os.remove(SETTINGS_FILE)
+        except Exception as e:
+            print(f"Error deleting settings: {e}")
+
+        # Delete temperature history folder
+        temp_history_dir = os.path.join(appdata_dir, 'temp_history')
+        try:
+            if os.path.exists(temp_history_dir):
+                shutil.rmtree(temp_history_dir)
+        except Exception as e:
+            print(f"Error deleting temp history: {e}")
+
+        # Restart Vapor
+        win11toast.notify(body="All data deleted. Restarting Vapor...", app_id='Vapor - Streamline Gaming',
+                          duration='short', icon=TRAY_ICON_PATH, audio={'silent': 'true'})
+
+        restart_vapor_as_admin(main_pid)
+        root.destroy()
+
+
+# Create a frame to hold both reset buttons side by side
+reset_buttons_frame = ctk.CTkFrame(master=help_scroll_frame, fg_color="transparent")
+reset_buttons_frame.pack(pady=(5, 20), anchor='center')
+
+rebuild_button = ctk.CTkButton(master=reset_buttons_frame, text="Reset Settings", command=reset_settings_and_restart,
                                corner_radius=10,
-                               fg_color="#c9302c", hover_color="#a02622", text_color="white", width=200,
-                               font=("Calibri", 15))
-rebuild_button.pack(pady=(5, 20), anchor='center')
+                               fg_color="#c9302c", hover_color="#a02622", text_color="white", width=160,
+                               font=("Calibri", 14))
+rebuild_button.pack(side='left', padx=5)
+
+reset_all_button = ctk.CTkButton(master=reset_buttons_frame, text="Reset All Data", command=reset_all_data_and_restart,
+                                 corner_radius=10,
+                                 fg_color="#8b0000", hover_color="#5c0000", text_color="white", width=160,
+                                 font=("Calibri", 14))
+reset_all_button.pack(side='left', padx=5)
 
 # =============================================================================
 # About Tab
