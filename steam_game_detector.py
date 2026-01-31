@@ -462,13 +462,39 @@ from updater import check_for_updates, CURRENT_VERSION
 # Logging
 # =============================================================================
 
+# Log file for debugging (stored in %APPDATA%/Vapor)
+DEBUG_LOG_FILE = os.path.join(appdata_dir, 'vapor_debug.log')
+
+# Maximum log file size (5 MB) - will be truncated when exceeded
+MAX_LOG_SIZE = 5 * 1024 * 1024
+
+
 def log(message, category="INFO"):
-    """Print timestamped log message with category."""
+    """Print timestamped log message with category and write to log file."""
+    timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+    formatted = f"[{timestamp}] [{category}] {message}"
+
+    # Print to console (if available)
     try:
-        timestamp = time.strftime("%H:%M:%S")
-        print(f"[{timestamp}] [{category}] {message}")
+        print(formatted)
     except (OSError, ValueError):
         # Handle case where console has been freed
+        pass
+
+    # Also write to log file
+    try:
+        # Check if log file is too large and truncate if needed
+        if os.path.exists(DEBUG_LOG_FILE):
+            if os.path.getsize(DEBUG_LOG_FILE) > MAX_LOG_SIZE:
+                # Keep last 1000 lines
+                with open(DEBUG_LOG_FILE, 'r', encoding='utf-8', errors='ignore') as f:
+                    lines = f.readlines()[-1000:]
+                with open(DEBUG_LOG_FILE, 'w', encoding='utf-8') as f:
+                    f.writelines(lines)
+
+        with open(DEBUG_LOG_FILE, 'a', encoding='utf-8') as f:
+            f.write(f"{formatted}\n")
+    except Exception:
         pass
 
 
