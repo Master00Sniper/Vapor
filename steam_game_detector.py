@@ -2502,6 +2502,14 @@ if __name__ == '__main__':
         if pid:
             os.environ['VAPOR_MAIN_PID'] = str(pid)
 
+        # Pass the actual Vapor executable path for restart functionality
+        if getattr(sys, 'frozen', False):
+            # When frozen, sys.executable is the actual Vapor.exe path
+            os.environ['VAPOR_EXE_PATH'] = sys.executable
+        else:
+            # When running from source, pass the script path
+            os.environ['VAPOR_EXE_PATH'] = os.path.abspath(__file__)
+
         import vapor_settings_ui
 
     else:

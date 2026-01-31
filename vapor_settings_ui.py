@@ -129,14 +129,29 @@ def restart_vapor_as_admin(main_pid):
             debug_log(f"Could not terminate main process: {e}", "Restart")
 
     # Determine the executable and arguments to run
-    if getattr(sys, 'frozen', False):
-        # Running as compiled exe - find the main Vapor executable
-        vapor_exe = os.path.join(os.path.dirname(sys.executable), 'Vapor.exe')
-        if os.path.exists(vapor_exe):
-            executable = vapor_exe
-        else:
-            # Fallback to steam_game_detector.exe if Vapor.exe not found
-            executable = os.path.join(os.path.dirname(sys.executable), 'steam_game_detector.exe')
+    # Use VAPOR_EXE_PATH if available (passed from main process)
+    vapor_exe_from_env = os.environ.get('VAPOR_EXE_PATH', '')
+
+    if vapor_exe_from_env and os.path.exists(vapor_exe_from_env):
+        # Use the path passed from the main Vapor process
+        executable = vapor_exe_from_env
+        args_part = ""
+        debug_log(f"Using VAPOR_EXE_PATH: {executable}", "Restart")
+    elif getattr(sys, 'frozen', False):
+        # Fallback: try to find Vapor.exe in common locations
+        # Note: sys.executable here is the settings UI exe in temp folder, not what we want
+        possible_paths = [
+            os.path.join(os.path.dirname(os.path.dirname(sys.executable)), 'Vapor.exe'),
+            os.path.join(os.getcwd(), 'Vapor.exe'),
+        ]
+        executable = None
+        for path in possible_paths:
+            if os.path.exists(path):
+                executable = path
+                break
+        if not executable:
+            debug_log("ERROR: Could not find Vapor.exe for restart", "Restart")
+            return False
         args_part = ""
     else:
         # Running from Python - use pythonw.exe to avoid console window
