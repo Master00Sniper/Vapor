@@ -274,8 +274,6 @@ def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=N
 
     # Set Vapor icon
     set_vapor_icon(dialog)
-        # Also try after a short delay for reliability
-        dialog.after(50, lambda: dialog.iconbitmap(icon_path) if dialog.winfo_exists() else None)
 
     # Lift dialog to top and focus
     dialog.lift()
