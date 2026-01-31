@@ -62,14 +62,14 @@ SETTINGS_FILE = os.path.join(appdata_dir, 'vapor_settings.json')
 
 TRAY_ICON_PATH = os.path.join(base_dir, 'Images', 'tray_icon.png')
 
-# Log file for debugging PawnIO installation
-PAWNIO_LOG_FILE = os.path.join(appdata_dir, 'pawnio_install.log')
+# Log file for debugging
+DEBUG_LOG_FILE = os.path.join(appdata_dir, 'vapor_settings_debug.log')
 
 
-def log_pawnio(message):
-    """Write a message to the PawnIO installation log file and console."""
+def debug_log(message, category="General"):
+    """Write a debug message to the console and log file."""
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
-    formatted = f"[{timestamp}] [PawnIO] {message}"
+    formatted = f"[{timestamp}] [{category}] {message}"
 
     # Print to console (visible if debug mode enabled)
     try:
@@ -79,7 +79,7 @@ def log_pawnio(message):
 
     # Also write to file as backup
     try:
-        with open(PAWNIO_LOG_FILE, 'a', encoding='utf-8') as f:
+        with open(DEBUG_LOG_FILE, 'a', encoding='utf-8') as f:
             f.write(f"{formatted}\n")
     except Exception:
         pass
@@ -103,14 +103,18 @@ def restart_vapor_as_admin(main_pid):
     Terminates the current main process and starts a new elevated one.
     Uses a delayed start via PowerShell to avoid MEI folder cleanup errors.
     """
+    debug_log(f"Restarting Vapor (main_pid={main_pid})", "Restart")
+
     # Terminate current main process if running
     if main_pid:
         try:
+            debug_log(f"Terminating main process {main_pid}", "Restart")
             main_process = psutil.Process(main_pid)
             main_process.terminate()
             main_process.wait(timeout=5)  # Wait for process to terminate
-        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.TimeoutExpired):
-            pass
+            debug_log("Main process terminated", "Restart")
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.TimeoutExpired) as e:
+            debug_log(f"Could not terminate main process: {e}", "Restart")
 
     # Determine the executable and arguments to run
     if getattr(sys, 'frozen', False):
@@ -133,6 +137,8 @@ def restart_vapor_as_admin(main_pid):
         main_script = os.path.join(base_dir, 'steam_game_detector.py')
         args_part = f' -ArgumentList \\"{main_script}\\"'
 
+    debug_log(f"Executable: {executable}", "Restart")
+
     # Use PowerShell with a delay to start the new process
     # This ensures the old process (settings UI) has fully exited before new Vapor starts
     # The delay prevents "Failed to remove temporary directory" MEI folder errors
@@ -148,8 +154,10 @@ def restart_vapor_as_admin(main_pid):
             base_dir,
             0  # SW_HIDE
         )
+        debug_log(f"ShellExecuteW result: {result}", "Restart")
         return result > 32  # ShellExecuteW returns > 32 on success
-    except Exception:
+    except Exception as e:
+        debug_log(f"Restart failed: {e}", "Restart")
         return False
 
 
@@ -166,10 +174,10 @@ def is_winget_available():
             creationflags=subprocess.CREATE_NO_WINDOW
         )
         available = result.returncode == 0
-        log_pawnio(f"[Winget Check] Available: {available}, Version: {result.stdout.strip() if available else 'N/A'}")
+        debug_log(f"Available: {available}, Version: {result.stdout.strip() if available else 'N/A'}", "Winget")
         return available
     except Exception as e:
-        log_pawnio(f"[Winget Check] Error: {e}")
+        debug_log(f"Error: {e}", "Winget")
         return False
 
 
@@ -182,10 +190,10 @@ def is_pawnio_installed():
             creationflags=subprocess.CREATE_NO_WINDOW
         )
         installed = 'PawnIO' in result.stdout
-        log_pawnio(f"[PawnIO Check] Installed: {installed}")
+        debug_log(f"Installed: {installed}", "PawnIO")
         return installed
     except Exception as e:
-        log_pawnio(f"[PawnIO Check] Error: {e}")
+        debug_log(f"Check error: {e}", "PawnIO")
         return False
 
 
@@ -235,34 +243,27 @@ def install_pawnio_with_elevation(progress_callback=None):
 
     Returns True if installation succeeded.
     """
-    # Clear previous log
-    try:
-        with open(PAWNIO_LOG_FILE, 'w', encoding='utf-8') as f:
-            f.write("")
-    except Exception:
-        pass
-
-    log_pawnio("Starting installation process...")
-    log_pawnio(f"Running as admin: {is_admin()}")
+    debug_log("Starting installation process...", "PawnIO")
+    debug_log(f"Running as admin: {is_admin()}", "PawnIO")
 
     # Check if winget is available
     if not is_winget_available():
-        log_pawnio("ERROR: winget not available!")
+        debug_log("ERROR: winget not available!", "PawnIO")
         if progress_callback:
             progress_callback("Error: Windows Package Manager (winget) not found", 0)
         return False
 
     # First check if already installed
     if is_pawnio_installed():
-        log_pawnio("Already installed, skipping.")
+        debug_log("Already installed, skipping.", "PawnIO")
         return True
 
     script_path = get_pawnio_installer_path()
-    log_pawnio(f"Script path: {script_path}")
-    log_pawnio(f"Script exists: {os.path.exists(script_path)}")
+    debug_log(f"Script path: {script_path}", "PawnIO")
+    debug_log(f"Script exists: {os.path.exists(script_path)}", "PawnIO")
 
     if not os.path.exists(script_path):
-        log_pawnio("ERROR: Script not found!")
+        debug_log("ERROR: Script not found!", "PawnIO")
         if progress_callback:
             progress_callback("Error: Installation script not found", 0)
         return False
@@ -274,7 +275,7 @@ def install_pawnio_with_elevation(progress_callback=None):
 
         # If already running as admin, run directly and capture output
         if is_admin():
-            log_pawnio("Running as admin, executing PowerShell directly...")
+            debug_log("Running as admin, executing PowerShell directly...", "PawnIO")
             # Run PowerShell directly and capture output for debugging
             process = subprocess.Popen(
                 [
@@ -288,10 +289,10 @@ def install_pawnio_with_elevation(progress_callback=None):
                 text=True,
                 creationflags=subprocess.CREATE_NO_WINDOW
             )
-            log_pawnio(f"Started process PID: {process.pid}")
+            debug_log(f"Started process PID: {process.pid}", "PawnIO")
         else:
             # Need elevation - use ShellExecuteW with 'runas'
-            log_pawnio("Not admin, requesting elevation via ShellExecuteW...")
+            debug_log("Not admin, requesting elevation via ShellExecuteW...", "PawnIO")
             if progress_callback:
                 progress_callback("Requesting administrator approval...", 5)
 
@@ -304,9 +305,9 @@ def install_pawnio_with_elevation(progress_callback=None):
                 0  # SW_HIDE
             )
 
-            log_pawnio(f"ShellExecuteW result: {result}")
+            debug_log(f"ShellExecuteW result: {result}", "PawnIO")
             if result <= 32:
-                log_pawnio("ERROR: ShellExecuteW failed!")
+                debug_log("ERROR: ShellExecuteW failed!", "PawnIO")
                 return False
 
         if progress_callback:
@@ -322,19 +323,19 @@ def install_pawnio_with_elevation(progress_callback=None):
                 if poll_result is not None:
                     # Process finished, get output
                     stdout, stderr = process.communicate()
-                    log_pawnio(f"Process exited with code: {poll_result}")
+                    debug_log(f"Process exited with code: {poll_result}", "PawnIO")
                     if stdout:
-                        log_pawnio(f"stdout: {stdout}")
+                        debug_log(f"stdout: {stdout}", "PawnIO")
                     if stderr:
-                        log_pawnio(f"stderr: {stderr}")
+                        debug_log(f"stderr: {stderr}", "PawnIO")
 
                     if poll_result == 0:
                         if progress_callback:
                             progress_callback("Installation complete!", 100)
-                        log_pawnio("Installation succeeded (exit code 0)")
+                        debug_log("Installation succeeded (exit code 0)", "PawnIO")
                         return True
                     else:
-                        log_pawnio(f"Process failed with exit code {poll_result}")
+                        debug_log(f"Process failed with exit code {poll_result}", "PawnIO")
                         if progress_callback:
                             progress_callback(f"Installation failed (code {poll_result})", 0)
                         return False
@@ -346,24 +347,24 @@ def install_pawnio_with_elevation(progress_callback=None):
 
             # Log every 10 seconds
             if i % 5 == 4:
-                log_pawnio(f"Still waiting... ({(i+1)*2}s elapsed)")
+                debug_log(f"Still waiting... ({(i+1)*2}s elapsed)", "PawnIO")
 
             if is_pawnio_installed():
                 if progress_callback:
                     progress_callback("Installation complete!", 100)
-                log_pawnio("Verified installed!")
+                debug_log("Verified installed!", "PawnIO")
                 return True
 
         # Final check
-        log_pawnio("Timeout reached (90s), doing final check...")
+        debug_log("Timeout reached (90s), doing final check...", "PawnIO")
         result = is_pawnio_installed()
-        log_pawnio(f"Final result: {result}")
+        debug_log(f"Final result: {result}", "PawnIO")
         return result
 
     except Exception as e:
-        log_pawnio(f"ERROR: {e}")
+        debug_log(f"ERROR: {e}", "PawnIO")
         import traceback
-        log_pawnio(f"Traceback: {traceback.format_exc()}")
+        debug_log(f"Traceback: {traceback.format_exc()}", "PawnIO")
         return False
 
 
@@ -620,9 +621,11 @@ BUILT_IN_RESOURCE_APPS = [
 def load_settings():
     """Load settings from file or return defaults."""
     if os.path.exists(SETTINGS_FILE):
+        debug_log(f"Loading settings from {SETTINGS_FILE}", "Settings")
         with open(SETTINGS_FILE, 'r') as f:
             return json.load(f)
     else:
+        debug_log("Settings file not found, using defaults", "Settings")
         default_selected = ["WhatsApp", "Telegram", "Microsoft Teams", "Facebook Messenger", "Slack", "Signal",
                             "WeChat"]
         default_resource_selected = ["Spotify", "OneDrive", "Google Drive", "Dropbox", "Wallpaper Engine",
@@ -708,6 +711,7 @@ def save_settings(selected_notification_apps, customs, selected_resource_apps, r
     }
     with open(SETTINGS_FILE, 'w') as f:
         json.dump(settings, f)
+    debug_log(f"Settings saved to {SETTINGS_FILE}", "Settings")
 
 
 # =============================================================================
@@ -776,7 +780,11 @@ if enable_debug_mode:
         sys.stdout = open('CONOUT$', 'w')
         sys.stderr = open('CONOUT$', 'w')
         kernel32.SetConsoleTitleW("Vapor Settings - Debug Console")
-        print("Vapor Settings debug console initialized")
+        debug_log("Debug console initialized", "Startup")
+        debug_log(f"Settings UI started (main_pid from env: {os.environ.get('VAPOR_MAIN_PID', 'not set')})", "Startup")
+        debug_log(f"Running as admin: {is_admin()}", "Startup")
+        debug_log(f"Base directory: {base_dir}", "Startup")
+        debug_log(f"Settings file: {SETTINGS_FILE}", "Startup")
     except Exception as e:
         pass  # Console allocation failed, continue without it
 
@@ -1578,6 +1586,7 @@ reset_hint.pack(pady=(0, 10), anchor='center')
 
 def reset_settings_and_restart():
     """Delete settings file and restart Vapor."""
+    debug_log("Reset settings requested", "Reset")
     response = show_vapor_dialog(
         title="Reset Settings",
         message="This will delete all settings and restart Vapor.\n\n"
@@ -1592,12 +1601,14 @@ def reset_settings_and_restart():
     )
 
     if response:
+        debug_log("User confirmed reset settings", "Reset")
         # Delete settings file
         try:
             if os.path.exists(SETTINGS_FILE):
                 os.remove(SETTINGS_FILE)
+                debug_log(f"Deleted settings file: {SETTINGS_FILE}", "Reset")
         except Exception as e:
-            print(f"Error deleting settings: {e}")
+            debug_log(f"Error deleting settings: {e}", "Reset")
 
         # Restart Vapor
         win11toast.notify(body="Settings reset. Restarting Vapor...", app_id='Vapor - Streamline Gaming',
@@ -1605,10 +1616,13 @@ def reset_settings_and_restart():
 
         restart_vapor_as_admin(main_pid)
         root.destroy()
+    else:
+        debug_log("User cancelled reset settings", "Reset")
 
 
 def reset_all_data_and_restart():
     """Delete settings file and all temperature data, then restart Vapor."""
+    debug_log("Reset all data requested", "Reset")
     response = show_vapor_dialog(
         title="Reset All Data",
         message="This will delete ALL Vapor data including:\n\n"
@@ -1625,20 +1639,23 @@ def reset_all_data_and_restart():
     )
 
     if response:
+        debug_log("User confirmed reset all data", "Reset")
         # Delete settings file
         try:
             if os.path.exists(SETTINGS_FILE):
                 os.remove(SETTINGS_FILE)
+                debug_log(f"Deleted settings file: {SETTINGS_FILE}", "Reset")
         except Exception as e:
-            print(f"Error deleting settings: {e}")
+            debug_log(f"Error deleting settings: {e}", "Reset")
 
         # Delete temperature history folder
         temp_history_dir = os.path.join(appdata_dir, 'temp_history')
         try:
             if os.path.exists(temp_history_dir):
                 shutil.rmtree(temp_history_dir)
+                debug_log(f"Deleted temp history folder: {temp_history_dir}", "Reset")
         except Exception as e:
-            print(f"Error deleting temp history: {e}")
+            debug_log(f"Error deleting temp history: {e}", "Reset")
 
         # Restart Vapor
         win11toast.notify(body="All data deleted. Restarting Vapor...", app_id='Vapor - Streamline Gaming',
@@ -1646,6 +1663,8 @@ def reset_all_data_and_restart():
 
         restart_vapor_as_admin(main_pid)
         root.destroy()
+    else:
+        debug_log("User cancelled reset all data", "Reset")
 
 
 # Create a frame to hold both reset buttons side by side
@@ -1790,6 +1809,7 @@ button_frame.grid_columnconfigure(4, weight=1)
 
 def on_save():
     """Save current settings to file."""
+    debug_log("Save button clicked", "Settings")
     new_selected_notification_apps = [name for name, var in switch_vars.items() if var.get()]
     raw_customs = [c.strip() for c in custom_entry.get().split(',') if c.strip()]
     new_selected_resource_apps = [name for name, var in resource_switch_vars.items() if var.get()]
@@ -2013,23 +2033,28 @@ def on_save():
 
 def on_save_and_close():
     """Save settings and close the window."""
+    debug_log("Save & Close clicked", "Settings")
     on_save()
     root.destroy()
 
 
 def on_discard_and_close():
     """Close without saving changes."""
+    debug_log("Discard & Close clicked", "Settings")
     root.destroy()
 
 
 def on_stop_vapor():
     """Terminate the main Vapor process and close settings."""
+    debug_log("Stop Vapor clicked", "Settings")
     if main_pid:
         try:
+            debug_log(f"Terminating main Vapor process (PID: {main_pid})", "Settings")
             main_process = psutil.Process(main_pid)
             main_process.terminate()
-        except (psutil.NoSuchProcess, psutil.AccessDenied):
-            pass
+            debug_log("Main process terminated", "Settings")
+        except (psutil.NoSuchProcess, psutil.AccessDenied) as e:
+            debug_log(f"Could not terminate: {e}", "Settings")
     root.destroy()
 
 
