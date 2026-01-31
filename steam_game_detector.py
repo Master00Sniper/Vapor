@@ -1118,7 +1118,7 @@ def show_notification(message):
 def show_temperature_alert(message, is_critical=False):
     """Display a high-priority temperature alert notification that can bypass Do Not Disturb.
 
-    Uses the 'alarm' scenario to ensure the notification appears even when
+    Uses the 'urgent' scenario to ensure the notification appears even when
     Windows Focus Assist / Do Not Disturb is enabled during gameplay.
 
     Args:
@@ -1135,7 +1135,7 @@ def show_temperature_alert(message, is_critical=False):
         # Warning alerts use Windows reminder sound (gentler)
         audio = {'src': 'ms-winsoundevent:Notification.Reminder'}
 
-    win11toast.notify(body=message, app_id='Vapor - Streamline Gaming', scenario='alarm', icon=icon_path,
+    win11toast.notify(body=message, app_id='Vapor - Streamline Gaming', scenario='urgent', icon=icon_path,
                       audio=audio)
 
 
