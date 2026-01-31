@@ -29,7 +29,7 @@ Write-Host "Winget found at: $($wingetPath.Source)"
 
 # Check if PawnIO is already installed
 Write-Host "Checking if PawnIO is already installed..."
-$installed = winget list --id "PawnIO.PawnIO" 2>$null | Select-String "PawnIO"
+$installed = winget list --id "namazso.PawnIO" 2>$null | Select-String "PawnIO"
 
 if ($installed) {
     Write-Host "PawnIO is already installed." -ForegroundColor Green
@@ -38,9 +38,9 @@ if ($installed) {
 Write-Host "PawnIO not found, proceeding with installation..."
 
 # Install PawnIO
-Write-Host "Running: winget install PawnIO.PawnIO --accept-package-agreements --accept-source-agreements --silent"
+Write-Host "Running: winget install namazso.PawnIO --accept-package-agreements --accept-source-agreements --silent"
 try {
-    $result = winget install PawnIO.PawnIO --accept-package-agreements --accept-source-agreements --silent 2>&1
+    $result = winget install namazso.PawnIO --accept-package-agreements --accept-source-agreements --silent 2>&1
 
     Write-Host "=== Winget Output ===" -ForegroundColor Cyan
     Write-Host $result
@@ -48,7 +48,7 @@ try {
 
     # Check if installation succeeded
     Write-Host "Verifying installation..."
-    $verifyInstall = winget list --id "PawnIO.PawnIO" 2>$null | Select-String "PawnIO"
+    $verifyInstall = winget list --id "namazso.PawnIO" 2>$null | Select-String "PawnIO"
 
     if ($verifyInstall) {
         Write-Host "PawnIO installed successfully." -ForegroundColor Green
