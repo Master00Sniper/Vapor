@@ -1286,10 +1286,143 @@ def get_gpu_temperature():
     return None
 
 
+# =============================================================================
+# CoreTemp Shared Memory Reader
+# =============================================================================
+
+def get_coretemp_cpu_temp():
+    """
+    Read CPU temperature from CoreTemp shared memory.
+    CoreTemp must be running for this to work.
+    Returns temperature in Celsius or None if unavailable.
+    """
+    import ctypes
+    from ctypes import wintypes
+
+    # CoreTemp shared memory structure
+    CORE_TEMP_MAPPING_NAME = "CoreTempMappingObject"
+
+    class CORE_TEMP_SHARED_DATA(ctypes.Structure):
+        _fields_ = [
+            ("uiLoad", ctypes.c_uint * 256),
+            ("uiTjMax", ctypes.c_uint * 128),
+            ("uiCoreCnt", ctypes.c_uint),
+            ("uiCPUCnt", ctypes.c_uint),
+            ("fTemp", ctypes.c_float * 256),
+            ("fVID", ctypes.c_float),
+            ("fCPUSpeed", ctypes.c_float),
+            ("fFSBSpeed", ctypes.c_float),
+            ("fMultiplier", ctypes.c_float),
+            ("sCPUName", ctypes.c_char * 100),
+            ("ucFahrenheit", ctypes.c_ubyte),
+            ("ucDeltaToTjMax", ctypes.c_ubyte),
+        ]
+
+    try:
+        # Open the shared memory
+        kernel32 = ctypes.windll.kernel32
+        FILE_MAP_READ = 0x0004
+
+        hMapFile = kernel32.OpenFileMappingW(FILE_MAP_READ, False, CORE_TEMP_MAPPING_NAME)
+        if not hMapFile:
+            return None
+
+        try:
+            # Map view of the file
+            pBuf = kernel32.MapViewOfFile(hMapFile, FILE_MAP_READ, 0, 0, ctypes.sizeof(CORE_TEMP_SHARED_DATA))
+            if not pBuf:
+                return None
+
+            try:
+                # Cast to our structure
+                data = ctypes.cast(pBuf, ctypes.POINTER(CORE_TEMP_SHARED_DATA)).contents
+
+                # Get the first core temperature
+                if data.uiCoreCnt > 0:
+                    temp = data.fTemp[0]
+                    if temp > 0 and temp < 150:  # Sanity check
+                        return int(temp)
+            finally:
+                kernel32.UnmapViewOfFile(pBuf)
+        finally:
+            kernel32.CloseHandle(hMapFile)
+    except Exception:
+        pass
+
+    return None
+
+
+# =============================================================================
+# HWiNFO Shared Memory Reader
+# =============================================================================
+
+def get_hwinfo_cpu_temp():
+    """
+    Read CPU temperature from HWiNFO shared memory.
+    HWiNFO must be running with shared memory support enabled.
+    Returns temperature in Celsius or None if unavailable.
+    """
+    import ctypes
+    import struct
+
+    HWINFO_SENSORS_MAP_NAME = "Global\\HWiNFO_SENS_SM2"
+
+    try:
+        kernel32 = ctypes.windll.kernel32
+        FILE_MAP_READ = 0x0004
+
+        hMapFile = kernel32.OpenFileMappingW(FILE_MAP_READ, False, HWINFO_SENSORS_MAP_NAME)
+        if not hMapFile:
+            return None
+
+        try:
+            # Map the header first to get structure info
+            pBuf = kernel32.MapViewOfFile(hMapFile, FILE_MAP_READ, 0, 0, 0)
+            if not pBuf:
+                return None
+
+            try:
+                # Read header (first 32 bytes contain structure info)
+                header = ctypes.string_at(pBuf, 32)
+                signature, version, revision, poll_time, sensor_offset, sensor_size, \
+                    sensor_count, reading_offset, reading_size = struct.unpack('<IIHIIIII', header[:32])
+
+                if signature != 0x49574853:  # "SHWI" in little-endian
+                    return None
+
+                # Find CPU temperature readings
+                for i in range(sensor_count):
+                    reading_addr = pBuf + reading_offset + (i * reading_size)
+                    # Each reading has: sensor type (4), sensor index (4), reading id (4),
+                    # label offset (4), label (128 bytes), unit (16 bytes), value (8), ...
+                    reading_data = ctypes.string_at(reading_addr, min(reading_size, 256))
+
+                    if len(reading_data) >= 176:
+                        sensor_type = struct.unpack('<I', reading_data[0:4])[0]
+                        label = reading_data[16:144].split(b'\x00')[0].decode('utf-8', errors='ignore')
+                        value = struct.unpack('<d', reading_data[160:168])[0]
+
+                        # Type 1 = Temperature, look for CPU-related
+                        if sensor_type == 1:
+                            label_lower = label.lower()
+                            if ('cpu' in label_lower or 'core' in label_lower or 'tctl' in label_lower or 'tdie' in label_lower) \
+                                    and 'gpu' not in label_lower:
+                                if 0 < value < 150:  # Sanity check
+                                    return int(value)
+            finally:
+                kernel32.UnmapViewOfFile(pBuf)
+        finally:
+            kernel32.CloseHandle(hMapFile)
+    except Exception:
+        pass
+
+    return None
+
+
 def get_cpu_temperature():
     """
     Get current CPU temperature in Celsius.
-    Tries bundled LibreHardwareMonitorLib first (requires admin), then WMI fallback.
+    Tries multiple sources: LibreHardwareMonitor, WMI, CoreTemp, HWiNFO.
     Returns None if temperature cannot be read.
     """
     global LHM_COMPUTER
@@ -1386,6 +1519,22 @@ def get_cpu_temperature():
                                 return int(celsius)
             except Exception:
                 pass  # Thermal zone not available
+
+    # Fallback: Try CoreTemp shared memory (if CoreTemp is running)
+    try:
+        temp = get_coretemp_cpu_temp()
+        if temp is not None:
+            return temp
+    except Exception:
+        pass
+
+    # Fallback: Try HWiNFO shared memory (if HWiNFO is running)
+    try:
+        temp = get_hwinfo_cpu_temp()
+        if temp is not None:
+            return temp
+    except Exception:
+        pass
 
     # Log once that CPU temp is unavailable
     if not CPU_TEMP_ERRORS_LOGGED:
