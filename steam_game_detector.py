@@ -1256,8 +1256,8 @@ def show_detailed_summary(session_data):
         )
         ok_button.pack()
 
-        # Scrollable content frame (fills remaining space above bottom bar)
-        content_frame = ctk.CTkScrollableFrame(master=popup, fg_color="transparent")
+        # Content frame (fills remaining space above bottom bar)
+        content_frame = ctk.CTkFrame(master=popup, fg_color="transparent")
         content_frame.pack(fill="both", expand=True, padx=15, pady=(20, 10))
 
         # Title
