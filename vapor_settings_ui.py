@@ -788,21 +788,29 @@ enable_playtime_summary = current_settings.get('enable_playtime_summary', True)
 playtime_summary_mode = current_settings.get('playtime_summary_mode', 'brief')
 enable_debug_mode = current_settings.get('enable_debug_mode', False)
 
-# If debug mode is enabled, allocate a console for the settings UI so print() output is visible
+# If debug mode is enabled, attach to parent's console (main Vapor process) instead of creating a new one
 if enable_debug_mode:
     try:
         kernel32 = ctypes.windll.kernel32
-        kernel32.AllocConsole()
-        sys.stdout = open('CONOUT$', 'w')
-        sys.stderr = open('CONOUT$', 'w')
-        kernel32.SetConsoleTitleW("Vapor Settings - Debug Console")
-        debug_log("Debug console initialized", "Startup")
+        # ATTACH_PARENT_PROCESS = -1, attaches to the parent process's console
+        ATTACH_PARENT_PROCESS = -1
+        attached = kernel32.AttachConsole(ATTACH_PARENT_PROCESS)
+
+        if attached:
+            # Successfully attached to parent's console
+            sys.stdout = open('CONOUT$', 'w')
+            sys.stderr = open('CONOUT$', 'w')
+            debug_log("Settings UI attached to main debug console", "Startup")
+        else:
+            # Parent doesn't have a console, just use log file
+            debug_log("No parent console to attach to, using log file only", "Startup")
+
         debug_log(f"Settings UI started (main_pid from env: {os.environ.get('VAPOR_MAIN_PID', 'not set')})", "Startup")
         debug_log(f"Running as admin: {is_admin()}", "Startup")
         debug_log(f"Base directory: {base_dir}", "Startup")
         debug_log(f"Settings file: {SETTINGS_FILE}", "Startup")
     except Exception as e:
-        pass  # Console allocation failed, continue without it
+        pass  # Console attachment failed, continue without it
 
 system_audio_level = current_settings.get('system_audio_level', 50)
 enable_system_audio = current_settings.get('enable_system_audio', False)
