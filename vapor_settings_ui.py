@@ -29,6 +29,15 @@ else:
 os.chdir(application_path)
 sys.path.append(application_path)
 
+# Import shared utilities (logging, constants, paths)
+from utils import (
+    base_dir, appdata_dir, SETTINGS_FILE,
+    TRAY_ICON_PATH, PROTECTED_PROCESSES, log
+)
+
+# Alias for backward compatibility with existing code
+debug_log = log
+
 # =============================================================================
 # Imports
 # =============================================================================
@@ -52,49 +61,6 @@ try:
     from updater import CURRENT_VERSION
 except ImportError:
     CURRENT_VERSION = "Unknown"
-
-base_dir = getattr(sys, '_MEIPASS', os.path.abspath(os.path.dirname(__file__)))
-
-# Settings stored in %APPDATA%/Vapor for persistence
-appdata_dir = os.path.join(os.getenv('APPDATA'), 'Vapor')
-os.makedirs(appdata_dir, exist_ok=True)
-SETTINGS_FILE = os.path.join(appdata_dir, 'vapor_settings.json')
-
-TRAY_ICON_PATH = os.path.join(base_dir, 'Images', 'tray_icon.png')
-
-# Log file for debugging (shared with main Vapor process)
-DEBUG_LOG_FILE = os.path.join(appdata_dir, 'vapor_logs.log')
-
-# Maximum log file size (2 MB) - will be truncated when exceeded
-MAX_LOG_SIZE = 2 * 1024 * 1024
-
-
-def debug_log(message, category="General"):
-    """Write a debug message to the console and log file."""
-    timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
-    formatted = f"[{timestamp}] [{category}] {message}"
-
-    # Print to console (visible if debug mode enabled)
-    try:
-        print(formatted)
-    except Exception:
-        pass
-
-    # Also write to file as backup
-    try:
-        # Check if log file is too large and truncate if needed
-        if os.path.exists(DEBUG_LOG_FILE):
-            if os.path.getsize(DEBUG_LOG_FILE) > MAX_LOG_SIZE:
-                # Keep last 500 lines
-                with open(DEBUG_LOG_FILE, 'r', encoding='utf-8', errors='ignore') as f:
-                    lines = f.readlines()[-500:]
-                with open(DEBUG_LOG_FILE, 'w', encoding='utf-8') as f:
-                    f.writelines(lines)
-
-        with open(DEBUG_LOG_FILE, 'a', encoding='utf-8') as f:
-            f.write(f"{formatted}\n")
-    except Exception:
-        pass
 
 
 # =============================================================================
@@ -620,25 +586,6 @@ def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=N
 
     return result[0]
 
-
-# System processes that cannot be added as custom processes (safety protection)
-PROTECTED_PROCESSES = {
-    # Windows core
-    'explorer.exe', 'svchost.exe', 'csrss.exe', 'wininit.exe', 'winlogon.exe',
-    'services.exe', 'lsass.exe', 'smss.exe', 'dwm.exe', 'taskhostw.exe',
-    'sihost.exe', 'fontdrvhost.exe', 'ctfmon.exe', 'conhost.exe', 'dllhost.exe',
-    'runtimebroker.exe', 'searchhost.exe', 'startmenuexperiencehost.exe',
-    'shellexperiencehost.exe', 'textinputhost.exe', 'applicationframehost.exe',
-    'systemsettings.exe', 'securityhealthservice.exe', 'securityhealthsystray.exe',
-    # System utilities
-    'taskmgr.exe', 'cmd.exe', 'powershell.exe', 'regedit.exe', 'mmc.exe',
-    # Windows Defender / Security
-    'msmpeng.exe', 'mssense.exe', 'nissrv.exe', 'securityhealthhost.exe',
-    # Critical services
-    'spoolsv.exe', 'wuauserv.exe', 'audiodg.exe',
-    # Vapor itself
-    'vapor.exe',
-}
 
 # =============================================================================
 # Built-in App Definitions

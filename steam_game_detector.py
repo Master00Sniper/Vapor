@@ -424,78 +424,18 @@ else:
 os.chdir(application_path)
 sys.path.append(application_path)
 
-base_dir = getattr(sys, '_MEIPASS', os.path.abspath(os.path.dirname(__file__)))
+# Import shared utilities (logging, constants, paths)
+from utils import (
+    base_dir, appdata_dir, SETTINGS_FILE, DEBUG_LOG_FILE,
+    MAX_LOG_SIZE, TRAY_ICON_PATH, PROTECTED_PROCESSES, log
+)
 
-# Settings stored in %APPDATA%/Vapor for persistence across updates
-appdata_dir = os.path.join(os.getenv('APPDATA'), 'Vapor')
-os.makedirs(appdata_dir, exist_ok=True)
-SETTINGS_FILE = os.path.join(appdata_dir, 'vapor_settings.json')
+# Additional paths specific to main application
 NOTIFICATION_WARNING_DISMISSED_FILE = os.path.join(appdata_dir, 'notification_warning_dismissed')
-
-TRAY_ICON_PATH = os.path.join(base_dir, 'Images', 'tray_icon.png')
 UI_SCRIPT_PATH = os.path.join(base_dir, 'vapor_settings_ui.py')
 STEAM_PATH = r"C:\Program Files (x86)\Steam\steamapps"
 
-# System processes that should never be terminated (safety protection)
-PROTECTED_PROCESSES = {
-    # Windows core
-    'explorer.exe', 'svchost.exe', 'csrss.exe', 'wininit.exe', 'winlogon.exe',
-    'services.exe', 'lsass.exe', 'smss.exe', 'dwm.exe', 'taskhostw.exe',
-    'sihost.exe', 'fontdrvhost.exe', 'ctfmon.exe', 'conhost.exe', 'dllhost.exe',
-    'runtimebroker.exe', 'searchhost.exe', 'startmenuexperiencehost.exe',
-    'shellexperiencehost.exe', 'textinputhost.exe', 'applicationframehost.exe',
-    'systemsettings.exe', 'securityhealthservice.exe', 'securityhealthsystray.exe',
-    # System utilities
-    'taskmgr.exe', 'cmd.exe', 'powershell.exe', 'regedit.exe', 'mmc.exe',
-    # Windows Defender / Security
-    'msmpeng.exe', 'mssense.exe', 'nissrv.exe', 'securityhealthhost.exe',
-    # Critical services
-    'spoolsv.exe', 'wuauserv.exe', 'audiodg.exe',
-    # Vapor itself
-    'vapor.exe',
-}
-
 from updater import check_for_updates, CURRENT_VERSION
-
-
-# =============================================================================
-# Logging
-# =============================================================================
-
-# Log file for debugging (stored in %APPDATA%/Vapor)
-DEBUG_LOG_FILE = os.path.join(appdata_dir, 'vapor_logs.log')
-
-# Maximum log file size (5 MB) - will be truncated when exceeded
-MAX_LOG_SIZE = 5 * 1024 * 1024
-
-
-def log(message, category="INFO"):
-    """Print timestamped log message with category and write to log file."""
-    timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
-    formatted = f"[{timestamp}] [{category}] {message}"
-
-    # Print to console (if available)
-    try:
-        print(formatted)
-    except (OSError, ValueError):
-        # Handle case where console has been freed
-        pass
-
-    # Also write to log file
-    try:
-        # Check if log file is too large and truncate if needed
-        if os.path.exists(DEBUG_LOG_FILE):
-            if os.path.getsize(DEBUG_LOG_FILE) > MAX_LOG_SIZE:
-                # Keep last 1000 lines
-                with open(DEBUG_LOG_FILE, 'r', encoding='utf-8', errors='ignore') as f:
-                    lines = f.readlines()[-1000:]
-                with open(DEBUG_LOG_FILE, 'w', encoding='utf-8') as f:
-                    f.writelines(lines)
-
-        with open(DEBUG_LOG_FILE, 'a', encoding='utf-8') as f:
-            f.write(f"{formatted}\n")
-    except Exception:
-        pass
 
 
 # =============================================================================
