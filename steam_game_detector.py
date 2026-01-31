@@ -1357,10 +1357,10 @@ def set_game_mode(enabled):
 def get_gpu_temperature():
     """
     Get current GPU temperature in Celsius.
-    Tries NVIDIA (pynvml) first, then AMD (pyadl).
+    Tries multiple methods: NVIDIA pynvml, AMD pyadl, nvidia-smi CLI, and WMI fallbacks.
     Returns None if temperature cannot be read.
     """
-    # Try NVIDIA GPU first
+    # Try NVIDIA GPU first (pynvml library)
     if NVML_AVAILABLE:
         try:
             pynvml.nvmlInit()
@@ -1376,9 +1376,9 @@ def get_gpu_temperature():
                 pynvml.nvmlShutdown()
             except:
                 pass
-            log(f"NVIDIA GPU temp read failed: {e}", "TEMP")
+            # Don't log - will try fallbacks
 
-    # Try AMD GPU
+    # Try AMD GPU (pyadl library)
     if PYADL_AVAILABLE:
         try:
             devices = ADLManager.getInstance().getDevices()
@@ -1387,8 +1387,35 @@ def get_gpu_temperature():
                 temp = devices[0].getCurrentTemperature()
                 if temp is not None:
                     return int(temp)
-        except Exception as e:
-            log(f"AMD GPU temp read failed: {e}", "TEMP")
+        except Exception:
+            pass  # Don't log - will try fallbacks
+
+    # Fallback: Try nvidia-smi command line (works even if pynvml fails)
+    try:
+        result = subprocess.run(
+            ['nvidia-smi', '--query-gpu=temperature.gpu', '--format=csv,noheader,nounits'],
+            capture_output=True, text=True, timeout=5,
+            creationflags=subprocess.CREATE_NO_WINDOW
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            temp = int(result.stdout.strip().split('\n')[0])
+            if 0 < temp < 150:
+                return temp
+    except Exception:
+        pass  # nvidia-smi not available or failed
+
+    # Fallback: Try WMI with LibreHardwareMonitor/OpenHardwareMonitor for GPU
+    if WMI_AVAILABLE:
+        for namespace in ["root\\LibreHardwareMonitor", "root\\OpenHardwareMonitor"]:
+            try:
+                w = wmi.WMI(namespace=namespace)
+                sensors = w.Sensor()
+                for sensor in sensors:
+                    if sensor.SensorType == "Temperature" and "GPU" in sensor.Name:
+                        if sensor.Value and sensor.Value > 0:
+                            return int(sensor.Value)
+            except Exception:
+                pass  # Namespace not available
 
     return None
 
@@ -1547,6 +1574,45 @@ def get_cpu_temperature():
                                 return int(celsius)
             except Exception:
                 pass  # Thermal zone not available
+
+    # Fallback: Try PowerShell Get-CimInstance for thermal zone
+    if is_admin():
+        try:
+            result = subprocess.run(
+                ['powershell', '-NoProfile', '-Command',
+                 'Get-CimInstance -Namespace root/wmi -ClassName MSAcpi_ThermalZoneTemperature | '
+                 'Select-Object -ExpandProperty CurrentTemperature | Select-Object -First 1'],
+                capture_output=True, text=True, timeout=10,
+                creationflags=subprocess.CREATE_NO_WINDOW
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                # Convert from decikelvin to Celsius
+                decikelvin = float(result.stdout.strip())
+                celsius = (decikelvin / 10.0) - 273.15
+                if 0 < celsius < 150:
+                    return int(celsius)
+        except Exception:
+            pass  # PowerShell method failed
+
+    # Fallback: Try wmic command for thermal zone
+    if is_admin():
+        try:
+            result = subprocess.run(
+                ['wmic', '/namespace:\\\\root\\wmi', 'path', 'MSAcpi_ThermalZoneTemperature',
+                 'get', 'CurrentTemperature', '/value'],
+                capture_output=True, text=True, timeout=10,
+                creationflags=subprocess.CREATE_NO_WINDOW
+            )
+            if result.returncode == 0 and 'CurrentTemperature=' in result.stdout:
+                # Parse "CurrentTemperature=XXXXX" format
+                for line in result.stdout.split('\n'):
+                    if 'CurrentTemperature=' in line:
+                        decikelvin = float(line.split('=')[1].strip())
+                        celsius = (decikelvin / 10.0) - 273.15
+                        if 0 < celsius < 150:
+                            return int(celsius)
+        except Exception:
+            pass  # wmic method failed
 
     # Log once that CPU temp is unavailable
     if not CPU_TEMP_ERRORS_LOGGED:
