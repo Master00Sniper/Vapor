@@ -191,7 +191,7 @@ def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=N
     title_label = ctk.CTkLabel(
         master=content_frame,
         text=title,
-        font=("Calibri", 20, "bold"),
+        font=("Calibri", 21, "bold"),
         text_color=title_color
     )
     title_label.pack(pady=(0, 15))
@@ -200,7 +200,7 @@ def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=N
     message_label = ctk.CTkLabel(
         master=content_frame,
         text=message,
-        font=("Calibri", 12),
+        font=("Calibri", 13),
         justify="left",
         wraplength=450
     )
@@ -252,7 +252,7 @@ def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=N
             corner_radius=10,
             fg_color=fg_color,
             hover_color=hover_color,
-            font=("Calibri", 14)
+            font=("Calibri", 15)
         )
         btn.pack(side="left", padx=15)
 
@@ -562,62 +562,62 @@ notif_scroll_frame = ctk.CTkScrollableFrame(master=notifications_tab, fg_color="
 notif_scroll_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
 notification_title = ctk.CTkLabel(master=notif_scroll_frame, text="Notification Management",
-                                  font=("Calibri", 24, "bold"))
+                                  font=("Calibri", 25, "bold"))
 notification_title.pack(pady=(10, 5), anchor='center')
 
 notif_description = ctk.CTkLabel(master=notif_scroll_frame,
                                  text="Control which messaging and notification apps are closed when you start gaming.",
-                                 font=("Calibri", 12), text_color="gray60")
+                                 font=("Calibri", 13), text_color="gray60")
 notif_description.pack(pady=(0, 15), anchor='center')
 
 notif_sep1 = ctk.CTkFrame(master=notif_scroll_frame, height=2, fg_color="gray50")
 notif_sep1.pack(fill="x", padx=40, pady=10)
 
-behavior_title = ctk.CTkLabel(master=notif_scroll_frame, text="Behavior Settings", font=("Calibri", 16, "bold"))
+behavior_title = ctk.CTkLabel(master=notif_scroll_frame, text="Behavior Settings", font=("Calibri", 17, "bold"))
 behavior_title.pack(pady=(10, 10), anchor='center')
 
 options_frame = ctk.CTkFrame(master=notif_scroll_frame, fg_color="transparent")
 options_frame.pack(pady=10, padx=20)
 
 close_startup_label = ctk.CTkLabel(master=options_frame, text="Close Apps When Game Starts:",
-                                   font=("Calibri", 13))
+                                   font=("Calibri", 14))
 close_startup_label.grid(row=0, column=0, pady=8, padx=10, sticky='w')
 
 close_startup_var = tk.StringVar(value="Enabled" if close_on_startup else "Disabled")
 ctk.CTkRadioButton(master=options_frame, text="Enabled", variable=close_startup_var, value="Enabled",
-                   font=("Calibri", 13)).grid(row=0, column=1, pady=8, padx=15)
+                   font=("Calibri", 14)).grid(row=0, column=1, pady=8, padx=15)
 ctk.CTkRadioButton(master=options_frame, text="Disabled", variable=close_startup_var, value="Disabled",
-                   font=("Calibri", 13)).grid(row=0, column=2, pady=8, padx=15)
+                   font=("Calibri", 14)).grid(row=0, column=2, pady=8, padx=15)
 
 close_hotkey_label = ctk.CTkLabel(master=options_frame, text="Close Apps With Hotkey (Ctrl+Alt+K):",
-                                  font=("Calibri", 13))
+                                  font=("Calibri", 14))
 close_hotkey_label.grid(row=1, column=0, pady=8, padx=10, sticky='w')
 
 close_hotkey_var = tk.StringVar(value="Enabled" if close_on_hotkey else "Disabled")
 ctk.CTkRadioButton(master=options_frame, text="Enabled", variable=close_hotkey_var, value="Enabled",
-                   font=("Calibri", 13)).grid(row=1, column=1, pady=8, padx=15)
+                   font=("Calibri", 14)).grid(row=1, column=1, pady=8, padx=15)
 ctk.CTkRadioButton(master=options_frame, text="Disabled", variable=close_hotkey_var, value="Disabled",
-                   font=("Calibri", 13)).grid(row=1, column=2, pady=8, padx=15)
+                   font=("Calibri", 14)).grid(row=1, column=2, pady=8, padx=15)
 
 relaunch_exit_label = ctk.CTkLabel(master=options_frame, text="Relaunch Apps When Game Ends:",
-                                   font=("Calibri", 13))
+                                   font=("Calibri", 14))
 relaunch_exit_label.grid(row=2, column=0, pady=8, padx=10, sticky='w')
 
 relaunch_exit_var = tk.StringVar(value="Enabled" if relaunch_on_exit else "Disabled")
 ctk.CTkRadioButton(master=options_frame, text="Enabled", variable=relaunch_exit_var, value="Enabled",
-                   font=("Calibri", 13)).grid(row=2, column=1, pady=8, padx=15)
+                   font=("Calibri", 14)).grid(row=2, column=1, pady=8, padx=15)
 ctk.CTkRadioButton(master=options_frame, text="Disabled", variable=relaunch_exit_var, value="Disabled",
-                   font=("Calibri", 13)).grid(row=2, column=2, pady=8, padx=15)
+                   font=("Calibri", 14)).grid(row=2, column=2, pady=8, padx=15)
 
 notif_sep2 = ctk.CTkFrame(master=notif_scroll_frame, height=2, fg_color="gray50")
 notif_sep2.pack(fill="x", padx=40, pady=15)
 
-apps_subtitle = ctk.CTkLabel(master=notif_scroll_frame, text="Select Apps to Manage", font=("Calibri", 16, "bold"))
+apps_subtitle = ctk.CTkLabel(master=notif_scroll_frame, text="Select Apps to Manage", font=("Calibri", 17, "bold"))
 apps_subtitle.pack(pady=(10, 5), anchor='center')
 
 apps_hint = ctk.CTkLabel(master=notif_scroll_frame,
                          text="Toggle the apps you want Vapor to close during gaming sessions.",
-                         font=("Calibri", 11), text_color="gray60")
+                         font=("Calibri", 12), text_color="gray60")
 apps_hint.pack(pady=(0, 10), anchor='center')
 
 app_frame = ctk.CTkFrame(master=notif_scroll_frame, fg_color="transparent")
@@ -642,11 +642,11 @@ for i in range(4):
         icon_label = ctk.CTkLabel(master=row_frame, image=ctk_image, text="")
         icon_label.pack(side="left", padx=5)
     else:
-        ctk.CTkLabel(master=row_frame, text="*", font=("Calibri", 14)).pack(side="left", padx=5)
+        ctk.CTkLabel(master=row_frame, text="*", font=("Calibri", 15)).pack(side="left", padx=5)
 
     var = tk.BooleanVar(value=display_name in selected_notification_apps)
     switch_vars[display_name] = var
-    switch = ctk.CTkSwitch(master=row_frame, text=display_name, variable=var, font=("Calibri", 13))
+    switch = ctk.CTkSwitch(master=row_frame, text=display_name, variable=var, font=("Calibri", 14))
     switch.pack(side="left")
 
 for i in range(4, 8):
@@ -662,11 +662,11 @@ for i in range(4, 8):
         icon_label = ctk.CTkLabel(master=row_frame, image=ctk_image, text="")
         icon_label.pack(side="left", padx=5)
     else:
-        ctk.CTkLabel(master=row_frame, text="*", font=("Calibri", 14)).pack(side="left", padx=5)
+        ctk.CTkLabel(master=row_frame, text="*", font=("Calibri", 15)).pack(side="left", padx=5)
 
     var = tk.BooleanVar(value=display_name in selected_notification_apps)
     switch_vars[display_name] = var
-    switch = ctk.CTkSwitch(master=row_frame, text=display_name, variable=var, font=("Calibri", 13))
+    switch = ctk.CTkSwitch(master=row_frame, text=display_name, variable=var, font=("Calibri", 14))
     switch.pack(side="left")
 
 
@@ -681,21 +681,21 @@ all_apps_var = tk.BooleanVar(value=all(display_name in selected_notification_app
                                        [app['display_name'] for app in BUILT_IN_APPS]))
 
 all_apps_switch = ctk.CTkSwitch(master=notif_scroll_frame, text="Toggle All Apps", variable=all_apps_var,
-                                command=on_all_apps_toggle, font=("Calibri", 13))
+                                command=on_all_apps_toggle, font=("Calibri", 14))
 all_apps_switch.pack(pady=10, anchor='center')
 
 notif_sep3 = ctk.CTkFrame(master=notif_scroll_frame, height=2, fg_color="gray50")
 notif_sep3.pack(fill="x", padx=40, pady=15)
 
-custom_title = ctk.CTkLabel(master=notif_scroll_frame, text="Custom Processes", font=("Calibri", 16, "bold"))
+custom_title = ctk.CTkLabel(master=notif_scroll_frame, text="Custom Processes", font=("Calibri", 17, "bold"))
 custom_title.pack(pady=(10, 5), anchor='center')
 
 custom_label = ctk.CTkLabel(master=notif_scroll_frame,
                             text="Add additional processes to close (comma-separated, e.g.: MyApp1.exe, MyApp2.exe)",
-                            font=("Calibri", 11), text_color="gray60")
+                            font=("Calibri", 12), text_color="gray60")
 custom_label.pack(pady=(0, 10), anchor='center')
 
-custom_entry = ctk.CTkEntry(master=notif_scroll_frame, width=550, font=("Calibri", 13),
+custom_entry = ctk.CTkEntry(master=notif_scroll_frame, width=550, font=("Calibri", 14),
                             placeholder_text="Enter custom process names...")
 custom_entry.insert(0, ','.join(custom_processes))
 custom_entry.pack(pady=(0, 20), anchor='center')
@@ -707,18 +707,18 @@ custom_entry.pack(pady=(0, 20), anchor='center')
 pref_scroll_frame = ctk.CTkScrollableFrame(master=preferences_tab, fg_color="transparent")
 pref_scroll_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
-preferences_title = ctk.CTkLabel(master=pref_scroll_frame, text="Preferences", font=("Calibri", 24, "bold"))
+preferences_title = ctk.CTkLabel(master=pref_scroll_frame, text="Preferences", font=("Calibri", 25, "bold"))
 preferences_title.pack(pady=(10, 5), anchor='center')
 
 pref_description = ctk.CTkLabel(master=pref_scroll_frame,
                                 text="Customize Vapor's behavior, audio settings, and power management options.",
-                                font=("Calibri", 12), text_color="gray60")
+                                font=("Calibri", 13), text_color="gray60")
 pref_description.pack(pady=(0, 15), anchor='center')
 
 pref_sep1 = ctk.CTkFrame(master=pref_scroll_frame, height=2, fg_color="gray50")
 pref_sep1.pack(fill="x", padx=40, pady=10)
 
-general_title = ctk.CTkLabel(master=pref_scroll_frame, text="General Settings", font=("Calibri", 16, "bold"))
+general_title = ctk.CTkLabel(master=pref_scroll_frame, text="General Settings", font=("Calibri", 17, "bold"))
 general_title.pack(pady=(10, 10), anchor='center')
 
 general_frame = ctk.CTkFrame(master=pref_scroll_frame, fg_color="transparent")
@@ -726,12 +726,12 @@ general_frame.pack(pady=5, padx=40, anchor='center')
 
 launch_settings_on_start_var = tk.BooleanVar(value=launch_settings_on_start)
 launch_settings_on_start_switch = ctk.CTkSwitch(master=general_frame, text="Open Settings Window on Vapor Start",
-                                                variable=launch_settings_on_start_var, font=("Calibri", 13))
+                                                variable=launch_settings_on_start_var, font=("Calibri", 14))
 launch_settings_on_start_switch.pack(pady=5, anchor='w')
 
 playtime_summary_var = tk.BooleanVar(value=enable_playtime_summary)
 playtime_summary_switch = ctk.CTkSwitch(master=general_frame, text="Show Playtime Summary After Gaming",
-                                        variable=playtime_summary_var, font=("Calibri", 13))
+                                        variable=playtime_summary_var, font=("Calibri", 14))
 playtime_summary_switch.pack(pady=5, anchor='w')
 
 # Playtime summary mode selection (Brief vs Detailed)
@@ -739,34 +739,34 @@ summary_mode_frame = ctk.CTkFrame(master=general_frame, fg_color="transparent")
 summary_mode_frame.pack(pady=(0, 5), anchor='w', padx=(30, 0))
 
 summary_mode_label = ctk.CTkLabel(master=summary_mode_frame, text="Summary Style:",
-                                  font=("Calibri", 12))
+                                  font=("Calibri", 13))
 summary_mode_label.pack(side="left", padx=(0, 10))
 
 playtime_summary_mode_var = tk.StringVar(value=playtime_summary_mode)
 ctk.CTkRadioButton(master=summary_mode_frame, text="Brief", variable=playtime_summary_mode_var,
-                   value="brief", font=("Calibri", 12)).pack(side="left", padx=10)
+                   value="brief", font=("Calibri", 13)).pack(side="left", padx=10)
 ctk.CTkRadioButton(master=summary_mode_frame, text="Detailed", variable=playtime_summary_mode_var,
-                   value="detailed", font=("Calibri", 12)).pack(side="left", padx=10)
+                   value="detailed", font=("Calibri", 13)).pack(side="left", padx=10)
 
 startup_var = tk.BooleanVar(value=launch_at_startup)
 startup_switch = ctk.CTkSwitch(master=general_frame, text="Launch Vapor at System Startup", variable=startup_var,
-                               font=("Calibri", 13))
+                               font=("Calibri", 14))
 startup_switch.pack(pady=5, anchor='w')
 
 debug_mode_var = tk.BooleanVar(value=enable_debug_mode)
 debug_mode_switch = ctk.CTkSwitch(master=general_frame, text="Enable Debug Console Window",
-                                  variable=debug_mode_var, font=("Calibri", 13))
+                                  variable=debug_mode_var, font=("Calibri", 14))
 debug_mode_switch.pack(pady=5, anchor='w')
 
 pref_sep2 = ctk.CTkFrame(master=pref_scroll_frame, height=2, fg_color="gray50")
 pref_sep2.pack(fill="x", padx=40, pady=15)
 
-audio_title = ctk.CTkLabel(master=pref_scroll_frame, text="Audio Settings", font=("Calibri", 16, "bold"))
+audio_title = ctk.CTkLabel(master=pref_scroll_frame, text="Audio Settings", font=("Calibri", 17, "bold"))
 audio_title.pack(pady=(10, 5), anchor='center')
 
 audio_hint = ctk.CTkLabel(master=pref_scroll_frame,
                           text="Automatically adjust volume levels when a game starts.",
-                          font=("Calibri", 11), text_color="gray60")
+                          font=("Calibri", 12), text_color="gray60")
 audio_hint.pack(pady=(0, 10), anchor='center')
 
 audio_frame = ctk.CTkFrame(master=pref_scroll_frame, fg_color="transparent")
@@ -775,7 +775,7 @@ audio_frame.pack(pady=10, anchor='center')
 system_audio_column = ctk.CTkFrame(master=audio_frame, fg_color="transparent")
 system_audio_column.pack(side="left", padx=40)
 
-system_audio_label = ctk.CTkLabel(master=system_audio_column, text="System Volume", font=("Calibri", 14, "bold"))
+system_audio_label = ctk.CTkLabel(master=system_audio_column, text="System Volume", font=("Calibri", 15, "bold"))
 system_audio_label.pack(anchor='center')
 
 system_audio_slider_var = tk.IntVar(value=system_audio_level)
@@ -784,7 +784,7 @@ system_audio_slider = ctk.CTkSlider(master=system_audio_column, from_=0, to=100,
 system_audio_slider.pack(pady=5, anchor='center')
 
 system_current_value_label = ctk.CTkLabel(master=system_audio_column, text=f"{system_audio_level}%",
-                                          font=("Calibri", 13))
+                                          font=("Calibri", 14))
 system_current_value_label.pack(anchor='center')
 
 
@@ -797,13 +797,13 @@ system_audio_slider.configure(command=update_system_audio_label)
 
 enable_system_audio_var = tk.BooleanVar(value=enable_system_audio)
 enable_system_audio_switch = ctk.CTkSwitch(master=system_audio_column, text="Enable", variable=enable_system_audio_var,
-                                           font=("Calibri", 13))
+                                           font=("Calibri", 14))
 enable_system_audio_switch.pack(pady=8, anchor='center')
 
 game_audio_column = ctk.CTkFrame(master=audio_frame, fg_color="transparent")
 game_audio_column.pack(side="left", padx=40)
 
-game_audio_label = ctk.CTkLabel(master=game_audio_column, text="Game Volume", font=("Calibri", 14, "bold"))
+game_audio_label = ctk.CTkLabel(master=game_audio_column, text="Game Volume", font=("Calibri", 15, "bold"))
 game_audio_label.pack(anchor='center')
 
 game_audio_slider_var = tk.IntVar(value=game_audio_level)
@@ -811,7 +811,7 @@ game_audio_slider = ctk.CTkSlider(master=game_audio_column, from_=0, to=100, num
                                   variable=game_audio_slider_var, width=180)
 game_audio_slider.pack(pady=5, anchor='center')
 
-game_current_value_label = ctk.CTkLabel(master=game_audio_column, text=f"{game_audio_level}%", font=("Calibri", 13))
+game_current_value_label = ctk.CTkLabel(master=game_audio_column, text=f"{game_audio_level}%", font=("Calibri", 14))
 game_current_value_label.pack(anchor='center')
 
 
@@ -824,18 +824,18 @@ game_audio_slider.configure(command=update_game_audio_label)
 
 enable_game_audio_var = tk.BooleanVar(value=enable_game_audio)
 enable_game_audio_switch = ctk.CTkSwitch(master=game_audio_column, text="Enable", variable=enable_game_audio_var,
-                                         font=("Calibri", 13))
+                                         font=("Calibri", 14))
 enable_game_audio_switch.pack(pady=8, anchor='center')
 
 pref_sep3 = ctk.CTkFrame(master=pref_scroll_frame, height=2, fg_color="gray50")
 pref_sep3.pack(fill="x", padx=40, pady=15)
 
-power_title = ctk.CTkLabel(master=pref_scroll_frame, text="Power Management", font=("Calibri", 16, "bold"))
+power_title = ctk.CTkLabel(master=pref_scroll_frame, text="Power Management", font=("Calibri", 17, "bold"))
 power_title.pack(pady=(10, 5), anchor='center')
 
 power_hint = ctk.CTkLabel(master=pref_scroll_frame,
                           text="Automatically switch power plans when gaming starts and ends.",
-                          font=("Calibri", 11), text_color="gray60")
+                          font=("Calibri", 12), text_color="gray60")
 power_hint.pack(pady=(0, 10), anchor='center')
 
 power_frame = ctk.CTkFrame(master=pref_scroll_frame, fg_color="transparent")
@@ -844,7 +844,7 @@ power_frame.pack(pady=10, anchor='center')
 during_power_column = ctk.CTkFrame(master=power_frame, fg_color="transparent")
 during_power_column.pack(side="left", padx=40)
 
-during_power_label = ctk.CTkLabel(master=during_power_column, text="While Gaming", font=("Calibri", 14, "bold"))
+during_power_label = ctk.CTkLabel(master=during_power_column, text="While Gaming", font=("Calibri", 15, "bold"))
 during_power_label.pack(anchor='center')
 
 during_power_var = tk.StringVar(value=during_power_plan)
@@ -855,13 +855,13 @@ during_power_combobox.pack(pady=5, anchor='center')
 
 enable_during_power_var = tk.BooleanVar(value=enable_during_power)
 enable_during_power_switch = ctk.CTkSwitch(master=during_power_column, text="Enable", variable=enable_during_power_var,
-                                           font=("Calibri", 13))
+                                           font=("Calibri", 14))
 enable_during_power_switch.pack(pady=8, anchor='center')
 
 after_power_column = ctk.CTkFrame(master=power_frame, fg_color="transparent")
 after_power_column.pack(side="left", padx=40)
 
-after_power_label = ctk.CTkLabel(master=after_power_column, text="After Gaming", font=("Calibri", 14, "bold"))
+after_power_label = ctk.CTkLabel(master=after_power_column, text="After Gaming", font=("Calibri", 15, "bold"))
 after_power_label.pack(anchor='center')
 
 after_power_var = tk.StringVar(value=after_power_plan)
@@ -872,18 +872,18 @@ after_power_combobox.pack(pady=5, anchor='center')
 
 enable_after_power_var = tk.BooleanVar(value=enable_after_power)
 enable_after_power_switch = ctk.CTkSwitch(master=after_power_column, text="Enable", variable=enable_after_power_var,
-                                          font=("Calibri", 13))
+                                          font=("Calibri", 14))
 enable_after_power_switch.pack(pady=8, anchor='center')
 
 pref_sep4 = ctk.CTkFrame(master=pref_scroll_frame, height=2, fg_color="gray50")
 pref_sep4.pack(fill="x", padx=40, pady=15)
 
-game_mode_title = ctk.CTkLabel(master=pref_scroll_frame, text="Windows Game Mode", font=("Calibri", 16, "bold"))
+game_mode_title = ctk.CTkLabel(master=pref_scroll_frame, text="Windows Game Mode", font=("Calibri", 17, "bold"))
 game_mode_title.pack(pady=(10, 5), anchor='center')
 
 game_mode_hint = ctk.CTkLabel(master=pref_scroll_frame,
                               text="Control Windows Game Mode automatically during gaming sessions.",
-                              font=("Calibri", 11), text_color="gray60")
+                              font=("Calibri", 12), text_color="gray60")
 game_mode_hint.pack(pady=(0, 10), anchor='center')
 
 game_mode_frame = ctk.CTkFrame(master=pref_scroll_frame, fg_color="transparent")
@@ -891,12 +891,12 @@ game_mode_frame.pack(pady=10, anchor='center')
 
 enable_game_mode_start_var = tk.BooleanVar(value=enable_game_mode_start)
 enable_game_mode_start_switch = ctk.CTkSwitch(master=game_mode_frame, text="Enable Game Mode When Game Starts",
-                                              variable=enable_game_mode_start_var, font=("Calibri", 13))
+                                              variable=enable_game_mode_start_var, font=("Calibri", 14))
 enable_game_mode_start_switch.pack(pady=5, anchor='w')
 
 enable_game_mode_end_var = tk.BooleanVar(value=enable_game_mode_end)
 enable_game_mode_end_switch = ctk.CTkSwitch(master=game_mode_frame, text="Disable Game Mode When Game Ends",
-                                            variable=enable_game_mode_end_var, font=("Calibri", 13))
+                                            variable=enable_game_mode_end_var, font=("Calibri", 14))
 enable_game_mode_end_switch.pack(pady=5, anchor='w')
 
 # =============================================================================
@@ -906,24 +906,24 @@ enable_game_mode_end_switch.pack(pady=5, anchor='w')
 thermal_scroll_frame = ctk.CTkScrollableFrame(master=thermal_tab, fg_color="transparent")
 thermal_scroll_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
-thermal_main_title = ctk.CTkLabel(master=thermal_scroll_frame, text="Thermal Management", font=("Calibri", 24, "bold"))
+thermal_main_title = ctk.CTkLabel(master=thermal_scroll_frame, text="Thermal Management", font=("Calibri", 25, "bold"))
 thermal_main_title.pack(pady=(10, 5), anchor='center')
 
 thermal_main_description = ctk.CTkLabel(master=thermal_scroll_frame,
                                         text="Monitor and track CPU and GPU temperatures during gaming sessions.",
-                                        font=("Calibri", 12), text_color="gray60")
+                                        font=("Calibri", 13), text_color="gray60")
 thermal_main_description.pack(pady=(0, 15), anchor='center')
 
 thermal_sep1 = ctk.CTkFrame(master=thermal_scroll_frame, height=2, fg_color="gray50")
 thermal_sep1.pack(fill="x", padx=40, pady=10)
 
 # Temperature Monitoring Section
-thermal_title = ctk.CTkLabel(master=thermal_scroll_frame, text="Temperature Monitoring", font=("Calibri", 16, "bold"))
+thermal_title = ctk.CTkLabel(master=thermal_scroll_frame, text="Temperature Monitoring", font=("Calibri", 17, "bold"))
 thermal_title.pack(pady=(10, 5), anchor='center')
 
 thermal_hint = ctk.CTkLabel(master=thermal_scroll_frame,
                             text="Track maximum CPU and GPU temperatures during gaming sessions.",
-                            font=("Calibri", 11), text_color="gray60")
+                            font=("Calibri", 12), text_color="gray60")
 thermal_hint.pack(pady=(0, 10), anchor='center')
 
 thermal_frame = ctk.CTkFrame(master=thermal_scroll_frame, fg_color="transparent")
@@ -931,38 +931,38 @@ thermal_frame.pack(pady=10, anchor='center')
 
 enable_gpu_thermal_var = tk.BooleanVar(value=enable_gpu_thermal)
 enable_gpu_thermal_switch = ctk.CTkSwitch(master=thermal_frame, text="Capture GPU Temperature",
-                                          variable=enable_gpu_thermal_var, font=("Calibri", 13))
+                                          variable=enable_gpu_thermal_var, font=("Calibri", 14))
 enable_gpu_thermal_switch.pack(pady=5, anchor='w')
 
 enable_cpu_thermal_var = tk.BooleanVar(value=enable_cpu_thermal)
 enable_cpu_thermal_switch = ctk.CTkSwitch(master=thermal_frame, text="Capture CPU Temperature",
-                                          variable=enable_cpu_thermal_var, font=("Calibri", 13))
+                                          variable=enable_cpu_thermal_var, font=("Calibri", 14))
 enable_cpu_thermal_switch.pack(pady=5, anchor='w')
 
 cpu_thermal_disclaimer = ctk.CTkLabel(master=thermal_frame,
                                       text="Note: CPU temperature monitoring requires administrator privileges.\n"
                                            "Vapor will prompt for admin access when this option is enabled.",
-                                      font=("Calibri", 10), text_color="orange", justify="left")
+                                      font=("Calibri", 11), text_color="orange", justify="left")
 cpu_thermal_disclaimer.pack(pady=(5, 0), anchor='w')
 
 # Temperature Alerts Section
 thermal_sep2 = ctk.CTkFrame(master=thermal_scroll_frame, height=2, fg_color="gray50")
 thermal_sep2.pack(fill="x", padx=40, pady=15)
 
-thermal_alerts_title = ctk.CTkLabel(master=thermal_scroll_frame, text="Temperature Alerts", font=("Calibri", 16, "bold"))
+thermal_alerts_title = ctk.CTkLabel(master=thermal_scroll_frame, text="Temperature Alerts", font=("Calibri", 17, "bold"))
 thermal_alerts_title.pack(pady=(10, 5), anchor='center')
 
 thermal_alerts_hint = ctk.CTkLabel(master=thermal_scroll_frame,
                                    text="Get notified when temperatures exceed thresholds during gaming.\n"
                                         "Warning alerts are silent. Critical alerts play a sound.",
-                                   font=("Calibri", 11), text_color="gray60", justify="center")
+                                   font=("Calibri", 12), text_color="gray60", justify="center")
 thermal_alerts_hint.pack(pady=(0, 10), anchor='center')
 
 thermal_alerts_frame = ctk.CTkFrame(master=thermal_scroll_frame, fg_color="transparent")
 thermal_alerts_frame.pack(pady=10, anchor='center')
 
 # GPU Temperature Alerts
-gpu_alert_header = ctk.CTkLabel(master=thermal_alerts_frame, text="GPU Alerts", font=("Calibri", 13, "bold"))
+gpu_alert_header = ctk.CTkLabel(master=thermal_alerts_frame, text="GPU Alerts", font=("Calibri", 14, "bold"))
 gpu_alert_header.pack(pady=(5, 5), anchor='w')
 
 gpu_alert_row = ctk.CTkFrame(master=thermal_alerts_frame, fg_color="transparent")
@@ -970,33 +970,33 @@ gpu_alert_row.pack(pady=5, fill='x')
 
 enable_gpu_temp_alert_var = tk.BooleanVar(value=enable_gpu_temp_alert)
 enable_gpu_temp_alert_switch = ctk.CTkSwitch(master=gpu_alert_row, text="Enable",
-                                              variable=enable_gpu_temp_alert_var, font=("Calibri", 12))
+                                              variable=enable_gpu_temp_alert_var, font=("Calibri", 13))
 enable_gpu_temp_alert_switch.pack(side='left', padx=(0, 20))
 
-gpu_warning_label = ctk.CTkLabel(master=gpu_alert_row, text="Warning:", font=("Calibri", 12))
+gpu_warning_label = ctk.CTkLabel(master=gpu_alert_row, text="Warning:", font=("Calibri", 13))
 gpu_warning_label.pack(side='left', padx=(0, 5))
 
 gpu_temp_warning_threshold_var = tk.StringVar(value=str(gpu_temp_warning_threshold))
 gpu_warning_entry = ctk.CTkEntry(master=gpu_alert_row, textvariable=gpu_temp_warning_threshold_var,
-                                  width=45, font=("Calibri", 12))
+                                  width=45, font=("Calibri", 13))
 gpu_warning_entry.pack(side='left', padx=(0, 3))
 
-gpu_warning_unit = ctk.CTkLabel(master=gpu_alert_row, text="°C", font=("Calibri", 12))
+gpu_warning_unit = ctk.CTkLabel(master=gpu_alert_row, text="°C", font=("Calibri", 13))
 gpu_warning_unit.pack(side='left', padx=(0, 15))
 
-gpu_critical_label = ctk.CTkLabel(master=gpu_alert_row, text="Critical:", font=("Calibri", 12), text_color="#ff6b6b")
+gpu_critical_label = ctk.CTkLabel(master=gpu_alert_row, text="Critical:", font=("Calibri", 13), text_color="#ff6b6b")
 gpu_critical_label.pack(side='left', padx=(0, 5))
 
 gpu_temp_critical_threshold_var = tk.StringVar(value=str(gpu_temp_critical_threshold))
 gpu_critical_entry = ctk.CTkEntry(master=gpu_alert_row, textvariable=gpu_temp_critical_threshold_var,
-                                   width=45, font=("Calibri", 12))
+                                   width=45, font=("Calibri", 13))
 gpu_critical_entry.pack(side='left', padx=(0, 3))
 
-gpu_critical_unit = ctk.CTkLabel(master=gpu_alert_row, text="°C", font=("Calibri", 12))
+gpu_critical_unit = ctk.CTkLabel(master=gpu_alert_row, text="°C", font=("Calibri", 13))
 gpu_critical_unit.pack(side='left')
 
 # CPU Temperature Alerts
-cpu_alert_header = ctk.CTkLabel(master=thermal_alerts_frame, text="CPU Alerts", font=("Calibri", 13, "bold"))
+cpu_alert_header = ctk.CTkLabel(master=thermal_alerts_frame, text="CPU Alerts", font=("Calibri", 14, "bold"))
 cpu_alert_header.pack(pady=(15, 5), anchor='w')
 
 cpu_alert_row = ctk.CTkFrame(master=thermal_alerts_frame, fg_color="transparent")
@@ -1004,34 +1004,34 @@ cpu_alert_row.pack(pady=5, fill='x')
 
 enable_cpu_temp_alert_var = tk.BooleanVar(value=enable_cpu_temp_alert)
 enable_cpu_temp_alert_switch = ctk.CTkSwitch(master=cpu_alert_row, text="Enable",
-                                              variable=enable_cpu_temp_alert_var, font=("Calibri", 12))
+                                              variable=enable_cpu_temp_alert_var, font=("Calibri", 13))
 enable_cpu_temp_alert_switch.pack(side='left', padx=(0, 20))
 
-cpu_warning_label = ctk.CTkLabel(master=cpu_alert_row, text="Warning:", font=("Calibri", 12))
+cpu_warning_label = ctk.CTkLabel(master=cpu_alert_row, text="Warning:", font=("Calibri", 13))
 cpu_warning_label.pack(side='left', padx=(0, 5))
 
 cpu_temp_warning_threshold_var = tk.StringVar(value=str(cpu_temp_warning_threshold))
 cpu_warning_entry = ctk.CTkEntry(master=cpu_alert_row, textvariable=cpu_temp_warning_threshold_var,
-                                  width=45, font=("Calibri", 12))
+                                  width=45, font=("Calibri", 13))
 cpu_warning_entry.pack(side='left', padx=(0, 3))
 
-cpu_warning_unit = ctk.CTkLabel(master=cpu_alert_row, text="°C", font=("Calibri", 12))
+cpu_warning_unit = ctk.CTkLabel(master=cpu_alert_row, text="°C", font=("Calibri", 13))
 cpu_warning_unit.pack(side='left', padx=(0, 15))
 
-cpu_critical_label = ctk.CTkLabel(master=cpu_alert_row, text="Critical:", font=("Calibri", 12), text_color="#ff6b6b")
+cpu_critical_label = ctk.CTkLabel(master=cpu_alert_row, text="Critical:", font=("Calibri", 13), text_color="#ff6b6b")
 cpu_critical_label.pack(side='left', padx=(0, 5))
 
 cpu_temp_critical_threshold_var = tk.StringVar(value=str(cpu_temp_critical_threshold))
 cpu_critical_entry = ctk.CTkEntry(master=cpu_alert_row, textvariable=cpu_temp_critical_threshold_var,
-                                   width=45, font=("Calibri", 12))
+                                   width=45, font=("Calibri", 13))
 cpu_critical_entry.pack(side='left', padx=(0, 3))
 
-cpu_critical_unit = ctk.CTkLabel(master=cpu_alert_row, text="°C", font=("Calibri", 12))
+cpu_critical_unit = ctk.CTkLabel(master=cpu_alert_row, text="°C", font=("Calibri", 13))
 cpu_critical_unit.pack(side='left')
 
 thermal_alerts_note = ctk.CTkLabel(master=thermal_alerts_frame,
                                    text="Each alert level triggers once per gaming session.",
-                                   font=("Calibri", 10), text_color="gray60")
+                                   font=("Calibri", 11), text_color="gray60")
 thermal_alerts_note.pack(pady=(15, 0), anchor='w')
 
 # =============================================================================
@@ -1041,18 +1041,18 @@ thermal_alerts_note.pack(pady=(15, 0), anchor='w')
 res_scroll_frame = ctk.CTkScrollableFrame(master=resources_tab, fg_color="transparent")
 res_scroll_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
-resource_title = ctk.CTkLabel(master=res_scroll_frame, text="Resource Management", font=("Calibri", 24, "bold"))
+resource_title = ctk.CTkLabel(master=res_scroll_frame, text="Resource Management", font=("Calibri", 25, "bold"))
 resource_title.pack(pady=(10, 5), anchor='center')
 
 res_description = ctk.CTkLabel(master=res_scroll_frame,
                                text="Control which resource-intensive apps are closed to free up system resources during gaming.",
-                               font=("Calibri", 12), text_color="gray60")
+                               font=("Calibri", 13), text_color="gray60")
 res_description.pack(pady=(0, 15), anchor='center')
 
 res_sep1 = ctk.CTkFrame(master=res_scroll_frame, height=2, fg_color="gray50")
 res_sep1.pack(fill="x", padx=40, pady=10)
 
-res_behavior_title = ctk.CTkLabel(master=res_scroll_frame, text="Behavior Settings", font=("Calibri", 16, "bold"))
+res_behavior_title = ctk.CTkLabel(master=res_scroll_frame, text="Behavior Settings", font=("Calibri", 17, "bold"))
 res_behavior_title.pack(pady=(10, 10), anchor='center')
 
 resource_options_frame = ctk.CTkFrame(master=res_scroll_frame, fg_color="transparent")
@@ -1060,46 +1060,46 @@ resource_options_frame.pack(pady=10, padx=20)
 
 resource_close_startup_label = ctk.CTkLabel(master=resource_options_frame,
                                             text="Close Apps When Game Starts:",
-                                            font=("Calibri", 13))
+                                            font=("Calibri", 14))
 resource_close_startup_label.grid(row=0, column=0, pady=8, padx=10, sticky='w')
 
 resource_close_startup_var = tk.StringVar(value="Enabled" if resource_close_on_startup else "Disabled")
 ctk.CTkRadioButton(master=resource_options_frame, text="Enabled", variable=resource_close_startup_var, value="Enabled",
-                   font=("Calibri", 13)).grid(row=0, column=1, pady=8, padx=15)
+                   font=("Calibri", 14)).grid(row=0, column=1, pady=8, padx=15)
 ctk.CTkRadioButton(master=resource_options_frame, text="Disabled", variable=resource_close_startup_var,
-                   value="Disabled", font=("Calibri", 13)).grid(row=0, column=2, pady=8, padx=15)
+                   value="Disabled", font=("Calibri", 14)).grid(row=0, column=2, pady=8, padx=15)
 
 resource_close_hotkey_label = ctk.CTkLabel(master=resource_options_frame,
-                                           text="Close Apps With Hotkey (Ctrl+Alt+K):", font=("Calibri", 13))
+                                           text="Close Apps With Hotkey (Ctrl+Alt+K):", font=("Calibri", 14))
 resource_close_hotkey_label.grid(row=1, column=0, pady=8, padx=10, sticky='w')
 
 resource_close_hotkey_var = tk.StringVar(value="Enabled" if resource_close_on_hotkey else "Disabled")
 ctk.CTkRadioButton(master=resource_options_frame, text="Enabled", variable=resource_close_hotkey_var, value="Enabled",
-                   font=("Calibri", 13)).grid(row=1, column=1, pady=8, padx=15)
+                   font=("Calibri", 14)).grid(row=1, column=1, pady=8, padx=15)
 ctk.CTkRadioButton(master=resource_options_frame, text="Disabled", variable=resource_close_hotkey_var, value="Disabled",
-                   font=("Calibri", 13)).grid(row=1, column=2, pady=8, padx=15)
+                   font=("Calibri", 14)).grid(row=1, column=2, pady=8, padx=15)
 
 resource_relaunch_exit_label = ctk.CTkLabel(master=resource_options_frame,
                                             text="Relaunch Apps When Game Ends:",
-                                            font=("Calibri", 13))
+                                            font=("Calibri", 14))
 resource_relaunch_exit_label.grid(row=2, column=0, pady=8, padx=10, sticky='w')
 
 resource_relaunch_exit_var = tk.StringVar(value="Enabled" if resource_relaunch_on_exit else "Disabled")
 ctk.CTkRadioButton(master=resource_options_frame, text="Enabled", variable=resource_relaunch_exit_var, value="Enabled",
-                   font=("Calibri", 13)).grid(row=2, column=1, pady=8, padx=15)
+                   font=("Calibri", 14)).grid(row=2, column=1, pady=8, padx=15)
 ctk.CTkRadioButton(master=resource_options_frame, text="Disabled", variable=resource_relaunch_exit_var,
-                   value="Disabled", font=("Calibri", 13)).grid(row=2, column=2, pady=8, padx=15)
+                   value="Disabled", font=("Calibri", 14)).grid(row=2, column=2, pady=8, padx=15)
 
 res_sep2 = ctk.CTkFrame(master=res_scroll_frame, height=2, fg_color="gray50")
 res_sep2.pack(fill="x", padx=40, pady=15)
 
 resource_apps_subtitle = ctk.CTkLabel(master=res_scroll_frame, text="Select Apps to Manage",
-                                      font=("Calibri", 16, "bold"))
+                                      font=("Calibri", 17, "bold"))
 resource_apps_subtitle.pack(pady=(10, 5), anchor='center')
 
 res_apps_hint = ctk.CTkLabel(master=res_scroll_frame,
                              text="Toggle the resource-heavy apps you want Vapor to close during gaming sessions.",
-                             font=("Calibri", 11), text_color="gray60")
+                             font=("Calibri", 12), text_color="gray60")
 res_apps_hint.pack(pady=(0, 10), anchor='center')
 
 resource_app_frame = ctk.CTkFrame(master=res_scroll_frame, fg_color="transparent")
@@ -1128,11 +1128,11 @@ for i in range(4):
         icon_label = ctk.CTkLabel(master=row_frame, image=ctk_image, text="")
         icon_label.pack(side="left", padx=5)
     else:
-        ctk.CTkLabel(master=row_frame, text="*", font=("Calibri", 14)).pack(side="left", padx=5)
+        ctk.CTkLabel(master=row_frame, text="*", font=("Calibri", 15)).pack(side="left", padx=5)
 
     var = tk.BooleanVar(value=display_name in selected_resource_apps)
     resource_switch_vars[display_name] = var
-    switch = ctk.CTkSwitch(master=row_frame, text=display_name, variable=var, font=("Calibri", 13))
+    switch = ctk.CTkSwitch(master=row_frame, text=display_name, variable=var, font=("Calibri", 14))
     switch.pack(side="left")
 
 # Cloud/Media column (indices 4-7)
@@ -1149,11 +1149,11 @@ for i in range(4, 8):
         icon_label = ctk.CTkLabel(master=row_frame, image=ctk_image, text="")
         icon_label.pack(side="left", padx=5)
     else:
-        ctk.CTkLabel(master=row_frame, text="*", font=("Calibri", 14)).pack(side="left", padx=5)
+        ctk.CTkLabel(master=row_frame, text="*", font=("Calibri", 15)).pack(side="left", padx=5)
 
     var = tk.BooleanVar(value=display_name in selected_resource_apps)
     resource_switch_vars[display_name] = var
-    switch = ctk.CTkSwitch(master=row_frame, text=display_name, variable=var, font=("Calibri", 13))
+    switch = ctk.CTkSwitch(master=row_frame, text=display_name, variable=var, font=("Calibri", 14))
     switch.pack(side="left")
 
 # Gaming Utilities column (indices 8-11)
@@ -1170,11 +1170,11 @@ for i in range(8, 12):
         icon_label = ctk.CTkLabel(master=row_frame, image=ctk_image, text="")
         icon_label.pack(side="left", padx=5)
     else:
-        ctk.CTkLabel(master=row_frame, text="*", font=("Calibri", 14)).pack(side="left", padx=5)
+        ctk.CTkLabel(master=row_frame, text="*", font=("Calibri", 15)).pack(side="left", padx=5)
 
     var = tk.BooleanVar(value=display_name in selected_resource_apps)
     resource_switch_vars[display_name] = var
-    switch = ctk.CTkSwitch(master=row_frame, text=display_name, variable=var, font=("Calibri", 13))
+    switch = ctk.CTkSwitch(master=row_frame, text=display_name, variable=var, font=("Calibri", 14))
     switch.pack(side="left")
 
 
@@ -1190,21 +1190,21 @@ resource_all_apps_var = tk.BooleanVar(value=all(display_name in selected_resourc
 
 resource_all_apps_switch = ctk.CTkSwitch(master=res_scroll_frame, text="Toggle All Apps",
                                          variable=resource_all_apps_var,
-                                         command=on_resource_all_apps_toggle, font=("Calibri", 13))
+                                         command=on_resource_all_apps_toggle, font=("Calibri", 14))
 resource_all_apps_switch.pack(pady=10, anchor='center')
 
 res_sep3 = ctk.CTkFrame(master=res_scroll_frame, height=2, fg_color="gray50")
 res_sep3.pack(fill="x", padx=40, pady=15)
 
-res_custom_title = ctk.CTkLabel(master=res_scroll_frame, text="Custom Processes", font=("Calibri", 16, "bold"))
+res_custom_title = ctk.CTkLabel(master=res_scroll_frame, text="Custom Processes", font=("Calibri", 17, "bold"))
 res_custom_title.pack(pady=(10, 5), anchor='center')
 
 custom_resource_label = ctk.CTkLabel(master=res_scroll_frame,
                                      text="Add additional processes to close (comma-separated, e.g.: MyApp1.exe, MyApp2.exe)",
-                                     font=("Calibri", 11), text_color="gray60")
+                                     font=("Calibri", 12), text_color="gray60")
 custom_resource_label.pack(pady=(0, 10), anchor='center')
 
-custom_resource_entry = ctk.CTkEntry(master=res_scroll_frame, width=550, font=("Calibri", 13),
+custom_resource_entry = ctk.CTkEntry(master=res_scroll_frame, width=550, font=("Calibri", 14),
                                      placeholder_text="Enter custom process names...")
 custom_resource_entry.insert(0, ','.join(custom_resource_processes))
 custom_resource_entry.pack(pady=(0, 20), anchor='center')
@@ -1216,18 +1216,18 @@ custom_resource_entry.pack(pady=(0, 20), anchor='center')
 help_scroll_frame = ctk.CTkScrollableFrame(master=help_tab, fg_color="transparent")
 help_scroll_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
-help_title = ctk.CTkLabel(master=help_scroll_frame, text="Help & Support", font=("Calibri", 24, "bold"))
+help_title = ctk.CTkLabel(master=help_scroll_frame, text="Help & Support", font=("Calibri", 25, "bold"))
 help_title.pack(pady=(10, 5), anchor='center')
 
 help_description = ctk.CTkLabel(master=help_scroll_frame,
                                 text="Get help with Vapor, learn how it works, and troubleshoot common issues.",
-                                font=("Calibri", 12), text_color="gray60")
+                                font=("Calibri", 13), text_color="gray60")
 help_description.pack(pady=(0, 15), anchor='center')
 
 help_sep1 = ctk.CTkFrame(master=help_scroll_frame, height=2, fg_color="gray50")
 help_sep1.pack(fill="x", padx=40, pady=10)
 
-how_title = ctk.CTkLabel(master=help_scroll_frame, text="How Vapor Works", font=("Calibri", 16, "bold"))
+how_title = ctk.CTkLabel(master=help_scroll_frame, text="How Vapor Works", font=("Calibri", 17, "bold"))
 how_title.pack(pady=(10, 10), anchor='center')
 
 how_text = """Vapor runs quietly in your system tray and monitors Steam for game launches. When you start 
@@ -1241,14 +1241,14 @@ a Steam game, Vapor automatically:
 
 When you exit your game, Vapor reverses these changes and relaunches your closed apps."""
 
-how_label = ctk.CTkLabel(master=help_scroll_frame, text=how_text, font=("Calibri", 12),
+how_label = ctk.CTkLabel(master=help_scroll_frame, text=how_text, font=("Calibri", 13),
                          wraplength=580, justify="left")
 how_label.pack(pady=10, anchor='center')
 
 help_sep2 = ctk.CTkFrame(master=help_scroll_frame, height=2, fg_color="gray50")
 help_sep2.pack(fill="x", padx=40, pady=15)
 
-shortcuts_title = ctk.CTkLabel(master=help_scroll_frame, text="Keyboard Shortcuts", font=("Calibri", 16, "bold"))
+shortcuts_title = ctk.CTkLabel(master=help_scroll_frame, text="Keyboard Shortcuts", font=("Calibri", 17, "bold"))
 shortcuts_title.pack(pady=(10, 10), anchor='center')
 
 shortcuts_text = """Ctrl + Alt + K  -  Manually close all selected notification and resource apps
@@ -1258,14 +1258,14 @@ or Resources tab, pressing this combination will immediately close all toggled a
 in that category. This is useful for quickly silencing distractions before a meeting, 
 stream, or any focus session - even when you're not gaming."""
 
-shortcuts_label = ctk.CTkLabel(master=help_scroll_frame, text=shortcuts_text, font=("Calibri", 12),
+shortcuts_label = ctk.CTkLabel(master=help_scroll_frame, text=shortcuts_text, font=("Calibri", 13),
                                wraplength=580, justify="left")
 shortcuts_label.pack(pady=10, anchor='center')
 
 help_sep3 = ctk.CTkFrame(master=help_scroll_frame, height=2, fg_color="gray50")
 help_sep3.pack(fill="x", padx=40, pady=15)
 
-trouble_title = ctk.CTkLabel(master=help_scroll_frame, text="Troubleshooting", font=("Calibri", 16, "bold"))
+trouble_title = ctk.CTkLabel(master=help_scroll_frame, text="Troubleshooting", font=("Calibri", 17, "bold"))
 trouble_title.pack(pady=(10, 10), anchor='center')
 
 trouble_text = """If Vapor isn't working as expected, try these steps:
@@ -1277,19 +1277,19 @@ trouble_text = """If Vapor isn't working as expected, try these steps:
 
 If issues persist, enable Debug Mode in Preferences to see detailed logs."""
 
-trouble_label = ctk.CTkLabel(master=help_scroll_frame, text=trouble_text, font=("Calibri", 12),
+trouble_label = ctk.CTkLabel(master=help_scroll_frame, text=trouble_text, font=("Calibri", 13),
                              wraplength=580, justify="left")
 trouble_label.pack(pady=10, anchor='center')
 
 help_sep4 = ctk.CTkFrame(master=help_scroll_frame, height=2, fg_color="gray50")
 help_sep4.pack(fill="x", padx=40, pady=15)
 
-reset_title = ctk.CTkLabel(master=help_scroll_frame, text="Reset Settings", font=("Calibri", 16, "bold"))
+reset_title = ctk.CTkLabel(master=help_scroll_frame, text="Reset Settings", font=("Calibri", 17, "bold"))
 reset_title.pack(pady=(10, 5), anchor='center')
 
 reset_hint = ctk.CTkLabel(master=help_scroll_frame,
                           text="Restore all settings to their default values.",
-                          font=("Calibri", 11), text_color="gray60")
+                          font=("Calibri", 12), text_color="gray60")
 reset_hint.pack(pady=(0, 10), anchor='center')
 
 
@@ -1348,7 +1348,7 @@ def rebuild_settings():
 rebuild_button = ctk.CTkButton(master=help_scroll_frame, text="Reset to Defaults", command=rebuild_settings,
                                corner_radius=10,
                                fg_color="#c9302c", hover_color="#a02622", text_color="white", width=200,
-                               font=("Calibri", 14))
+                               font=("Calibri", 15))
 rebuild_button.pack(pady=(5, 20), anchor='center')
 
 # =============================================================================
@@ -1358,10 +1358,10 @@ rebuild_button.pack(pady=(5, 20), anchor='center')
 about_scroll_frame = ctk.CTkScrollableFrame(master=about_tab, fg_color="transparent")
 about_scroll_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
-about_title = ctk.CTkLabel(master=about_scroll_frame, text="Vapor - Open Beta Release", font=("Calibri", 28, "bold"))
+about_title = ctk.CTkLabel(master=about_scroll_frame, text="Vapor - Open Beta Release", font=("Calibri", 29, "bold"))
 about_title.pack(pady=(10, 5), anchor='center')
 
-version_label = ctk.CTkLabel(master=about_scroll_frame, text=f"Version {CURRENT_VERSION}", font=("Calibri", 14))
+version_label = ctk.CTkLabel(master=about_scroll_frame, text=f"Version {CURRENT_VERSION}", font=("Calibri", 15))
 version_label.pack(pady=(0, 15), anchor='center')
 
 description_text = """Vapor is a lightweight utility designed to enhance your gaming experience on Windows. 
@@ -1372,18 +1372,18 @@ Vapor seamlessly relaunches your closed apps, so you can pick up right where you
 Features include customizable app management, audio controls, power plan switching, 
 Windows Game Mode integration, and playtime tracking with session summaries."""
 
-description_label = ctk.CTkLabel(master=about_scroll_frame, text=description_text, font=("Calibri", 13),
+description_label = ctk.CTkLabel(master=about_scroll_frame, text=description_text, font=("Calibri", 14),
                                  wraplength=620, justify="center")
 description_label.pack(pady=10, anchor='center')
 
 separator1 = ctk.CTkFrame(master=about_scroll_frame, height=2, fg_color="gray50")
 separator1.pack(fill="x", padx=40, pady=15)
 
-developer_title = ctk.CTkLabel(master=about_scroll_frame, text="Developed by", font=("Calibri", 12))
+developer_title = ctk.CTkLabel(master=about_scroll_frame, text="Developed by", font=("Calibri", 13))
 developer_title.pack(pady=(5, 0), anchor='center')
 
 developer_name = ctk.CTkLabel(master=about_scroll_frame, text="Greg Morton (@Master00Sniper)",
-                              font=("Calibri", 16, "bold"))
+                              font=("Calibri", 17, "bold"))
 developer_name.pack(pady=(0, 10), anchor='center')
 
 bio_text = """I'm a passionate gamer, Sr. Systems Administrator by profession, wine enthusiast, and proud 
@@ -1391,56 +1391,56 @@ small winery owner. Vapor was born from my own frustration with notifications in
 moments, and constantly having to adjust audio levels for games. I hope it enhances your gaming sessions 
 as much as it has mine."""
 
-bio_label = ctk.CTkLabel(master=about_scroll_frame, text=bio_text, font=("Calibri", 12),
+bio_label = ctk.CTkLabel(master=about_scroll_frame, text=bio_text, font=("Calibri", 13),
                          wraplength=620, justify="center")
 bio_label.pack(pady=10, anchor='center')
 
 separator2 = ctk.CTkFrame(master=about_scroll_frame, height=2, fg_color="gray50")
 separator2.pack(fill="x", padx=40, pady=15)
 
-contact_title = ctk.CTkLabel(master=about_scroll_frame, text="Contact & Connect", font=("Calibri", 14, "bold"))
+contact_title = ctk.CTkLabel(master=about_scroll_frame, text="Contact & Connect", font=("Calibri", 15, "bold"))
 contact_title.pack(pady=(5, 10), anchor='center')
 
-email_label = ctk.CTkLabel(master=about_scroll_frame, text="Email: greg@mortonapps.com", font=("Calibri", 12))
+email_label = ctk.CTkLabel(master=about_scroll_frame, text="Email: greg@mortonapps.com", font=("Calibri", 13))
 email_label.pack(pady=2, anchor='center')
 
 x_link_frame = ctk.CTkFrame(master=about_scroll_frame, fg_color="transparent")
 x_link_frame.pack(pady=2, anchor='center')
 
-x_icon_label = ctk.CTkLabel(master=x_link_frame, text="X: ", font=("Calibri", 12))
+x_icon_label = ctk.CTkLabel(master=x_link_frame, text="X: ", font=("Calibri", 13))
 x_icon_label.pack(side="left")
 
-x_link_label = ctk.CTkLabel(master=x_link_frame, text="x.com/master00sniper", font=("Calibri", 12, "underline"),
+x_link_label = ctk.CTkLabel(master=x_link_frame, text="x.com/master00sniper", font=("Calibri", 13, "underline"),
                             text_color="#1DA1F2", cursor="hand2")
 x_link_label.pack(side="left")
 x_link_label.bind("<Button-1>", lambda e: os.startfile("https://x.com/master00sniper"))
 
-x_handle_label = ctk.CTkLabel(master=x_link_frame, text="  -  @Master00Sniper", font=("Calibri", 12))
+x_handle_label = ctk.CTkLabel(master=x_link_frame, text="  -  @Master00Sniper", font=("Calibri", 13))
 x_handle_label.pack(side="left")
 
 separator3 = ctk.CTkFrame(master=about_scroll_frame, height=2, fg_color="gray50")
 separator3.pack(fill="x", padx=40, pady=15)
 
-donate_title = ctk.CTkLabel(master=about_scroll_frame, text="Support Development", font=("Calibri", 14, "bold"))
+donate_title = ctk.CTkLabel(master=about_scroll_frame, text="Support Development", font=("Calibri", 15, "bold"))
 donate_title.pack(pady=(5, 5), anchor='center')
 
 donate_label = ctk.CTkLabel(master=about_scroll_frame, text="Donation page coming soon!",
-                            font=("Calibri", 12))
+                            font=("Calibri", 13))
 donate_label.pack(pady=5, anchor='center')
 
 separator4 = ctk.CTkFrame(master=about_scroll_frame, height=2, fg_color="gray50")
 separator4.pack(fill="x", padx=40, pady=15)
 
-credits_title = ctk.CTkLabel(master=about_scroll_frame, text="Credits", font=("Calibri", 14, "bold"))
+credits_title = ctk.CTkLabel(master=about_scroll_frame, text="Credits", font=("Calibri", 15, "bold"))
 credits_title.pack(pady=(5, 5), anchor='center')
 
 credits_frame = ctk.CTkFrame(master=about_scroll_frame, fg_color="transparent")
 credits_frame.pack(pady=2, anchor='center')
 
-credits_text_label = ctk.CTkLabel(master=credits_frame, text="Icons by ", font=("Calibri", 12))
+credits_text_label = ctk.CTkLabel(master=credits_frame, text="Icons by ", font=("Calibri", 13))
 credits_text_label.pack(side="left")
 
-icons8_link_label = ctk.CTkLabel(master=credits_frame, text="Icons8", font=("Calibri", 12, "underline"),
+icons8_link_label = ctk.CTkLabel(master=credits_frame, text="Icons8", font=("Calibri", 13, "underline"),
                                  text_color="#1DA1F2", cursor="hand2")
 icons8_link_label.pack(side="left")
 icons8_link_label.bind("<Button-1>", lambda e: os.startfile("https://icons8.com"))
@@ -1450,14 +1450,14 @@ separator5.pack(fill="x", padx=40, pady=15)
 
 copyright_label = ctk.CTkLabel(master=about_scroll_frame,
                                text=f"(c) 2024-2026 Greg Morton (@Master00Sniper). All Rights Reserved.",
-                               font=("Calibri", 11))
+                               font=("Calibri", 12))
 copyright_label.pack(pady=(5, 5), anchor='center')
 
 disclaimer_text = """DISCLAIMER: This software is provided "as is" without warranty of any kind, express or implied, 
 including but not limited to the warranties of merchantability, fitness for a particular purpose, and noninfringement. 
 In no event shall the author be liable for any claim, damages, or other liability arising from the use of this software."""
 
-disclaimer_label = ctk.CTkLabel(master=about_scroll_frame, text=disclaimer_text, font=("Calibri", 10),
+disclaimer_label = ctk.CTkLabel(master=about_scroll_frame, text=disclaimer_text, font=("Calibri", 11),
                                 wraplength=620, justify="center", text_color="gray60")
 disclaimer_label.pack(pady=(5, 20), anchor='center')
 
@@ -1620,16 +1620,16 @@ def on_stop_vapor():
 
 
 save_button = ctk.CTkButton(master=button_frame, text="Save & Close", command=on_save_and_close, corner_radius=10,
-                            fg_color="green", text_color="white", width=150, font=("Calibri", 14))
+                            fg_color="green", text_color="white", width=150, font=("Calibri", 15))
 save_button.grid(row=0, column=1, padx=15, sticky='ew')
 
 discard_button = ctk.CTkButton(master=button_frame, text="Discard & Close", command=on_discard_and_close,
                                corner_radius=10,
-                               fg_color="gray", text_color="white", width=150, font=("Calibri", 14))
+                               fg_color="gray", text_color="white", width=150, font=("Calibri", 15))
 discard_button.grid(row=0, column=2, padx=15, sticky='ew')
 
 stop_button = ctk.CTkButton(master=button_frame, text="Stop Vapor", command=on_stop_vapor, corner_radius=10,
-                            fg_color="red", text_color="white", width=150, font=("Calibri", 14))
+                            fg_color="red", text_color="white", width=150, font=("Calibri", 15))
 stop_button.grid(row=0, column=3, padx=15, sticky='ew')
 
 # Make the X button work like Discard & Close
