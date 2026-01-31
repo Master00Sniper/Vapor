@@ -1168,7 +1168,7 @@ def show_detailed_summary(session_data):
             corner_radius=10,
             fg_color="green",
             hover_color="#228B22",
-            font=("Calibri", 14)
+            font=("Calibri", 15)
         )
         ok_button.pack()
 
@@ -1188,7 +1188,7 @@ def show_detailed_summary(session_data):
         game_label = ctk.CTkLabel(
             master=content_frame,
             text=game_name,
-            font=("Calibri", 16),
+            font=("Calibri", 17),
             text_color="gray70"
         )
         game_label.pack(pady=(0, 10))
@@ -1223,16 +1223,16 @@ def show_detailed_summary(session_data):
         stats_frame.pack(pady=10, padx=20, fill="x")
 
         # Time Played
-        ctk.CTkLabel(master=stats_frame, text="Time Played:", font=("Calibri", 13, "bold"),
+        ctk.CTkLabel(master=stats_frame, text="Time Played:", font=("Calibri", 14, "bold"),
                      anchor="w").grid(row=0, column=0, sticky="w", pady=3)
         time_str = f"{hours}h {minutes}m {seconds}s" if hours > 0 else f"{minutes}m {seconds}s"
-        ctk.CTkLabel(master=stats_frame, text=time_str, font=("Calibri", 13),
+        ctk.CTkLabel(master=stats_frame, text=time_str, font=("Calibri", 14),
                      anchor="e").grid(row=0, column=1, sticky="e", pady=3)
 
         # Apps Closed
-        ctk.CTkLabel(master=stats_frame, text="Apps Closed:", font=("Calibri", 13, "bold"),
+        ctk.CTkLabel(master=stats_frame, text="Apps Closed:", font=("Calibri", 14, "bold"),
                      anchor="w").grid(row=1, column=0, sticky="w", pady=3)
-        ctk.CTkLabel(master=stats_frame, text=str(closed_apps_count), font=("Calibri", 13),
+        ctk.CTkLabel(master=stats_frame, text=str(closed_apps_count), font=("Calibri", 14),
                      anchor="e").grid(row=1, column=1, sticky="e", pady=3)
 
         stats_frame.grid_columnconfigure(1, weight=1)
@@ -1251,7 +1251,7 @@ def show_detailed_summary(session_data):
             apps_list_label = ctk.CTkLabel(
                 master=apps_list_frame,
                 text=apps_text,
-                font=("Calibri", 11),
+                font=("Calibri", 12),
                 text_color="gray60",
                 wraplength=400
             )
@@ -1265,7 +1265,7 @@ def show_detailed_summary(session_data):
         temp_title = ctk.CTkLabel(
             master=content_frame,
             text="Temperatures",
-            font=("Calibri", 14, "bold")
+            font=("Calibri", 15, "bold")
         )
         temp_title.pack(pady=(5, 3))
 
@@ -1273,7 +1273,7 @@ def show_detailed_summary(session_data):
         temp_subtitle = ctk.CTkLabel(
             master=content_frame,
             text=f"Lifetime Max = highest recorded temperature for {game_name}",
-            font=("Calibri", 10),
+            font=("Calibri", 12),
             text_color="gray50"
         )
         temp_subtitle.pack(pady=(0, 8))
@@ -1284,19 +1284,19 @@ def show_detailed_summary(session_data):
         has_temps = False
 
         # Column headers - changed "Lifetime" to "Lifetime Max"
-        ctk.CTkLabel(master=temp_frame, text="", font=("Calibri", 11),
+        ctk.CTkLabel(master=temp_frame, text="", font=("Calibri", 12),
                      anchor="w").grid(row=0, column=0, sticky="w", pady=3)
-        ctk.CTkLabel(master=temp_frame, text="Start", font=("Calibri", 11, "bold"),
+        ctk.CTkLabel(master=temp_frame, text="Start", font=("Calibri", 12, "bold"),
                      text_color="gray60").grid(row=0, column=1, sticky="e", pady=3, padx=(15, 0))
-        ctk.CTkLabel(master=temp_frame, text="Session Max", font=("Calibri", 11, "bold"),
+        ctk.CTkLabel(master=temp_frame, text="Session Max", font=("Calibri", 12, "bold"),
                      text_color="gray60").grid(row=0, column=2, sticky="e", pady=3, padx=(15, 0))
-        ctk.CTkLabel(master=temp_frame, text="Lifetime Max", font=("Calibri", 11, "bold"),
+        ctk.CTkLabel(master=temp_frame, text="Lifetime Max", font=("Calibri", 12, "bold"),
                      text_color="#FFD700").grid(row=0, column=3, sticky="e", pady=3, padx=(15, 0))
 
         # CPU temps
         if start_cpu_temp is not None or max_cpu_temp is not None or lifetime_max_cpu is not None:
             has_temps = True
-            ctk.CTkLabel(master=temp_frame, text="CPU:", font=("Calibri", 13, "bold"),
+            ctk.CTkLabel(master=temp_frame, text="CPU:", font=("Calibri", 14, "bold"),
                          anchor="w").grid(row=1, column=0, sticky="w", pady=3)
 
             start_text = f"{start_cpu_temp}°C" if start_cpu_temp is not None else "N/A"
@@ -1304,17 +1304,17 @@ def show_detailed_summary(session_data):
             lifetime_text = f"{lifetime_max_cpu}°C" if lifetime_max_cpu is not None else "N/A"
 
             ctk.CTkLabel(master=temp_frame, text=start_text,
-                         font=("Calibri", 12)).grid(row=1, column=1, sticky="e", pady=3, padx=(15, 0))
+                         font=("Calibri", 13)).grid(row=1, column=1, sticky="e", pady=3, padx=(15, 0))
             ctk.CTkLabel(master=temp_frame, text=max_text,
-                         font=("Calibri", 12)).grid(row=1, column=2, sticky="e", pady=3, padx=(15, 0))
+                         font=("Calibri", 13)).grid(row=1, column=2, sticky="e", pady=3, padx=(15, 0))
             ctk.CTkLabel(master=temp_frame, text=lifetime_text,
-                         font=("Calibri", 12), text_color="#FFD700").grid(row=1, column=3, sticky="e", pady=3, padx=(15, 0))
+                         font=("Calibri", 13), text_color="#FFD700").grid(row=1, column=3, sticky="e", pady=3, padx=(15, 0))
 
         # GPU temps
         if start_gpu_temp is not None or max_gpu_temp is not None or lifetime_max_gpu is not None:
             has_temps = True
             row = 2 if (start_cpu_temp is not None or max_cpu_temp is not None or lifetime_max_cpu is not None) else 1
-            ctk.CTkLabel(master=temp_frame, text="GPU:", font=("Calibri", 13, "bold"),
+            ctk.CTkLabel(master=temp_frame, text="GPU:", font=("Calibri", 14, "bold"),
                          anchor="w").grid(row=row, column=0, sticky="w", pady=3)
 
             start_text = f"{start_gpu_temp}°C" if start_gpu_temp is not None else "N/A"
@@ -1322,18 +1322,18 @@ def show_detailed_summary(session_data):
             lifetime_text = f"{lifetime_max_gpu}°C" if lifetime_max_gpu is not None else "N/A"
 
             ctk.CTkLabel(master=temp_frame, text=start_text,
-                         font=("Calibri", 12)).grid(row=row, column=1, sticky="e", pady=3, padx=(15, 0))
+                         font=("Calibri", 13)).grid(row=row, column=1, sticky="e", pady=3, padx=(15, 0))
             ctk.CTkLabel(master=temp_frame, text=max_text,
-                         font=("Calibri", 12)).grid(row=row, column=2, sticky="e", pady=3, padx=(15, 0))
+                         font=("Calibri", 13)).grid(row=row, column=2, sticky="e", pady=3, padx=(15, 0))
             ctk.CTkLabel(master=temp_frame, text=lifetime_text,
-                         font=("Calibri", 12), text_color="#FFD700").grid(row=row, column=3, sticky="e", pady=3, padx=(15, 0))
+                         font=("Calibri", 13), text_color="#FFD700").grid(row=row, column=3, sticky="e", pady=3, padx=(15, 0))
 
         # No temps available message
         if not has_temps:
             ctk.CTkLabel(
                 master=temp_frame,
                 text="Temperature monitoring not enabled",
-                font=("Calibri", 12),
+                font=("Calibri", 13),
                 text_color="gray60"
             ).grid(row=0, column=0, columnspan=4, pady=10)
 
