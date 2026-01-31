@@ -170,50 +170,83 @@ try:
 except ImportError:
     WMI_AVAILABLE = False
 
-# LibreHardwareMonitorLib via pythonnet (bundled DLL for CPU temps without external app)
-LHM_AVAILABLE = False
-LHM_COMPUTER = None
+# HardwareMonitor package (PyPI) - handles LibreHardwareMonitor + PawnIO driver
+HWMON_AVAILABLE = False
+HWMON_COMPUTER = None
 CPU_TEMP_ERRORS_LOGGED = False  # Only log WMI/fallback errors once
 try:
-    import clr
-    import System
-    from System.Reflection import Assembly
-
-    # Determine lib folder path
-    if getattr(sys, 'frozen', False):
-        lib_dir = os.path.join(sys._MEIPASS, 'lib')
-    else:
-        lib_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'lib')
-
-    lhm_dll_path = os.path.join(lib_dir, 'LibreHardwareMonitorLib.dll')
-
-    # Fallback to root directory for backwards compatibility
-    if not os.path.exists(lhm_dll_path):
-        if getattr(sys, 'frozen', False):
-            lhm_dll_path = os.path.join(sys._MEIPASS, 'LibreHardwareMonitorLib.dll')
-            lib_dir = sys._MEIPASS
-        else:
-            lhm_dll_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'LibreHardwareMonitorLib.dll')
-            lib_dir = os.path.dirname(os.path.abspath(__file__))
-
-    if os.path.exists(lhm_dll_path):
-        # Add lib directory to assembly search path for dependencies
-        System.AppDomain.CurrentDomain.AppendPrivatePath(lib_dir)
-
-        # Pre-load dependencies that LibreHardwareMonitorLib needs
-        for dep_dll in ['System.Memory.dll', 'System.Buffers.dll', 'HidSharp.dll']:
-            dep_path = os.path.join(lib_dir, dep_dll)
-            if os.path.exists(dep_path):
-                try:
-                    Assembly.LoadFrom(dep_path)
-                except:
-                    pass
-
-        clr.AddReference(lhm_dll_path)
-        from LibreHardwareMonitor.Hardware import Computer, HardwareType, SensorType
-        LHM_AVAILABLE = True
-except Exception:
+    from HardwareMonitor.Hardware import Computer, IVisitor, IComputer, IHardware, IParameter, ISensor
+    from HardwareMonitor.Hardware import HardwareType, SensorType
+    HWMON_AVAILABLE = True
+except ImportError:
     pass
+
+# Fallback: LibreHardwareMonitorLib via pythonnet (bundled DLL approach)
+LHM_AVAILABLE = False
+LHM_COMPUTER = None
+if not HWMON_AVAILABLE:
+    try:
+        import clr
+        import System
+        from System.Reflection import Assembly
+
+        # Determine lib folder path
+        if getattr(sys, 'frozen', False):
+            lib_dir = os.path.join(sys._MEIPASS, 'lib')
+        else:
+            lib_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'lib')
+
+        lhm_dll_path = os.path.join(lib_dir, 'LibreHardwareMonitorLib.dll')
+
+        # Fallback to root directory for backwards compatibility
+        if not os.path.exists(lhm_dll_path):
+            if getattr(sys, 'frozen', False):
+                lhm_dll_path = os.path.join(sys._MEIPASS, 'LibreHardwareMonitorLib.dll')
+                lib_dir = sys._MEIPASS
+            else:
+                lhm_dll_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'LibreHardwareMonitorLib.dll')
+                lib_dir = os.path.dirname(os.path.abspath(__file__))
+
+        if os.path.exists(lhm_dll_path):
+            # Add lib directory to assembly search path for dependencies
+            System.AppDomain.CurrentDomain.AppendPrivatePath(lib_dir)
+
+            # Pre-load dependencies that LibreHardwareMonitorLib needs
+            for dep_dll in ['System.Memory.dll', 'System.Buffers.dll', 'HidSharp.dll']:
+                dep_path = os.path.join(lib_dir, dep_dll)
+                if os.path.exists(dep_path):
+                    try:
+                        Assembly.LoadFrom(dep_path)
+                    except:
+                        pass
+
+            clr.AddReference(lhm_dll_path)
+            from LibreHardwareMonitor.Hardware import Computer, HardwareType, SensorType
+            LHM_AVAILABLE = True
+    except Exception:
+        pass
+
+
+# Visitor class for HardwareMonitor package (only defined if package available)
+HardwareUpdateVisitor = None
+if HWMON_AVAILABLE:
+    class HardwareUpdateVisitor(IVisitor):
+        """Visitor to update all hardware sensors."""
+        __namespace__ = "VaporMonitor"
+
+        def VisitComputer(self, computer: IComputer):
+            computer.Traverse(self)
+
+        def VisitHardware(self, hardware: IHardware):
+            hardware.Update()
+            for subHardware in hardware.SubHardware:
+                subHardware.Update()
+
+        def VisitParameter(self, parameter: IParameter):
+            pass
+
+        def VisitSensor(self, sensor: ISensor):
+            pass
 
 import atexit
 import signal
@@ -1289,12 +1322,54 @@ def get_gpu_temperature():
 def get_cpu_temperature():
     """
     Get current CPU temperature in Celsius.
-    Tries LibreHardwareMonitor (bundled) and WMI fallbacks.
+    Tries HardwareMonitor package, LibreHardwareMonitor (bundled), and WMI fallbacks.
     Returns None if temperature cannot be read.
     """
-    global LHM_COMPUTER
+    global HWMON_COMPUTER, LHM_COMPUTER
 
-    # Try bundled LibreHardwareMonitorLib first (requires admin privileges)
+    # Try HardwareMonitor package first (handles PawnIO driver automatically)
+    if HWMON_AVAILABLE and is_admin():
+        try:
+            from HardwareMonitor.Hardware import Computer, HardwareType, SensorType
+
+            if HWMON_COMPUTER is None:
+                log("Initializing HardwareMonitor Computer object...", "TEMP")
+                HWMON_COMPUTER = Computer()
+                HWMON_COMPUTER.IsCpuEnabled = True
+                HWMON_COMPUTER.Open()
+                # Use visitor pattern to update all hardware
+                HWMON_COMPUTER.Accept(HardwareUpdateVisitor())
+                log("HardwareMonitor initialized successfully", "TEMP")
+
+            # Update all hardware using visitor
+            HWMON_COMPUTER.Accept(HardwareUpdateVisitor())
+
+            # Look for CPU temperature
+            for hardware in HWMON_COMPUTER.Hardware:
+                if hardware.HardwareType == HardwareType.Cpu:
+                    # Check all temperature sensors
+                    for sensor in hardware.Sensors:
+                        if sensor.SensorType == SensorType.Temperature:
+                            try:
+                                value = sensor.Value
+                                if value is not None and float(value) > 0:
+                                    return int(float(value))
+                            except Exception:
+                                pass
+                    # Check subhardware
+                    for subhardware in hardware.SubHardware:
+                        for sensor in subhardware.Sensors:
+                            if sensor.SensorType == SensorType.Temperature:
+                                try:
+                                    value = sensor.Value
+                                    if value is not None and float(value) > 0:
+                                        return int(float(value))
+                                except Exception:
+                                    pass
+        except Exception as e:
+            log(f"HardwareMonitor read failed: {e}", "TEMP")
+
+    # Fallback: Try bundled LibreHardwareMonitorLib (requires admin privileges)
     if LHM_AVAILABLE and is_admin():
         try:
             from LibreHardwareMonitor.Hardware import Computer, HardwareType, SensorType
@@ -1352,10 +1427,6 @@ def get_cpu_temperature():
                                     pass
         except Exception as e:
             log(f"LibreHardwareMonitorLib read failed: {e}", "TEMP")
-    elif not LHM_AVAILABLE:
-        pass  # Silently skip - already logged at startup
-    elif not is_admin():
-        pass  # Silently skip - admin status already logged at startup
 
     # Fallback: Try WMI with external LibreHardwareMonitor/OpenHardwareMonitor
     global CPU_TEMP_ERRORS_LOGGED

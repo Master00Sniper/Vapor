@@ -12,18 +12,13 @@ a = Analysis(
     datas=[
         ('vapor_settings_ui.py', '.'),
         ('updater.py', '.'),
-        # CPU temperature monitoring - LibreHardwareMonitor files
-        # Download from: https://github.com/LibreHardwareMonitor/LibreHardwareMonitor/releases
-        # Extract and place files in a 'lib' folder, then uncomment the lines below:
+        # CPU temperature monitoring - now handled by HardwareMonitor PyPI package
+        # The HardwareMonitor package uses the PawnIO driver (replaces WinRing0)
+        # Install PawnIO driver: winget install pawnio
+        # Fallback: LibreHardwareMonitor DLL files (optional, only if HardwareMonitor unavailable)
         # ('lib/LibreHardwareMonitorLib.dll', 'lib'),
         # ('lib/HidSharp.dll', 'lib'),
         # ('lib/System.Memory.dll', 'lib'),
-        # ('lib/System.Buffers.dll', 'lib'),
-        # ('lib/System.Numerics.Vectors.dll', 'lib'),
-        # ('lib/System.Runtime.CompilerServices.Unsafe.dll', 'lib'),
-        # IMPORTANT: WinRing0 kernel driver files (required for hardware access):
-        # ('lib/WinRing0x64.dll', 'lib'),
-        # ('lib/WinRing0x64.sys', 'lib'),
     ],
     hiddenimports=[
         # Windows API
@@ -44,7 +39,8 @@ a = Analysis(
         'pynvml',  # NVIDIA GPU temps
         'pyadl',   # AMD GPU temps
         'wmi',     # WMI fallback
-        'clr', 'pythonnet',  # LibreHardwareMonitor for CPU temps
+        'clr', 'pythonnet',  # LibreHardwareMonitor for CPU temps (fallback)
+        'HardwareMonitor', 'HardwareMonitor.Hardware',  # CPU temps via PyPI package
     ] + collect_submodules('customtkinter') + collect_submodules('pycaw') + collect_submodules('comtypes'),
     hookspath=[],
     hooksconfig={},
