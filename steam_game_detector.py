@@ -620,6 +620,15 @@ def show_notification_warning_popup(reason="notifications_disabled"):
     # Create popup window
     popup = ctk.CTk()
 
+    # Register popup for cleanup on quit
+    register_popup(popup)
+
+    def on_close():
+        unregister_popup(popup)
+        popup.destroy()
+
+    popup.protocol("WM_DELETE_WINDOW", on_close)
+
     if reason == "do_not_disturb":
         popup.title("Vapor - Do Not Disturb Enabled")
         title_text = "Do Not Disturb is Enabled"
@@ -691,10 +700,12 @@ Windows Settings > System > Notifications"""
     button_frame.pack(pady=(0, 25))
 
     def on_ok():
+        unregister_popup(popup)
         popup.destroy()
 
     def on_dont_show_again():
         mark_notification_warning_dismissed()
+        unregister_popup(popup)
         popup.destroy()
 
     ok_button = ctk.CTkButton(
@@ -1175,6 +1186,15 @@ def show_detailed_summary(session_data):
         popup = ctk.CTk()
         popup.title("Vapor - Game Session Details")
 
+        # Register popup for cleanup on quit
+        register_popup(popup)
+
+        def on_close():
+            unregister_popup(popup)
+            popup.destroy()
+
+        popup.protocol("WM_DELETE_WINDOW", on_close)
+
         # Window dimensions - similar to settings window, use screen-based height
         window_width = 550
         screen_height = popup.winfo_screenheight()
@@ -1214,7 +1234,7 @@ def show_detailed_summary(session_data):
         ok_button = ctk.CTkButton(
             master=button_container,
             text="OK",
-            command=popup.destroy,
+            command=on_close,
             width=150,
             height=35,
             corner_radius=10,
@@ -1960,6 +1980,34 @@ class TemperatureTracker:
 # Global temperature tracker instance
 temperature_tracker = TemperatureTracker()
 
+# Track open popup windows for cleanup on quit
+_open_popups = []
+_open_popups_lock = threading.Lock()
+
+
+def register_popup(popup):
+    """Register a popup window for cleanup on quit."""
+    with _open_popups_lock:
+        _open_popups.append(popup)
+
+
+def unregister_popup(popup):
+    """Unregister a popup window when it's closed."""
+    with _open_popups_lock:
+        if popup in _open_popups:
+            _open_popups.remove(popup)
+
+
+def close_all_popups():
+    """Close all registered popup windows."""
+    with _open_popups_lock:
+        for popup in _open_popups[:]:  # Copy list to avoid modification during iteration
+            try:
+                popup.after(0, popup.destroy)
+            except Exception:
+                pass
+        _open_popups.clear()
+
 
 # =============================================================================
 # Temperature History Logging
@@ -2549,6 +2597,10 @@ def quit_app(icon, query):
     """Shut down Vapor gracefully."""
     log("Quit requested - shutting down...", "SHUTDOWN")
     stop_event.set()
+
+    # Close any open popup windows to release file handles
+    close_all_popups()
+
     try:
         keyboard.unhook_all()
     except:
@@ -2560,6 +2612,10 @@ def quit_app(icon, query):
             ctypes.windll.kernel32.FreeConsole()
     except:
         pass
+
+    # Brief delay to allow background threads to clean up
+    time.sleep(0.5)
+
     icon.stop()
 
 
