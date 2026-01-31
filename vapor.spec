@@ -2,8 +2,19 @@
 
 # -*- mode: python ; coding: utf-8 -*-
 
-from PyInstaller.utils.hooks import collect_submodules
+from PyInstaller.utils.hooks import collect_submodules, collect_data_files
 from PyInstaller.building.datastruct import Tree
+
+# Collect HardwareMonitor package data (includes LibreHardwareMonitorLib.dll and dependencies)
+hardwaremonitor_datas = []
+try:
+    hardwaremonitor_datas += collect_data_files('HardwareMonitor')
+except Exception:
+    pass
+try:
+    hardwaremonitor_datas += collect_data_files('pylibrehardwaremonitorlib')
+except Exception:
+    pass
 
 a = Analysis(
     ['steam_game_detector.py'],
@@ -14,7 +25,9 @@ a = Analysis(
         ('updater.py', '.'),
         # PawnIO driver installer script for CPU temperature monitoring
         ('install_pawnio.ps1', '.'),
-    ],
+        # Fallback: Bundled LibreHardwareMonitor DLLs (if lib/ folder exists)
+        # Download from: https://github.com/LibreHardwareMonitor/LibreHardwareMonitor/releases
+    ] + hardwaremonitor_datas,
     hiddenimports=[
         # Windows API
         'win32gui', 'win32con', 'win32event', 'winerror', 'win32api', 'winreg',
@@ -36,7 +49,7 @@ a = Analysis(
         'wmi',     # WMI fallback
         'clr', 'pythonnet',  # LibreHardwareMonitor for CPU temps (fallback)
         'HardwareMonitor', 'HardwareMonitor.Hardware',  # CPU temps via PyPI package
-    ] + collect_submodules('customtkinter') + collect_submodules('pycaw') + collect_submodules('comtypes'),
+    ] + collect_submodules('customtkinter') + collect_submodules('pycaw') + collect_submodules('comtypes') + collect_submodules('HardwareMonitor'),
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -48,9 +61,14 @@ a = Analysis(
 # Add all files from the 'Images' directory
 a.datas += Tree('Images', prefix='Images')
 
+# Add lib/ folder with LibreHardwareMonitor DLLs (fallback for CPU temps)
+import os
+if os.path.exists('lib'):
+    a.datas += Tree('lib', prefix='lib')
+
 # Add sound files for critical temperature alerts
-# Create a 'sounds' folder with critical_alert.wav, then uncomment:
-# a.datas += Tree('sounds', prefix='sounds')
+if os.path.exists('sounds'):
+    a.datas += Tree('sounds', prefix='sounds')
 
 pyz = PYZ(a.pure)
 
