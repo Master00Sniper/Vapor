@@ -79,9 +79,8 @@ def restart_vapor_as_admin(main_pid):
     """
     Restart the main Vapor process with admin privileges.
     Terminates the current main process and starts a new elevated one.
+    Uses a delayed start via PowerShell to avoid MEI folder cleanup errors.
     """
-    import time
-
     # Terminate current main process if running
     if main_pid:
         try:
@@ -91,24 +90,18 @@ def restart_vapor_as_admin(main_pid):
         except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.TimeoutExpired):
             pass
 
-    # Give Windows time to release file handles from the old process
-    # This prevents "Failed to remove temporary directory" errors
-    time.sleep(1)
-
-    # Determine the executable to run
+    # Determine the executable and arguments to run
     if getattr(sys, 'frozen', False):
         # Running as compiled exe - find the main Vapor executable
         vapor_exe = os.path.join(os.path.dirname(sys.executable), 'Vapor.exe')
         if os.path.exists(vapor_exe):
             executable = vapor_exe
-            params = ""
         else:
             # Fallback to steam_game_detector.exe if Vapor.exe not found
             executable = os.path.join(os.path.dirname(sys.executable), 'steam_game_detector.exe')
-            params = ""
+        args_part = ""
     else:
         # Running from Python - use pythonw.exe to avoid console window
-        # pythonw.exe is the windowless version of python.exe
         python_dir = os.path.dirname(sys.executable)
         pythonw_exe = os.path.join(python_dir, 'pythonw.exe')
         if os.path.exists(pythonw_exe):
@@ -116,12 +109,22 @@ def restart_vapor_as_admin(main_pid):
         else:
             executable = sys.executable
         main_script = os.path.join(base_dir, 'steam_game_detector.py')
-        params = f'"{main_script}"'
+        args_part = f' -ArgumentList \\"{main_script}\\"'
 
-    # Request elevation using ShellExecute with 'runas'
+    # Use PowerShell with a delay to start the new process
+    # This ensures the old process (settings UI) has fully exited before new Vapor starts
+    # The delay prevents "Failed to remove temporary directory" MEI folder errors
+    ps_command = f'Start-Sleep -Seconds 2; Start-Process -FilePath \\"{executable}\\"{args_part}'
+
     try:
+        # Launch PowerShell hidden - it will wait 2 seconds then start Vapor
         result = ctypes.windll.shell32.ShellExecuteW(
-            None, "runas", executable, params, base_dir, 1
+            None,
+            "runas",
+            "powershell.exe",
+            f'-WindowStyle Hidden -Command "{ps_command}"',
+            base_dir,
+            0  # SW_HIDE
         )
         return result > 32  # ShellExecuteW returns > 32 on success
     except Exception:
