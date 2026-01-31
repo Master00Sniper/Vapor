@@ -1302,6 +1302,7 @@ def get_cpu_temperature():
                 log("Initializing LibreHardwareMonitor Computer object...", "TEMP")
                 LHM_COMPUTER = Computer()
                 LHM_COMPUTER.IsCpuEnabled = True
+                LHM_COMPUTER.IsMotherboardEnabled = True  # AMD CPUs often report temps via motherboard
                 LHM_COMPUTER.Open()
                 # Multiple updates with delay for AMD CPUs (Tctl/Tdie sensors need time)
                 for _ in range(3):
@@ -1319,7 +1320,7 @@ def get_cpu_temperature():
                     subhardware.Update()
 
             # Helper function to find temp in a hardware object
-            def find_cpu_temp(hw):
+            def find_cpu_temp(hw, require_cpu_name=False):
                 # First try Package or Core/Tctl temperature
                 for sensor in hw.Sensors:
                     if sensor.SensorType == SensorType.Temperature:
@@ -1327,16 +1328,21 @@ def get_cpu_temperature():
                         value = sensor.Value
                         if value is not None and value > 0:
                             # Prioritize Package, Tctl, Tdie, or Core temps
-                            if "Package" in name or "Tctl" in name or "Tdie" in name or "Core" in name:
+                            if "Package" in name or "Tctl" in name or "Tdie" in name:
                                 return int(value)
-                # Fallback to any temperature with valid reading
+                            if "Core" in name and (not require_cpu_name or "CPU" in name):
+                                return int(value)
+                # Fallback to any CPU-related temperature with valid reading
                 for sensor in hw.Sensors:
                     if sensor.SensorType == SensorType.Temperature:
+                        name = str(sensor.Name)
                         value = sensor.Value
                         if value is not None and value > 0:
-                            return int(value)
+                            if not require_cpu_name or "CPU" in name:
+                                return int(value)
                 return None
 
+            # First check CPU hardware
             for hardware in LHM_COMPUTER.Hardware:
                 if hardware.HardwareType == HardwareType.Cpu:
                     # Check main hardware
@@ -1348,17 +1354,32 @@ def get_cpu_temperature():
                         temp = find_cpu_temp(subhardware)
                         if temp:
                             return temp
-                    # Log available sensors for debugging if no valid reading found
-                    sensor_info = []
-                    for sensor in hardware.Sensors:
+
+            # Fallback: Check motherboard for CPU temperature (common on AMD)
+            for hardware in LHM_COMPUTER.Hardware:
+                if hardware.HardwareType == HardwareType.Motherboard:
+                    # Look for CPU temp in motherboard sensors
+                    temp = find_cpu_temp(hardware, require_cpu_name=True)
+                    if temp:
+                        return temp
+                    for subhardware in hardware.SubHardware:
+                        temp = find_cpu_temp(subhardware, require_cpu_name=True)
+                        if temp:
+                            return temp
+
+            # Log all available temperature sensors for debugging
+            sensor_info = []
+            for hardware in LHM_COMPUTER.Hardware:
+                hw_type = str(hardware.HardwareType)
+                for sensor in hardware.Sensors:
+                    if sensor.SensorType == SensorType.Temperature:
+                        sensor_info.append(f"{hw_type}/{sensor.Name}={sensor.Value}")
+                for subhw in hardware.SubHardware:
+                    for sensor in subhw.Sensors:
                         if sensor.SensorType == SensorType.Temperature:
-                            sensor_info.append(f"{sensor.Name}={sensor.Value}")
-                    for subhw in hardware.SubHardware:
-                        for sensor in subhw.Sensors:
-                            if sensor.SensorType == SensorType.Temperature:
-                                sensor_info.append(f"{subhw.Name}/{sensor.Name}={sensor.Value}")
-                    if sensor_info:
-                        log(f"CPU temp sensors found but no valid reading: {', '.join(sensor_info)}", "TEMP")
+                            sensor_info.append(f"{hw_type}/{subhw.Name}/{sensor.Name}={sensor.Value}")
+            if sensor_info:
+                log(f"CPU temp sensors found but no valid reading: {', '.join(sensor_info)}", "TEMP")
         except Exception as e:
             log(f"LibreHardwareMonitorLib read failed: {e}", "TEMP")
     elif not LHM_AVAILABLE:
