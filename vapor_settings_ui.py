@@ -129,14 +129,29 @@ def restart_vapor_as_admin(main_pid):
             debug_log(f"Could not terminate main process: {e}", "Restart")
 
     # Determine the executable and arguments to run
-    if getattr(sys, 'frozen', False):
-        # Running as compiled exe - find the main Vapor executable
-        vapor_exe = os.path.join(os.path.dirname(sys.executable), 'Vapor.exe')
-        if os.path.exists(vapor_exe):
-            executable = vapor_exe
-        else:
-            # Fallback to steam_game_detector.exe if Vapor.exe not found
-            executable = os.path.join(os.path.dirname(sys.executable), 'steam_game_detector.exe')
+    # Use VAPOR_EXE_PATH if available (passed from main process)
+    vapor_exe_from_env = os.environ.get('VAPOR_EXE_PATH', '')
+
+    if vapor_exe_from_env and os.path.exists(vapor_exe_from_env):
+        # Use the path passed from the main Vapor process
+        executable = vapor_exe_from_env
+        args_part = ""
+        debug_log(f"Using VAPOR_EXE_PATH: {executable}", "Restart")
+    elif getattr(sys, 'frozen', False):
+        # Fallback: try to find Vapor.exe in common locations
+        # Note: sys.executable here is the settings UI exe in temp folder, not what we want
+        possible_paths = [
+            os.path.join(os.path.dirname(os.path.dirname(sys.executable)), 'Vapor.exe'),
+            os.path.join(os.getcwd(), 'Vapor.exe'),
+        ]
+        executable = None
+        for path in possible_paths:
+            if os.path.exists(path):
+                executable = path
+                break
+        if not executable:
+            debug_log("ERROR: Could not find Vapor.exe for restart", "Restart")
+            return False
         args_part = ""
     else:
         # Running from Python - use pythonw.exe to avoid console window
@@ -177,6 +192,12 @@ def restart_vapor_as_admin(main_pid):
 # PawnIO Driver Functions (for CPU temperature monitoring)
 # =============================================================================
 
+# Cache for PawnIO installation status (to avoid repeated slow winget calls)
+_pawnio_installed_cache = None
+_pawnio_cache_time = 0
+PAWNIO_CACHE_DURATION = 60  # Cache for 60 seconds
+
+
 def is_winget_available():
     """Check if winget is available on this system."""
     try:
@@ -193,8 +214,17 @@ def is_winget_available():
         return False
 
 
-def is_pawnio_installed():
-    """Check if PawnIO driver is installed."""
+def is_pawnio_installed(use_cache=True):
+    """Check if PawnIO driver is installed. Uses cache to avoid slow winget calls."""
+    global _pawnio_installed_cache, _pawnio_cache_time
+
+    # Return cached result if still valid
+    if use_cache and _pawnio_installed_cache is not None:
+        if time.time() - _pawnio_cache_time < PAWNIO_CACHE_DURATION:
+            debug_log(f"Using cached PawnIO status: {_pawnio_installed_cache}", "PawnIO")
+            return _pawnio_installed_cache
+
+    debug_log("Checking PawnIO installation (winget list)...", "PawnIO")
     try:
         result = subprocess.run(
             ['winget', 'list', '--id', 'namazso.PawnIO'],
@@ -203,10 +233,22 @@ def is_pawnio_installed():
         )
         installed = 'PawnIO' in result.stdout
         debug_log(f"Installed: {installed}", "PawnIO")
+
+        # Update cache
+        _pawnio_installed_cache = installed
+        _pawnio_cache_time = time.time()
+
         return installed
     except Exception as e:
         debug_log(f"Check error: {e}", "PawnIO")
         return False
+
+
+def clear_pawnio_cache():
+    """Clear the PawnIO installation cache (call after installation)."""
+    global _pawnio_installed_cache, _pawnio_cache_time
+    _pawnio_installed_cache = None
+    _pawnio_cache_time = 0
 
 
 def get_pawnio_installer_path():
@@ -1953,21 +1995,26 @@ def on_save():
                     parent=root
                 )
 
-    # Check if CPU thermal is enabled and PawnIO driver needs to be installed
-    if new_enable_cpu_thermal and not is_pawnio_installed():
+    # Check if CPU thermal is being NEWLY enabled and PawnIO driver needs to be installed
+    # Only check when changing from disabled to enabled (avoids slow winget check on every save)
+    if new_enable_cpu_thermal and not enable_cpu_thermal and not is_pawnio_installed():
         response = show_vapor_dialog(
             title="CPU Temperature Driver Required",
             message="CPU temperature monitoring requires the PawnIO driver.\n\n"
+                    "PawnIO is a secure, signed kernel driver that allows applications\n"
+                    "to safely read hardware sensors like CPU temperatures. It replaces\n"
+                    "the older WinRing0 driver which is now flagged by antivirus software.\n\n"
+                    "Learn more: https://pawnio.eu\n\n"
                     "Click 'Install' to automatically install the driver.\n"
                     "You will be prompted for administrator approval.",
             dialog_type="warning",
             buttons=[
-                {"text": "Install", "value": True, "color": "green"},
-                {"text": "Not Now", "value": False, "color": "gray"}
+                {"text": "Install", "value": "install", "color": "green"},
+                {"text": "Not Now", "value": "cancel", "color": "gray"}
             ],
             parent=root
         )
-        if response:
+        if response == "install":
             # Show installing message with progress bar
             installing_dialog = ctk.CTkToplevel(root)
             installing_dialog.title("Vapor - Installing Driver")
@@ -2019,6 +2066,9 @@ def on_save():
             # Run installer with progress updates
             install_success = install_pawnio_with_elevation(progress_callback=update_progress)
 
+            # Clear cache after installation attempt
+            clear_pawnio_cache()
+
             # Close installing dialog
             try:
                 installing_dialog.destroy()
@@ -2055,6 +2105,11 @@ def on_save():
                     dialog_type="error",
                     parent=root
                 )
+                # Installation failed - toggle CPU temp switch back to disabled
+                enable_cpu_thermal_var.set(False)
+        else:
+            # User clicked "Not Now" - toggle CPU temp switch back to disabled
+            enable_cpu_thermal_var.set(False)
 
     # Check if debug mode was changed - requires restart to take effect
     if new_enable_debug_mode != enable_debug_mode:
