@@ -994,6 +994,69 @@ def get_game_header_image(app_id):
     return None
 
 
+def get_game_store_details(app_id):
+    """Fetch game details from Steam Store API.
+
+    Returns dict with: developers, publishers, release_date, metacritic_score, metacritic_url
+    """
+    if app_id == 0:
+        return None
+    try:
+        url = f"http://store.steampowered.com/api/appdetails?appids={app_id}"
+        response = requests.get(url, timeout=5)
+        data = response.json()
+        if response.status_code == 200 and str(app_id) in data and data[str(app_id)]["success"]:
+            game_data = data[str(app_id)]["data"]
+
+            details = {
+                'developers': game_data.get('developers', []),
+                'publishers': game_data.get('publishers', []),
+                'release_date': game_data.get('release_date', {}).get('date', 'Unknown'),
+                'metacritic_score': None,
+                'metacritic_url': None
+            }
+
+            # Metacritic data (may not exist for all games)
+            metacritic = game_data.get('metacritic')
+            if metacritic:
+                details['metacritic_score'] = metacritic.get('score')
+                details['metacritic_url'] = metacritic.get('url')
+
+            log(f"Got store details for AppID {app_id}", "STEAM")
+            return details
+    except Exception as e:
+        log(f"Failed to fetch game store details: {e}", "ERROR")
+    return None
+
+
+# Pre-loaded game details for instant popup display
+_preloaded_game_details = None
+_preloaded_game_details_lock = threading.Lock()
+
+
+def preload_game_details(app_id):
+    """Pre-load game details from Steam Store API for instant display."""
+    global _preloaded_game_details
+
+    if app_id == 0:
+        return
+
+    details = get_game_store_details(app_id)
+    if details:
+        with _preloaded_game_details_lock:
+            _preloaded_game_details = details
+        log(f"Pre-loaded game details for AppID {app_id}", "CACHE")
+
+
+def get_preloaded_game_details():
+    """Get the pre-loaded game details (or None if not available)."""
+    global _preloaded_game_details
+    with _preloaded_game_details_lock:
+        details = _preloaded_game_details
+        _preloaded_game_details = None  # Clear after use
+        return details
+
+
 # Directory for cached game header images
 HEADER_IMAGE_CACHE_DIR = os.path.join(appdata_dir, 'images')
 os.makedirs(HEADER_IMAGE_CACHE_DIR, exist_ok=True)
@@ -1102,10 +1165,12 @@ def prepare_session_popup(app_id):
     """Background task to prepare everything needed for the session popup.
 
     Called when a game starts. Downloads/caches image, pre-loads it into memory,
-    and warms up CustomTkinter so the popup appears instantly when the game ends.
+    fetches game details from Steam, and warms up CustomTkinter so the popup
+    appears instantly when the game ends.
     """
     cache_game_header_image(app_id)
     preload_header_image(app_id)
+    preload_game_details(app_id)
     warmup_customtkinter()
 
 
@@ -1267,6 +1332,9 @@ def show_detailed_summary(session_data):
 
     # Run popup in a separate thread to avoid blocking
     def show_popup():
+        # Get pre-loaded game details (developer, metacritic, etc.)
+        game_details = get_preloaded_game_details()
+
         popup = ctk.CTk()
         popup.title("Vapor - Game Session Details")
 
@@ -1419,6 +1487,62 @@ def show_detailed_summary(session_data):
                 wraplength=400
             )
             apps_list_label.pack(anchor="w")
+
+        # Game Info section (from Steam Store API)
+        if game_details:
+            # Separator before game info
+            sep_info = ctk.CTkFrame(master=content_frame, height=2, fg_color="gray50")
+            sep_info.pack(fill="x", padx=20, pady=5)
+
+            info_frame = ctk.CTkFrame(master=content_frame, fg_color="transparent")
+            info_frame.pack(pady=5, padx=20, fill="x")
+
+            info_row = 0
+
+            # Developer
+            developers = game_details.get('developers', [])
+            if developers:
+                ctk.CTkLabel(master=info_frame, text="Developer:", font=("Calibri", 14, "bold"),
+                             anchor="w").grid(row=info_row, column=0, sticky="w", pady=2)
+                ctk.CTkLabel(master=info_frame, text=", ".join(developers[:2]), font=("Calibri", 14),
+                             anchor="e").grid(row=info_row, column=1, sticky="e", pady=2)
+                info_row += 1
+
+            # Publisher (only if different from developer)
+            publishers = game_details.get('publishers', [])
+            if publishers and publishers != developers:
+                ctk.CTkLabel(master=info_frame, text="Publisher:", font=("Calibri", 14, "bold"),
+                             anchor="w").grid(row=info_row, column=0, sticky="w", pady=2)
+                ctk.CTkLabel(master=info_frame, text=", ".join(publishers[:2]), font=("Calibri", 14),
+                             anchor="e").grid(row=info_row, column=1, sticky="e", pady=2)
+                info_row += 1
+
+            # Release Date
+            release_date = game_details.get('release_date')
+            if release_date and release_date != 'Unknown':
+                ctk.CTkLabel(master=info_frame, text="Released:", font=("Calibri", 14, "bold"),
+                             anchor="w").grid(row=info_row, column=0, sticky="w", pady=2)
+                ctk.CTkLabel(master=info_frame, text=release_date, font=("Calibri", 14),
+                             anchor="e").grid(row=info_row, column=1, sticky="e", pady=2)
+                info_row += 1
+
+            # Metacritic Score
+            metacritic_score = game_details.get('metacritic_score')
+            if metacritic_score:
+                ctk.CTkLabel(master=info_frame, text="Metacritic:", font=("Calibri", 14, "bold"),
+                             anchor="w").grid(row=info_row, column=0, sticky="w", pady=2)
+                # Color code the score
+                if metacritic_score >= 75:
+                    score_color = "#66CC33"  # Green
+                elif metacritic_score >= 50:
+                    score_color = "#FFCC33"  # Yellow
+                else:
+                    score_color = "#FF0000"  # Red
+                ctk.CTkLabel(master=info_frame, text=str(metacritic_score), font=("Calibri", 14, "bold"),
+                             text_color=score_color, anchor="e").grid(row=info_row, column=1, sticky="e", pady=2)
+                info_row += 1
+
+            info_frame.grid_columnconfigure(1, weight=1)
 
         # Separator
         sep2 = ctk.CTkFrame(master=content_frame, height=2, fg_color="gray50")
