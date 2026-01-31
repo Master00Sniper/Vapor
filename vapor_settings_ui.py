@@ -772,6 +772,22 @@ def save_settings(selected_notification_apps, customs, selected_resource_apps, r
     debug_log(f"Settings saved to {SETTINGS_FILE}", "Settings")
 
 
+def set_pending_pawnio_check(value=True):
+    """Set or clear the pending PawnIO check flag in settings.
+    This flag triggers automatic PawnIO installation prompt after admin restart."""
+    debug_log(f"Setting pending_pawnio_check to {value}", "Settings")
+    try:
+        settings = {}
+        if os.path.exists(SETTINGS_FILE):
+            with open(SETTINGS_FILE, 'r') as f:
+                settings = json.load(f)
+        settings['pending_pawnio_check'] = value
+        with open(SETTINGS_FILE, 'w') as f:
+            json.dump(settings, f)
+    except Exception as e:
+        debug_log(f"Error setting pending_pawnio_check: {e}", "Settings")
+
+
 # =============================================================================
 # Window Setup with Dynamic Height
 # =============================================================================
@@ -1980,11 +1996,15 @@ def on_save():
         )
         if response:
             # User agreed to restart with admin
+            # Set flag to trigger PawnIO check after restart
+            set_pending_pawnio_check(True)
             if restart_vapor_as_admin(main_pid):
                 # Successfully requested elevation, close settings window
                 root.destroy()
                 return
             else:
+                # Restart failed, clear the pending flag
+                set_pending_pawnio_check(False)
                 show_vapor_dialog(
                     title="Elevation Failed",
                     message="Failed to restart Vapor with admin privileges.\n\n"
@@ -2200,6 +2220,148 @@ def check_main_process():
 
 if main_pid:
     root.after(1000, check_main_process)
+
+
+def check_pending_pawnio_install():
+    """Check if PawnIO installation was pending after admin restart.
+    This runs automatically after UI initializes if the pending flag was set."""
+    debug_log("Checking for pending PawnIO installation...", "Startup")
+
+    # Check if the flag is set
+    pending_check = current_settings.get('pending_pawnio_check', False)
+    if not pending_check:
+        debug_log("No pending PawnIO check", "Startup")
+        return
+
+    # Clear the flag immediately to prevent repeated prompts
+    set_pending_pawnio_check(False)
+    debug_log("Cleared pending_pawnio_check flag", "Startup")
+
+    # Only proceed if we're running as admin
+    if not is_admin():
+        debug_log("Not running as admin, skipping PawnIO check", "Startup")
+        return
+
+    # Check if PawnIO is already installed
+    if is_pawnio_installed(use_cache=False):
+        debug_log("PawnIO is already installed", "Startup")
+        return
+
+    debug_log("PawnIO not installed, showing installation prompt", "Startup")
+
+    # Show the PawnIO installation dialog
+    response = show_vapor_dialog(
+        title="CPU Temperature Driver Required",
+        message="CPU temperature monitoring requires the PawnIO driver.\n\n"
+                "PawnIO is a secure, signed kernel driver that allows applications\n"
+                "to safely read hardware sensors like CPU temperatures. It replaces\n"
+                "the older WinRing0 driver which is now flagged by antivirus software.\n\n"
+                "Learn more: https://pawnio.eu\n\n"
+                "Click 'Install' to automatically install the driver.",
+        dialog_type="warning",
+        buttons=[
+            {"text": "Install", "value": "install", "color": "green"},
+            {"text": "Not Now", "value": "cancel", "color": "gray"}
+        ],
+        parent=root
+    )
+
+    if response == "install":
+        # Show installing message with progress bar
+        installing_dialog = ctk.CTkToplevel(root)
+        installing_dialog.title("Vapor - Installing Driver")
+        installing_dialog.geometry("400x160")
+        installing_dialog.resizable(False, False)
+        installing_dialog.transient(root)
+        installing_dialog.grab_set()
+
+        # Center on parent
+        installing_dialog.update_idletasks()
+        x = root.winfo_x() + (root.winfo_width() - 400) // 2
+        y = root.winfo_y() + (root.winfo_height() - 160) // 2
+        installing_dialog.geometry(f"+{x}+{y}")
+
+        msg_label = ctk.CTkLabel(
+            installing_dialog,
+            text="Installing PawnIO driver...",
+            font=("Calibri", 13),
+            justify="center"
+        )
+        msg_label.pack(padx=20, pady=(25, 10))
+
+        progress_bar = ctk.CTkProgressBar(installing_dialog, width=300)
+        progress_bar.pack(padx=20, pady=10)
+        progress_bar.set(0)
+
+        status_label = ctk.CTkLabel(
+            installing_dialog,
+            text="This may take a moment...",
+            font=("Calibri", 11),
+            text_color="gray"
+        )
+        status_label.pack(padx=20, pady=(5, 15))
+
+        installing_dialog.update()
+        set_vapor_icon(installing_dialog)
+
+        # Progress callback
+        def update_progress(message, pct):
+            try:
+                if installing_dialog.winfo_exists():
+                    msg_label.configure(text=message)
+                    progress_bar.set(pct / 100)
+                    installing_dialog.update()
+            except Exception:
+                pass
+
+        # Run installer
+        install_success = install_pawnio_with_elevation(progress_callback=update_progress)
+        clear_pawnio_cache()
+
+        try:
+            installing_dialog.destroy()
+        except Exception:
+            pass
+
+        if install_success:
+            # Ask user to restart Vapor to use the driver
+            restart_response = show_vapor_dialog(
+                title="Driver Installed",
+                message="PawnIO driver installed successfully!\n\n"
+                        "Vapor needs to restart to enable CPU temperature monitoring.\n"
+                        "Restart now?",
+                dialog_type="info",
+                buttons=[
+                    {"text": "Restart Vapor", "value": True, "color": "green"},
+                    {"text": "Later", "value": False, "color": "gray"}
+                ],
+                parent=root
+            )
+            if restart_response:
+                if restart_vapor_as_admin(main_pid):
+                    root.destroy()
+                    return
+        else:
+            show_vapor_dialog(
+                title="Installation Failed",
+                message="Failed to install the PawnIO driver.\n\n"
+                        "You can try installing it manually:\n"
+                        "1. Run: winget install namazso.PawnIO\n"
+                        "2. Or download from: https://pawnio.eu/\n\n"
+                        "Then restart Vapor to enable CPU temperature monitoring.",
+                dialog_type="error",
+                parent=root
+            )
+            # Disable CPU thermal since installation failed
+            enable_cpu_thermal_var.set(False)
+    else:
+        # User clicked "Not Now" - disable CPU thermal
+        debug_log("User cancelled PawnIO installation", "Startup")
+        enable_cpu_thermal_var.set(False)
+
+
+# Schedule the pending PawnIO check to run after UI fully initializes
+root.after(500, check_pending_pawnio_install)
 
 # Start the UI
 root.mainloop()
