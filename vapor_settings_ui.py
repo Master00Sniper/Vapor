@@ -941,10 +941,12 @@ enable_game_audio_switch = ctk.CTkSwitch(master=game_audio_column, text="Enable"
                                          font=("Calibri", 14))
 enable_game_audio_switch.pack(pady=8, anchor='center')
 
-game_audio_note = ctk.CTkLabel(master=game_audio_column,
-                               text="Note: Some games use exclusive\naudio and won't reflect changes\nin Windows Volume Mixer.",
-                               font=("Calibri", 10), text_color="gray50", justify="center")
-game_audio_note.pack(pady=(5, 0), anchor='center')
+# Note about exclusive audio mode - centered below both columns
+audio_note = ctk.CTkLabel(master=pref_scroll_frame,
+                          text="Note: Some games use exclusive audio mode and won't reflect changes in Windows Volume Mixer.\n"
+                               "Vapor will still set the volume for these games, but further adjustments require restarting the game.",
+                          font=("Calibri", 11), text_color="gray50", justify="center", wraplength=450)
+audio_note.pack(pady=(15, 5), anchor='center')
 
 pref_sep3 = ctk.CTkFrame(master=pref_scroll_frame, height=2, fg_color="gray50")
 pref_sep3.pack(fill="x", padx=40, pady=15)
