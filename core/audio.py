@@ -48,6 +48,67 @@ def set_system_volume(level):
 
 
 # =============================================================================
+# Multi-Device Audio Session Enumeration
+# =============================================================================
+
+def _get_all_sessions_all_devices():
+    """Get audio sessions from ALL render devices, not just the default.
+
+    Returns a list of tuples: (session, device_id) for each session found.
+    This helps catch games that output to non-default audio devices.
+    """
+    from pycaw.pycaw import IAudioSessionManager2, AudioSession
+    from comtypes import CLSCTX_ALL
+
+    all_sessions = []
+
+    try:
+        # Get device enumerator
+        device_enumerator = comtypes.CoCreateInstance(
+            CLSID_MMDeviceEnumerator,
+            IMMDeviceEnumerator,
+            CLSCTX_ALL
+        )
+
+        # Enumerate all active render devices
+        # EDataFlow.eRender = 0, DEVICE_STATE_ACTIVE = 1
+        collection = device_enumerator.EnumAudioEndpoints(0, 1)
+        device_count = collection.GetCount()
+
+        log(f"Found {device_count} active audio render device(s)", "AUDIO")
+
+        for i in range(device_count):
+            try:
+                device = collection.Item(i)
+                device_id = device.GetId()
+
+                # Get session manager for this device
+                iface = device.Activate(
+                    IAudioSessionManager2._iid_,
+                    CLSCTX_ALL,
+                    None
+                )
+                mgr = iface.QueryInterface(IAudioSessionManager2)
+                sessionEnumerator = mgr.GetSessionEnumerator()
+                count = sessionEnumerator.GetCount()
+
+                for j in range(count):
+                    try:
+                        audio_session_control = sessionEnumerator.GetSession(j)
+                        session = AudioSession(audio_session_control)
+                        all_sessions.append((session, device_id))
+                    except Exception:
+                        pass
+            except Exception as e:
+                log(f"Error enumerating device {i}: {e}", "AUDIO")
+
+    except Exception as e:
+        log(f"Error enumerating audio devices: {e}", "AUDIO")
+
+    return all_sessions
+
+
+# =============================================================================
 # Game Audio Control
 # =============================================================================
 
@@ -197,23 +258,15 @@ def set_game_volume(game_pids, level, game_folder=None, game_name=None, is_game_
                     log(f"Discovered {len(new_pids - known_pids)} new game process(es)", "AUDIO")
                     known_pids.update(new_pids)
 
-            sessions = AudioUtilities.GetAllSessions()
+            # Get sessions from ALL audio devices (not just default)
+            sessions_with_devices = _get_all_sessions_all_devices()
             new_set_count = 0
 
-            # Log audio device and all sessions on first attempt for debugging
+            # Log all sessions on first attempt for debugging
             if attempt == 0:
-                # Log the default audio device we're using
-                try:
-                    speakers = AudioUtilities.GetSpeakers()
-                    if speakers:
-                        device_id = speakers.GetId()
-                        log(f"Default audio device ID: {device_id}", "AUDIO")
-                except Exception as e:
-                    log(f"Could not get audio device: {e}", "AUDIO")
-
-                log(f"All audio sessions found:", "AUDIO")
+                log(f"All audio sessions found (across all devices):", "AUDIO")
                 pid_counts = {}  # Track how many sessions each PID has
-                for s in sessions:
+                for s, device_id in sessions_with_devices:
                     if s.ProcessId == 0:
                         continue
                     pid_counts[s.ProcessId] = pid_counts.get(s.ProcessId, 0) + 1
@@ -222,14 +275,15 @@ def set_game_volume(game_pids, level, game_folder=None, game_name=None, is_game_
                     except:
                         pname = "?"
                     # Log full session ID for debugging
+                    device_short = device_id[-20:] if device_id else "?"
                     log(f"  - PID {s.ProcessId}: {pname} (DisplayName: {s.DisplayName})", "AUDIO")
-                    log(f"      SessionID: {s.Identifier}", "AUDIO")
+                    log(f"      Device: ...{device_short}", "AUDIO")
                 # Warn about processes with multiple audio sessions
                 multi_session_pids = [pid for pid, count in pid_counts.items() if count > 1]
                 if multi_session_pids:
                     log(f"Note: {len(multi_session_pids)} process(es) have multiple audio sessions", "AUDIO")
 
-            for session in sessions:
+            for session, device_id in sessions_with_devices:
                 # Skip system sounds (ProcessId 0)
                 if session.ProcessId == 0:
                     continue
@@ -281,18 +335,19 @@ def set_game_volume(game_pids, level, game_folder=None, game_name=None, is_game_
                                 configured_sessions[session_id] = {
                                     'vol_interface': vol_interface,
                                     'pid': session.ProcessId,
-                                    'name': process_name
+                                    'name': process_name,
+                                    'device_id': device_id
                                 }
                                 new_set_count += 1
                                 total_set_count += 1
                                 display_info = f" [{process_name}]" if process_name else ""
                                 display_name_info = f" DisplayName='{session.DisplayName}'" if session.DisplayName else ""
-                                session_id_short = session.Identifier[-8:] if session.Identifier else "none"
+                                device_short = device_id[-20:] if device_id else "?"
                                 actual_percent = int(actual_level * 100)
 
                                 # Log with before/after for debugging
                                 log(f"Set volume for PID {session.ProcessId}{display_info}{display_name_info}: {before_percent}% -> {actual_percent}% (target: {level}%)", "AUDIO")
-                                log(f"  Session identifier: {session.Identifier}", "AUDIO")
+                                log(f"  Device: ...{device_short}", "AUDIO")
 
                                 # Expand known_pids to include siblings of matched process
                                 # This helps catch Electron helper processes with separate audio
