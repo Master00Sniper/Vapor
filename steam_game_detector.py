@@ -668,7 +668,9 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
         log("No game running at startup", "GAME")
 
     log("Vapor is now monitoring Steam games", "INIT")
-    show_notification("Vapor is now monitoring Steam games")
+    # Don't show notification if settings window is open (user can already see Vapor is running)
+    if not (is_first_run or launch_settings_on_start):
+        show_notification("Vapor is now monitoring Steam games")
 
     def reload_settings():
         nonlocal notification_processes, resource_processes, launch_at_startup, launch_settings_on_start, \
