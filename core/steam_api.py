@@ -68,7 +68,7 @@ def get_game_header_image(app_id):
 def get_game_store_details(app_id):
     """Fetch game details from Steam Store API.
 
-    Returns dict with: developers, publishers, release_date, metacritic_score, metacritic_url, website
+    Returns dict with: developers, publishers, release_date, recommendations, website
     """
     if app_id == 0:
         return None
@@ -83,16 +83,14 @@ def get_game_store_details(app_id):
                 'developers': game_data.get('developers', []),
                 'publishers': game_data.get('publishers', []),
                 'release_date': game_data.get('release_date', {}).get('date', 'Unknown'),
-                'metacritic_score': None,
-                'metacritic_url': None,
+                'recommendations': None,
                 'website': game_data.get('website')  # Game's official website
             }
 
-            # Metacritic data (may not exist for all games)
-            metacritic = game_data.get('metacritic')
-            if metacritic:
-                details['metacritic_score'] = metacritic.get('score')
-                details['metacritic_url'] = metacritic.get('url')
+            # Recommendations data (total number of reviews)
+            recommendations = game_data.get('recommendations')
+            if recommendations:
+                details['recommendations'] = recommendations.get('total')
 
             log(f"Got store details for AppID {app_id}", "STEAM")
             return details

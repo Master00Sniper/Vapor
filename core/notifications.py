@@ -590,7 +590,7 @@ def show_detailed_summary(session_data):
             right_frame = ctk.CTkFrame(master=info_container, fg_color="transparent")
             right_frame.grid(row=0, column=1, sticky="nsew", padx=(15, 0))
 
-            # === LEFT COLUMN: Developer, Publisher, Released, Metacritic ===
+            # === LEFT COLUMN: Developer, Publisher, Released, Recommendations ===
             left_row = 0
 
             # Developer (always show, red N/A if not available)
@@ -629,20 +629,13 @@ def show_detailed_summary(session_data):
                              text_color="#FF0000", anchor="e").grid(row=left_row, column=1, sticky="e", pady=2)
             left_row += 1
 
-            # Metacritic Score (always show, with red N/A if not available)
-            metacritic_score = game_details.get('metacritic_score')
-            ctk.CTkLabel(master=left_frame, text="Metacritic:", font=("Calibri", 14, "bold"),
+            # Recommendations (always show, with red N/A if not available)
+            recommendations = game_details.get('recommendations')
+            ctk.CTkLabel(master=left_frame, text="Recommendations:", font=("Calibri", 14, "bold"),
                          anchor="w").grid(row=left_row, column=0, sticky="w", pady=2)
-            if metacritic_score:
-                # Color code the score
-                if metacritic_score >= 75:
-                    score_color = "#66CC33"  # Green
-                elif metacritic_score >= 50:
-                    score_color = "#FFCC33"  # Yellow
-                else:
-                    score_color = "#FF0000"  # Red
-                ctk.CTkLabel(master=left_frame, text=str(metacritic_score), font=("Calibri", 14, "bold"),
-                             text_color=score_color, anchor="e").grid(row=left_row, column=1, sticky="e", pady=2)
+            if recommendations:
+                ctk.CTkLabel(master=left_frame, text=f"{recommendations:,}", font=("Calibri", 14),
+                             anchor="e").grid(row=left_row, column=1, sticky="e", pady=2)
             else:
                 ctk.CTkLabel(master=left_frame, text="N/A", font=("Calibri", 14, "bold"),
                              text_color="#FF0000", anchor="e").grid(row=left_row, column=1, sticky="e", pady=2)
@@ -682,10 +675,10 @@ def show_detailed_summary(session_data):
             ctk.CTkLabel(master=right_frame, text="User Score:", font=("Calibri", 14, "bold"),
                          anchor="w").grid(row=right_row, column=0, sticky="w", pady=2)
             if steamspy_user_score:
-                # Color code user score similar to metacritic
-                if steamspy_user_score >= 75:
+                # Color code user score: 85+: green, 70-84: yellow, 0-69: red
+                if steamspy_user_score > 85:
                     user_score_color = "#66CC33"  # Green
-                elif steamspy_user_score >= 50:
+                elif steamspy_user_score >= 70:
                     user_score_color = "#FFCC33"  # Yellow
                 else:
                     user_score_color = "#FF0000"  # Red
