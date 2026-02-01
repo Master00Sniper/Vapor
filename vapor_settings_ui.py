@@ -501,6 +501,14 @@ def set_pending_pawnio_check(value=True):
     set_setting('pending_pawnio_check', value)
 
 
+def set_pending_settings_reopen(value=True):
+    """Set or clear the pending settings reopen flag.
+    This flag forces the settings window to open on next launch,
+    regardless of the user's 'open settings on startup' preference."""
+    debug_log(f"Setting pending_settings_reopen to {value}", "Settings")
+    set_setting('pending_settings_reopen', value)
+
+
 # =============================================================================
 # Window Setup with Dynamic Height
 # =============================================================================
@@ -1717,15 +1725,17 @@ def on_save():
         )
         if response is True:
             # User agreed to restart with admin
-            # Set flag to trigger PawnIO check after restart
+            # Set flags to trigger PawnIO check and reopen settings after restart
             set_pending_pawnio_check(True)
+            set_pending_settings_reopen(True)
             if restart_vapor(main_pid, require_admin=True):
                 # Successfully requested elevation, close settings window
                 root.destroy()
                 return True
             else:
-                # Restart failed, clear the pending flag
+                # Restart failed, clear the pending flags
                 set_pending_pawnio_check(False)
+                set_pending_settings_reopen(False)
                 show_vapor_dialog(
                     title="Elevation Failed",
                     message="Failed to restart Vapor with admin privileges.\n\n"

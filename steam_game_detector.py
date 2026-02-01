@@ -639,8 +639,24 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
 
     set_startup(launch_at_startup)
 
-    # Launch settings on start if enabled or if first run
-    if is_first_run or launch_settings_on_start:
+    # Check if we need to reopen settings after an admin restart
+    pending_settings_reopen = False
+    if os.path.exists(SETTINGS_FILE):
+        try:
+            with open(SETTINGS_FILE, 'r') as f:
+                startup_settings = json.load(f)
+            if startup_settings.get('pending_settings_reopen', False):
+                pending_settings_reopen = True
+                # Clear the flag immediately
+                startup_settings['pending_settings_reopen'] = False
+                with open(SETTINGS_FILE, 'w') as f:
+                    json.dump(startup_settings, f, indent=4)
+                log("Pending settings reopen flag detected and cleared", "INIT")
+        except Exception as e:
+            log(f"Error checking pending_settings_reopen flag: {e}", "ERROR")
+
+    # Launch settings on start if enabled, if first run, or if pending reopen
+    if is_first_run or launch_settings_on_start or pending_settings_reopen:
         log("Launching settings window on startup...", "INIT")
         try:
             if getattr(sys, 'frozen', False):
@@ -695,7 +711,7 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
 
     log("Vapor is now monitoring Steam games", "INIT")
     # Don't show notification if settings window is open (user can already see Vapor is running)
-    if not (is_first_run or launch_settings_on_start):
+    if not (is_first_run or launch_settings_on_start or pending_settings_reopen):
         show_notification("Vapor is now monitoring Steam games")
 
     def reload_settings():
