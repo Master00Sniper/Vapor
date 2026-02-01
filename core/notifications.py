@@ -593,7 +593,7 @@ def show_detailed_summary(session_data):
             # === LEFT COLUMN: Developer, Publisher, Released, Recommendations ===
             left_row = 0
 
-            # Developer (always show, red N/A if not available)
+            # Developer (always show, N/A if not available)
             developers = game_details.get('developers', [])
             ctk.CTkLabel(master=left_frame, text="Developer:", font=("Calibri", 14, "bold"),
                          anchor="w").grid(row=left_row, column=0, sticky="w", pady=2)
@@ -601,11 +601,11 @@ def show_detailed_summary(session_data):
                 ctk.CTkLabel(master=left_frame, text=", ".join(developers[:2]), font=("Calibri", 14),
                              anchor="e").grid(row=left_row, column=1, sticky="e", pady=2)
             else:
-                ctk.CTkLabel(master=left_frame, text="N/A", font=("Calibri", 14, "bold"),
-                             text_color="#FF0000", anchor="e").grid(row=left_row, column=1, sticky="e", pady=2)
+                ctk.CTkLabel(master=left_frame, text="N/A", font=("Calibri", 14),
+                             anchor="e").grid(row=left_row, column=1, sticky="e", pady=2)
             left_row += 1
 
-            # Publisher (always show, red N/A if not available or same as developer)
+            # Publisher (always show, N/A if not available or same as developer)
             publishers = game_details.get('publishers', [])
             ctk.CTkLabel(master=left_frame, text="Publisher:", font=("Calibri", 14, "bold"),
                          anchor="w").grid(row=left_row, column=0, sticky="w", pady=2)
@@ -613,11 +613,11 @@ def show_detailed_summary(session_data):
                 ctk.CTkLabel(master=left_frame, text=", ".join(publishers[:2]), font=("Calibri", 14),
                              anchor="e").grid(row=left_row, column=1, sticky="e", pady=2)
             else:
-                ctk.CTkLabel(master=left_frame, text="N/A", font=("Calibri", 14, "bold"),
-                             text_color="#FF0000", anchor="e").grid(row=left_row, column=1, sticky="e", pady=2)
+                ctk.CTkLabel(master=left_frame, text="N/A", font=("Calibri", 14),
+                             anchor="e").grid(row=left_row, column=1, sticky="e", pady=2)
             left_row += 1
 
-            # Release Date (always show, red N/A if not available)
+            # Release Date (always show, N/A if not available)
             release_date = game_details.get('release_date')
             ctk.CTkLabel(master=left_frame, text="Released:", font=("Calibri", 14, "bold"),
                          anchor="w").grid(row=left_row, column=0, sticky="w", pady=2)
@@ -625,11 +625,11 @@ def show_detailed_summary(session_data):
                 ctk.CTkLabel(master=left_frame, text=release_date, font=("Calibri", 14),
                              anchor="e").grid(row=left_row, column=1, sticky="e", pady=2)
             else:
-                ctk.CTkLabel(master=left_frame, text="N/A", font=("Calibri", 14, "bold"),
-                             text_color="#FF0000", anchor="e").grid(row=left_row, column=1, sticky="e", pady=2)
+                ctk.CTkLabel(master=left_frame, text="N/A", font=("Calibri", 14),
+                             anchor="e").grid(row=left_row, column=1, sticky="e", pady=2)
             left_row += 1
 
-            # Recommendations (always show, with red N/A if not available)
+            # Recommendations (always show, N/A if not available)
             recommendations = game_details.get('recommendations')
             ctk.CTkLabel(master=left_frame, text="Recommendations:", font=("Calibri", 14, "bold"),
                          anchor="w").grid(row=left_row, column=0, sticky="w", pady=2)
@@ -637,8 +637,8 @@ def show_detailed_summary(session_data):
                 ctk.CTkLabel(master=left_frame, text=f"{recommendations:,}", font=("Calibri", 14),
                              anchor="e").grid(row=left_row, column=1, sticky="e", pady=2)
             else:
-                ctk.CTkLabel(master=left_frame, text="N/A", font=("Calibri", 14, "bold"),
-                             text_color="#FF0000", anchor="e").grid(row=left_row, column=1, sticky="e", pady=2)
+                ctk.CTkLabel(master=left_frame, text="N/A", font=("Calibri", 14),
+                             anchor="e").grid(row=left_row, column=1, sticky="e", pady=2)
             left_row += 1
 
             left_frame.grid_columnconfigure(1, weight=1)
