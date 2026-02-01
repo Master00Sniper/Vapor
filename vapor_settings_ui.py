@@ -1897,9 +1897,8 @@ def on_save():
                 restart_response = show_vapor_dialog(
                     title="Driver Installed",
                     message="PawnIO driver installed successfully!\n\n"
-                            "Vapor needs to restart to enable CPU temperature monitoring.\n\n"
-                            "Note: Vapor will take about 15 seconds to restart while\n"
-                            "the driver installation is finalized.",
+                            "Vapor needs to restart to enable CPU temperature monitoring.\n"
+                            "Restart now?",
                     dialog_type="info",
                     buttons=[
                         {"text": "Restart Vapor", "value": True, "color": "green"},
@@ -1909,8 +1908,7 @@ def on_save():
                 )
                 if restart_response:
                     # Restart Vapor (already running as admin if we got here)
-                    # Use longer delay after driver install to ensure cleanup completes
-                    if restart_vapor(main_pid, require_admin=False, delay_seconds=15):
+                    if restart_vapor(main_pid, require_admin=False):
                         root.destroy()
                         return True
             else:
@@ -2133,9 +2131,8 @@ def check_pending_pawnio_install():
             restart_response = show_vapor_dialog(
                 title="Driver Installed",
                 message="PawnIO driver installed successfully!\n\n"
-                        "Vapor needs to restart to enable CPU temperature monitoring.\n\n"
-                        "Note: Vapor will take about 15 seconds to restart while\n"
-                        "the driver installation is finalized.",
+                        "Vapor needs to restart to enable CPU temperature monitoring.\n"
+                        "Restart now?",
                 dialog_type="info",
                 buttons=[
                     {"text": "Restart Vapor", "value": True, "color": "green"},
@@ -2144,8 +2141,7 @@ def check_pending_pawnio_install():
                 parent=root
             )
             if restart_response:
-                # Use longer delay after driver install to ensure cleanup completes
-                if restart_vapor(main_pid, require_admin=False, delay_seconds=15):
+                if restart_vapor(main_pid, require_admin=False):
                     root.destroy()
                     return
         else:
