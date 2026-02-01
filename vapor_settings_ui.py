@@ -159,12 +159,10 @@ def restart_vapor(main_pid, require_admin=False, delay_seconds=3):
         need_elevation = require_admin and not is_admin()
         debug_log(f"Need elevation: {need_elevation}", "Restart")
 
-        # Both paths use PowerShell's Start-Process which creates a clean process
-        # The only difference is "runas" (UAC prompt) vs "open" (no UAC prompt)
-        ps_command = f'Start-Sleep -Seconds {delay_seconds}; Start-Process -FilePath \\"{executable}\\"{args_part}'
-
         if need_elevation:
             # Need UAC elevation - use ShellExecuteW with runas
+            # UAC creates a completely fresh process with new environment
+            ps_command = f'Start-Sleep -Seconds {delay_seconds}; Start-Process -FilePath \\"{executable}\\"{args_part}'
             debug_log(f"Using runas with PowerShell", "Restart")
             result = ctypes.windll.shell32.ShellExecuteW(
                 None,
@@ -177,8 +175,16 @@ def restart_vapor(main_pid, require_admin=False, delay_seconds=3):
             debug_log(f"ShellExecuteW result: {result}", "Restart")
             return result > 32
         else:
-            # Already admin or no elevation needed - use same PowerShell approach but with "open"
-            debug_log(f"Using open with PowerShell", "Restart")
+            # Already admin or no elevation needed
+            # Clear PyInstaller environment variables and use -UseNewEnvironment
+            # to ensure the new process doesn't inherit any MEI folder references
+            ps_command = (
+                f'Remove-Item Env:_MEIPASS -ErrorAction SilentlyContinue; '
+                f'Remove-Item Env:_MEIPASS2 -ErrorAction SilentlyContinue; '
+                f'Start-Sleep -Seconds {delay_seconds}; '
+                f'Start-Process -FilePath \\"{executable}\\" -WorkingDirectory \\"{working_dir}\\" -UseNewEnvironment{args_part}'
+            )
+            debug_log(f"Using open with PowerShell (UseNewEnvironment)", "Restart")
             result = ctypes.windll.shell32.ShellExecuteW(
                 None,
                 "open",
