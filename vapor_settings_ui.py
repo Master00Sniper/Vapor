@@ -166,50 +166,21 @@ def restart_vapor(main_pid, require_admin=False, delay_seconds=3):
             debug_log(f"ShellExecuteW result: {result}", "Restart")
             return result > 32
         else:
-            # Already admin or no elevation needed - use a batch file for clean restart
-            # This avoids inheriting any problematic state from the current process
-            import tempfile
-
-            # Use 'start /I' to start with a clean environment (not inherited from current process)
-            # This prevents PyInstaller's _MEIPASS environment variables from being inherited
-            batch_content = f'''@echo off
-timeout /t {delay_seconds} /nobreak >nul
-start "" /I /D "{working_dir}" "{executable}"{args_part.replace(chr(92)+'"', '"')}
-del "%~f0"
-'''
-            # Create batch file in temp directory
-            batch_path = os.path.join(tempfile.gettempdir(), f'vapor_restart_{os.getpid()}.bat')
-            with open(batch_path, 'w') as f:
-                f.write(batch_content)
-
-            debug_log(f"Created restart batch: {batch_path}", "Restart")
-
-            # Run batch file completely detached with a minimal clean environment
-            # This prevents PyInstaller MEI folder references from being passed to the new process
-            DETACHED_PROCESS = 0x00000008
-            CREATE_NEW_PROCESS_GROUP = 0x00000200
-            CREATE_NO_WINDOW = 0x08000000
-
-            # Create minimal environment - only essential Windows variables
-            clean_env = {
-                'SystemRoot': os.environ.get('SystemRoot', r'C:\Windows'),
-                'SystemDrive': os.environ.get('SystemDrive', 'C:'),
-                'TEMP': os.environ.get('TEMP', tempfile.gettempdir()),
-                'TMP': os.environ.get('TMP', tempfile.gettempdir()),
-                'PATH': os.environ.get('PATH', ''),
-                'COMSPEC': os.environ.get('COMSPEC', r'C:\Windows\System32\cmd.exe'),
-            }
-
-            import subprocess
-            subprocess.Popen(
-                ['cmd.exe', '/c', batch_path],
-                cwd=working_dir,
-                env=clean_env,
-                creationflags=DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW,
-                close_fds=True
+            # Already admin or no elevation needed - use ShellExecuteW with "open" verb
+            # This creates a completely independent process without inheriting any environment
+            # from the current process, avoiding PyInstaller MEI folder issues
+            ps_command = f'Start-Sleep -Seconds {delay_seconds}; Start-Process -FilePath \\"{executable}\\"{args_part}'
+            debug_log(f"Using ShellExecuteW with 'open' verb", "Restart")
+            result = ctypes.windll.shell32.ShellExecuteW(
+                None,
+                "open",  # "open" instead of "runas" - no UAC prompt needed
+                "powershell.exe",
+                f'-WindowStyle Hidden -Command "{ps_command}"',
+                working_dir,
+                0  # SW_HIDE
             )
-            debug_log("Launched detached restart batch with clean environment", "Restart")
-            return True
+            debug_log(f"ShellExecuteW result: {result}", "Restart")
+            return result > 32
     except Exception as e:
         debug_log(f"Restart failed: {e}", "Restart")
         return False
