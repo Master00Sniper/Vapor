@@ -227,6 +227,12 @@ Windows Settings > System > Notifications"""
         except Exception:
             pass
 
+    # Bring window to front and give it focus
+    popup.lift()
+    popup.attributes('-topmost', True)
+    popup.after(100, lambda: popup.attributes('-topmost', False))
+    popup.focus_force()
+
     # Title
     title_label = ctk.CTkLabel(
         master=popup,
@@ -413,6 +419,12 @@ def show_detailed_summary(session_data):
                 popup.iconbitmap(icon_path)
             except Exception:
                 pass
+
+        # Bring window to front and give it focus
+        popup.lift()
+        popup.attributes('-topmost', True)
+        popup.after(100, lambda: popup.attributes('-topmost', False))
+        popup.focus_force()
 
         # IMPORTANT: Pack bottom bar FIRST so it reserves space at the bottom
         bottom_bar = ctk.CTkFrame(master=popup, fg_color="transparent")
