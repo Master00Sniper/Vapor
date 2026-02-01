@@ -34,12 +34,21 @@ def unregister_popup(popup):
 
 
 def close_all_popups():
-    """Close all registered popup windows."""
+    """Close all registered popup windows.
+
+    Note: Popups created in daemon threads may cause Tcl errors if we try to
+    close them from the main thread. We catch all exceptions since daemon
+    threads will be killed anyway when the main program exits.
+    """
     with _open_popups_lock:
         for popup in _open_popups[:]:  # Copy list to avoid modification during iteration
             try:
-                popup.after(0, popup.destroy)
+                # Try to check if popup still exists and close it
+                if popup.winfo_exists():
+                    popup.quit()  # Stop mainloop
+                    popup.destroy()
             except Exception:
+                # Ignore Tcl thread errors - daemon threads will die with main thread
                 pass
         _open_popups.clear()
 
