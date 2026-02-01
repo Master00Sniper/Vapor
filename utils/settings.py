@@ -49,7 +49,7 @@ DEFAULT_SETTINGS = {
 
     # Playtime summary
     'enable_playtime_summary': True,
-    'playtime_summary_mode': 'brief',
+    'playtime_summary_mode': 'detailed',
 
     # Debug
     'enable_debug_mode': False,

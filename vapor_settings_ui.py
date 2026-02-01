@@ -1776,12 +1776,17 @@ def on_save():
         if response == "install":
             # Show installing message with progress bar
             installing_dialog = ctk.CTkToplevel(root)
-            installing_dialog.withdraw()  # Hide while setting up to avoid icon flash
+            # Set icon immediately to minimize flash of default icon
+            icon_path = os.path.join(base_dir, 'Images', 'exe_icon.ico')
+            if os.path.exists(icon_path):
+                try:
+                    installing_dialog.iconbitmap(icon_path)
+                except Exception:
+                    pass
             installing_dialog.title("Vapor - Installing Driver")
             installing_dialog.geometry("400x160")
             installing_dialog.resizable(False, False)
             installing_dialog.transient(root)
-            installing_dialog.grab_set()
 
             # Center on parent
             installing_dialog.update_idletasks()
@@ -1809,12 +1814,10 @@ def on_save():
             )
             status_label.pack(padx=20, pady=(5, 15))
 
-            installing_dialog.update()
-            # Set icon after all widgets added and window updated
-            set_vapor_icon(installing_dialog)
+            # Now that window is set up, grab focus
+            installing_dialog.grab_set()
 
             # Bring window to front and give it focus
-            installing_dialog.deiconify()  # Show window now that icon is set
             installing_dialog.lift()
             installing_dialog.attributes('-topmost', True)
             installing_dialog.after(100, lambda: installing_dialog.attributes('-topmost', False))
@@ -2014,12 +2017,17 @@ def check_pending_pawnio_install():
     if response == "install":
         # Show installing message with progress bar
         installing_dialog = ctk.CTkToplevel(root)
-        installing_dialog.withdraw()  # Hide while setting up to avoid icon flash
+        # Set icon immediately to minimize flash of default icon
+        icon_path = os.path.join(base_dir, 'Images', 'exe_icon.ico')
+        if os.path.exists(icon_path):
+            try:
+                installing_dialog.iconbitmap(icon_path)
+            except Exception:
+                pass
         installing_dialog.title("Vapor - Installing Driver")
         installing_dialog.geometry("400x160")
         installing_dialog.resizable(False, False)
         installing_dialog.transient(root)
-        installing_dialog.grab_set()
 
         # Center on parent
         installing_dialog.update_idletasks()
@@ -2047,11 +2055,10 @@ def check_pending_pawnio_install():
         )
         status_label.pack(padx=20, pady=(5, 15))
 
-        installing_dialog.update()
-        set_vapor_icon(installing_dialog)
+        # Now that window is set up, grab focus
+        installing_dialog.grab_set()
 
         # Bring window to front and give it focus
-        installing_dialog.deiconify()  # Show window now that icon is set
         installing_dialog.lift()
         installing_dialog.attributes('-topmost', True)
         installing_dialog.after(100, lambda: installing_dialog.attributes('-topmost', False))
