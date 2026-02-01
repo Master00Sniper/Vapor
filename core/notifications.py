@@ -508,9 +508,17 @@ def show_detailed_summary(session_data):
         sep1 = ctk.CTkFrame(master=content_frame, height=2, fg_color="gray50")
         sep1.pack(fill="x", padx=20, pady=5)
 
+        # Session Details section title
+        session_title = ctk.CTkLabel(
+            master=content_frame,
+            text="Session Details",
+            font=("Calibri", 15, "bold")
+        )
+        session_title.pack(pady=(5, 5))
+
         # Stats frame using grid for alignment
         stats_frame = ctk.CTkFrame(master=content_frame, fg_color="transparent")
-        stats_frame.pack(pady=10, padx=20, fill="x")
+        stats_frame.pack(pady=5, padx=20, fill="x")
 
         # Time Played
         ctk.CTkLabel(master=stats_frame, text="Time Played:", font=("Calibri", 14, "bold"),
@@ -552,6 +560,14 @@ def show_detailed_summary(session_data):
             # Separator before game info
             sep_info = ctk.CTkFrame(master=content_frame, height=2, fg_color="gray50")
             sep_info.pack(fill="x", padx=20, pady=5)
+
+            # Game Info section title
+            game_info_title = ctk.CTkLabel(
+                master=content_frame,
+                text="Game Info",
+                font=("Calibri", 15, "bold")
+            )
+            game_info_title.pack(pady=(5, 5))
 
             info_frame = ctk.CTkFrame(master=content_frame, fg_color="transparent")
             info_frame.pack(pady=5, padx=20, fill="x")

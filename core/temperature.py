@@ -562,8 +562,8 @@ class TemperatureTracker:
             log(f"Error playing critical alert sound: {e}", "ALERT")
 
     def _monitor_loop(self):
-        """Background loop that polls temperatures every 2 seconds (testing)."""
-        poll_interval = 2  # seconds (set to 10 for production)
+        """Background loop that polls temperatures every 10 seconds."""
+        poll_interval = 10  # seconds
 
         while self._monitoring:
             # Get current temperatures (only if enabled)
