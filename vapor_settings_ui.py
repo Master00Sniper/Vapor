@@ -236,6 +236,15 @@ def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=N
 
     # Create popup window
     dialog = ctk.CTkToplevel(parent) if parent else ctk.CTk()
+
+    # Set icon immediately to minimize flash of default icon
+    icon_path = os.path.join(base_dir, 'Images', 'exe_icon.ico')
+    if os.path.exists(icon_path):
+        try:
+            dialog.iconbitmap(icon_path)
+        except Exception:
+            pass
+
     dialog.title(f"Vapor - {title}")
     dialog.resizable(False, False)
 
