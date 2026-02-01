@@ -1890,6 +1890,8 @@ def on_save():
                     test_temp = temperature.get_cpu_temperature()
                     if test_temp is not None:
                         debug_log(f"CPU temperature read successful: {test_temp}°C", "Settings")
+                        # Enable the CPU thermal toggle since driver is working
+                        enable_cpu_thermal_var.set(True)
                         show_vapor_dialog(
                             title="Driver Installed",
                             message=f"PawnIO driver installed successfully!\n\n"
@@ -2156,6 +2158,8 @@ def check_pending_pawnio_install():
                 test_temp = temperature.get_cpu_temperature()
                 if test_temp is not None:
                     debug_log(f"CPU temperature read successful: {test_temp}°C", "Settings")
+                    # Enable the CPU thermal toggle since driver is working
+                    enable_cpu_thermal_var.set(True)
                     show_vapor_dialog(
                         title="Driver Installed",
                         message=f"PawnIO driver installed successfully!\n\n"

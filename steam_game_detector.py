@@ -75,6 +75,7 @@ def show_splash_screen():
         # Create splash window
         splash = tk.Tk()
         splash.overrideredirect(True)  # Remove window decorations
+        splash.attributes('-topmost', True)  # Keep on top of other windows
 
         # Load image
         img = Image.open(splash_path)
