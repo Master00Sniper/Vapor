@@ -1456,12 +1456,17 @@ def reset_settings_and_restart():
         except Exception as e:
             debug_log(f"Error deleting settings: {e}", "Reset")
 
-        # Close Vapor
-        win11toast.notify(body="Settings reset. Please restart Vapor manually.", app_id='Vapor - Streamline Gaming',
-                          duration='short', icon=TRAY_ICON_PATH, audio={'silent': 'true'})
-
+        # Terminate main Vapor process and close (same as Stop Vapor button)
+        debug_log("Stopping Vapor after settings reset", "Reset")
+        if main_pid:
+            try:
+                debug_log(f"Terminating main Vapor process (PID: {main_pid})", "Reset")
+                main_process = psutil.Process(main_pid)
+                main_process.terminate()
+                debug_log("Main process terminated", "Reset")
+            except (psutil.NoSuchProcess, psutil.AccessDenied) as e:
+                debug_log(f"Could not terminate: {e}", "Reset")
         root.destroy()
-        os._exit(0)
     else:
         debug_log("User cancelled reset settings", "Reset")
 
@@ -1514,12 +1519,17 @@ def reset_all_data_and_restart():
         except Exception as e:
             debug_log(f"Error deleting images: {e}", "Reset")
 
-        # Close Vapor
-        win11toast.notify(body="All data deleted. Please restart Vapor manually.", app_id='Vapor - Streamline Gaming',
-                          duration='short', icon=TRAY_ICON_PATH, audio={'silent': 'true'})
-
+        # Terminate main Vapor process and close (same as Stop Vapor button)
+        debug_log("Stopping Vapor after all data reset", "Reset")
+        if main_pid:
+            try:
+                debug_log(f"Terminating main Vapor process (PID: {main_pid})", "Reset")
+                main_process = psutil.Process(main_pid)
+                main_process.terminate()
+                debug_log("Main process terminated", "Reset")
+            except (psutil.NoSuchProcess, psutil.AccessDenied) as e:
+                debug_log(f"Could not terminate: {e}", "Reset")
         root.destroy()
-        os._exit(0)
     else:
         debug_log("User cancelled reset all data", "Reset")
 
