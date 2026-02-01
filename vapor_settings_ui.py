@@ -1588,7 +1588,15 @@ system_info_checkbox = ctk.CTkCheckBox(master=help_scroll_frame,
                                         text="Include system information (OS, Vapor version, Python version)",
                                         variable=include_system_info_var,
                                         font=("Calibri", 12))
-system_info_checkbox.pack(pady=(0, 10), anchor='center')
+system_info_checkbox.pack(pady=(0, 5), anchor='center')
+
+# Recent logs checkbox
+include_logs_var = ctk.BooleanVar(value=True)
+logs_checkbox = ctk.CTkCheckBox(master=help_scroll_frame,
+                                 text="Include recent logs (last 150 lines)",
+                                 variable=include_logs_var,
+                                 font=("Calibri", 12))
+logs_checkbox.pack(pady=(0, 10), anchor='center')
 
 # Status label for feedback
 bug_status_label = ctk.CTkLabel(master=help_scroll_frame, text="", font=("Calibri", 12))
@@ -1621,6 +1629,25 @@ def get_system_info():
     return '\n'.join(info_lines)
 
 
+def get_recent_logs(num_lines=150):
+    """Read the last N lines from the Vapor log file."""
+    log_file = os.path.join(appdata_dir, 'vapor_logs.log')
+
+    if not os.path.exists(log_file):
+        return None
+
+    try:
+        with open(log_file, 'r', encoding='utf-8', errors='replace') as f:
+            lines = f.readlines()
+
+        # Get last N lines
+        recent_lines = lines[-num_lines:] if len(lines) > num_lines else lines
+        return ''.join(recent_lines).strip()
+    except Exception as e:
+        debug_log(f"Failed to read logs for bug report: {e}", "BugReport")
+        return None
+
+
 def submit_bug_report():
     """Submit bug report to GitHub Issues via proxy."""
     import requests
@@ -1642,6 +1669,18 @@ def submit_bug_report():
     if include_system_info_var.get():
         body_parts.append("\n## System Information")
         body_parts.append(get_system_info())
+
+    if include_logs_var.get():
+        recent_logs = get_recent_logs(150)
+        if recent_logs:
+            body_parts.append("\n## Recent Logs")
+            body_parts.append("<details>")
+            body_parts.append("<summary>Click to expand logs (last 150 lines)</summary>")
+            body_parts.append("")
+            body_parts.append("```")
+            body_parts.append(recent_logs)
+            body_parts.append("```")
+            body_parts.append("</details>")
 
     body_parts.append("\n---")
     body_parts.append("*Submitted via Vapor Settings UI*")
