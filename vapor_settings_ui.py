@@ -206,15 +206,26 @@ del "%~f0"
             with open(batch_path, 'w') as f:
                 f.write(batch_content)
 
-            debug_log(f"Created restart launcher: {batch_path}", "Restart")
+            # Create a VBScript to launch the batch file completely hidden
+            # VBScript is more reliable than SW_HIDE for hiding cmd windows
+            vbs_path = os.path.join(appdata_dir, '_vapor_restart.vbs')
+            vbs_content = f'''Set WshShell = CreateObject("WScript.Shell")
+WshShell.Run chr(34) & "{batch_path}" & chr(34), 0, False
+Set fso = CreateObject("Scripting.FileSystemObject")
+fso.DeleteFile WScript.ScriptFullName
+'''
+            with open(vbs_path, 'w') as f:
+                f.write(vbs_content)
 
-            # Launch the batch file completely detached
-            # Use cmd.exe /C to run it independently
+            debug_log(f"Created restart launcher: {batch_path}", "Restart")
+            debug_log(f"Created VBS wrapper: {vbs_path}", "Restart")
+
+            # Launch the VBS which runs the batch file completely hidden
             result = ctypes.windll.shell32.ShellExecuteW(
                 None,
                 "open",
-                "cmd.exe",
-                f'/C "{batch_path}"',
+                "wscript.exe",
+                f'"{vbs_path}"',
                 working_dir,
                 0  # SW_HIDE
             )
