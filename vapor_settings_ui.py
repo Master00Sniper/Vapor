@@ -1879,24 +1879,28 @@ def on_save():
                 pass
 
             if install_success:
-                # Ask user to restart Vapor
-                restart_response = show_vapor_dialog(
-                    title="Driver Installed",
+                # Ask user to manually restart Vapor
+                # Automatic restart after driver install causes PyInstaller _MEI folder conflicts
+                show_vapor_dialog(
+                    title="Driver Installed - Please Restart",
                     message="PawnIO driver installed successfully!\n\n"
-                            "Vapor needs to restart to enable CPU temperature monitoring.\n"
-                            "Restart now?",
+                            "Please close and restart Vapor manually to enable\n"
+                            "CPU temperature monitoring.\n\n"
+                            "Vapor will now close.",
                     dialog_type="info",
                     buttons=[
-                        {"text": "Restart Vapor", "value": True, "color": "green"},
-                        {"text": "Later", "value": False, "color": "gray"}
+                        {"text": "Close Vapor", "value": True, "color": "green"}
                     ],
                     parent=root
                 )
-                if restart_response:
-                    # Restart Vapor (already running as admin if we got here)
-                    if restart_vapor(main_pid, require_admin=False):
-                        root.destroy()
-                        return True
+                # Terminate main process and exit
+                if main_pid:
+                    try:
+                        psutil.Process(main_pid).terminate()
+                    except Exception:
+                        pass
+                root.destroy()
+                return True
             else:
                 show_vapor_dialog(
                     title="Installation Failed",
@@ -2113,23 +2117,28 @@ def check_pending_pawnio_install():
             pass
 
         if install_success:
-            # Ask user to restart Vapor to use the driver
-            restart_response = show_vapor_dialog(
-                title="Driver Installed",
+            # Ask user to manually restart Vapor
+            # Automatic restart after driver install causes PyInstaller _MEI folder conflicts
+            show_vapor_dialog(
+                title="Driver Installed - Please Restart",
                 message="PawnIO driver installed successfully!\n\n"
-                        "Vapor needs to restart to enable CPU temperature monitoring.\n"
-                        "Restart now?",
+                        "Please close and restart Vapor manually to enable\n"
+                        "CPU temperature monitoring.\n\n"
+                        "Vapor will now close.",
                 dialog_type="info",
                 buttons=[
-                    {"text": "Restart Vapor", "value": True, "color": "green"},
-                    {"text": "Later", "value": False, "color": "gray"}
+                    {"text": "Close Vapor", "value": True, "color": "green"}
                 ],
                 parent=root
             )
-            if restart_response:
-                if restart_vapor(main_pid, require_admin=False):
-                    root.destroy()
-                    return
+            # Terminate main process and exit
+            if main_pid:
+                try:
+                    psutil.Process(main_pid).terminate()
+                except Exception:
+                    pass
+            root.destroy()
+            return
         else:
             show_vapor_dialog(
                 title="Installation Failed",
