@@ -282,8 +282,8 @@ def _signal_handler(signum, frame):
         except Exception:
             pass
 
-    # Brief delay to allow cleanup to complete
-    time.sleep(0.1)
+    # Brief delay to allow cleanup to complete (matches tray Quit)
+    time.sleep(0.5)
 
     # Force immediate exit - pystray's event loop doesn't always respond to stop()
     os._exit(0)
