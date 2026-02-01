@@ -1054,7 +1054,7 @@ thermal_alerts_frame = ctk.CTkFrame(master=thermal_scroll_frame, fg_color="trans
 thermal_alerts_frame.pack(pady=10, anchor='center')
 
 # GPU Temperature Alerts
-gpu_alert_header = ctk.CTkLabel(master=thermal_alerts_frame, text="GPU Alerts", font=("Calibri", 14, "bold"))
+gpu_alert_header = ctk.CTkLabel(master=thermal_alerts_frame, text="GPU Alerts", font=("Calibri", 15, "bold"))
 gpu_alert_header.pack(pady=(5, 5), anchor='w')
 
 gpu_alert_row = ctk.CTkFrame(master=thermal_alerts_frame, fg_color="transparent")
@@ -1088,7 +1088,7 @@ gpu_critical_unit = ctk.CTkLabel(master=gpu_alert_row, text="°C", font=("Calibr
 gpu_critical_unit.pack(side='left')
 
 # CPU Temperature Alerts
-cpu_alert_header = ctk.CTkLabel(master=thermal_alerts_frame, text="CPU Alerts", font=("Calibri", 14, "bold"))
+cpu_alert_header = ctk.CTkLabel(master=thermal_alerts_frame, text="CPU Alerts", font=("Calibri", 15, "bold"))
 cpu_alert_header.pack(pady=(15, 5), anchor='w')
 
 cpu_alert_row = ctk.CTkFrame(master=thermal_alerts_frame, fg_color="transparent")
