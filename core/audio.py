@@ -173,6 +173,9 @@ def set_game_volume(game_pids, level, game_folder=None, game_name=None, is_game_
         first_session_attempt = None  # Track when first session was found
         min_monitor_duration = 120  # Minimum polls after first session (30 seconds at 0.25s/poll)
 
+        # Store configured sessions for periodic re-verification
+        configured_sessions = {}
+
         # Keep track of all known PIDs (will be updated if game_folder provided)
         known_pids = set(game_pids)
 
@@ -257,20 +260,29 @@ def set_game_volume(game_pids, level, game_folder=None, game_name=None, is_game_
                         if hasattr(session, 'SimpleAudioVolume') and session.SimpleAudioVolume:
                             try:
                                 vol_interface = session.SimpleAudioVolume
+                                # Log volume BEFORE setting for debugging
+                                before_level = vol_interface.GetMasterVolume()
+                                before_percent = int(before_level * 100)
+
                                 vol_interface.SetMasterVolume(target_level, None)
                                 # Verify the volume was actually set
                                 actual_level = vol_interface.GetMasterVolume()
                                 set_session_ids.add(session_id)
+                                # Store session info for periodic re-verification
+                                configured_sessions[session_id] = {
+                                    'vol_interface': vol_interface,
+                                    'pid': session.ProcessId,
+                                    'name': process_name
+                                }
                                 new_set_count += 1
                                 total_set_count += 1
                                 display_info = f" [{process_name}]" if process_name else ""
                                 display_name_info = f" DisplayName='{session.DisplayName}'" if session.DisplayName else ""
                                 session_id_short = session.Identifier[-8:] if session.Identifier else "none"
                                 actual_percent = int(actual_level * 100)
-                                if abs(actual_level - target_level) < 0.01:
-                                    log(f"Set volume for PID {session.ProcessId}{display_info}{display_name_info} (session ...{session_id_short}) to {level}%", "AUDIO")
-                                else:
-                                    log(f"Set volume for PID {session.ProcessId}{display_info}{display_name_info} (session ...{session_id_short}) to {level}% (verified: {actual_percent}%)", "AUDIO")
+
+                                # Log with before/after for debugging
+                                log(f"Set volume for PID {session.ProcessId}{display_info}{display_name_info}: {before_percent}% -> {actual_percent}% (target: {level}%)", "AUDIO")
 
                                 # Expand known_pids to include siblings of matched process
                                 # This helps catch Electron helper processes with separate audio
@@ -302,6 +314,24 @@ def set_game_volume(game_pids, level, game_folder=None, game_name=None, is_game_
                         log(f"No audio sessions found yet (attempt {attempt + 1}/{max_attempts})...", "AUDIO")
                 else:
                     log("No audio sessions found after all attempts", "AUDIO")
+
+            # Periodically re-verify configured sessions (every 2 seconds = every 8 attempts)
+            # Some games reset their volume after startup
+            if configured_sessions and attempt % 8 == 0 and attempt > 0:
+                for sid, sinfo in configured_sessions.items():
+                    try:
+                        current_level = sinfo['vol_interface'].GetMasterVolume()
+                        current_percent = int(current_level * 100)
+                        # If volume drifted more than 5%, re-set it
+                        if abs(current_level - target_level) > 0.05:
+                            sinfo['vol_interface'].SetMasterVolume(target_level, None)
+                            new_level = sinfo['vol_interface'].GetMasterVolume()
+                            new_percent = int(new_level * 100)
+                            name_info = f" [{sinfo['name']}]" if sinfo['name'] else ""
+                            log(f"Re-set drifted volume for PID {sinfo['pid']}{name_info}: {current_percent}% -> {new_percent}% (target: {level}%)", "AUDIO")
+                    except Exception:
+                        # Session may have been invalidated
+                        pass
 
             # Check if game is still running (every 4 attempts = every second)
             if is_game_running_func and attempt % 4 == 0:
