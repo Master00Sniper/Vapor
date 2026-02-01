@@ -68,7 +68,7 @@ def get_game_header_image(app_id):
 def get_game_store_details(app_id):
     """Fetch game details from Steam Store API.
 
-    Returns dict with: developers, publishers, release_date, metacritic_score, metacritic_url
+    Returns dict with: developers, publishers, release_date, recommendations, website
     """
     if app_id == 0:
         return None
@@ -83,20 +83,52 @@ def get_game_store_details(app_id):
                 'developers': game_data.get('developers', []),
                 'publishers': game_data.get('publishers', []),
                 'release_date': game_data.get('release_date', {}).get('date', 'Unknown'),
-                'metacritic_score': None,
-                'metacritic_url': None
+                'recommendations': None,
+                'website': game_data.get('website')  # Game's official website
             }
 
-            # Metacritic data (may not exist for all games)
-            metacritic = game_data.get('metacritic')
-            if metacritic:
-                details['metacritic_score'] = metacritic.get('score')
-                details['metacritic_url'] = metacritic.get('url')
+            # Recommendations data (total number of reviews)
+            recommendations = game_data.get('recommendations')
+            if recommendations:
+                details['recommendations'] = recommendations.get('total')
 
             log(f"Got store details for AppID {app_id}", "STEAM")
             return details
     except Exception as e:
         log(f"Failed to fetch game store details: {e}", "ERROR")
+    return None
+
+
+def get_steamspy_data(app_id):
+    """Fetch game data from SteamSpy API.
+
+    Returns dict with: owners, ccu (peak concurrent yesterday), user_score (percentage)
+    """
+    if app_id == 0:
+        return None
+    try:
+        url = f"https://steamspy.com/api.php?request=appdetails&appid={app_id}"
+        response = requests.get(url, timeout=5)
+        data = response.json()
+
+        if response.status_code == 200 and data:
+            spy_data = {
+                'owners': data.get('owners'),  # e.g., "10,000,000 .. 20,000,000"
+                'ccu': data.get('ccu'),  # Peak concurrent users yesterday
+                'user_score': None
+            }
+
+            # Calculate user score from positive/negative reviews
+            positive = data.get('positive', 0)
+            negative = data.get('negative', 0)
+            total = positive + negative
+            if total > 0:
+                spy_data['user_score'] = round((positive / total) * 100)
+
+            log(f"Got SteamSpy data for AppID {app_id}", "STEAM")
+            return spy_data
+    except Exception as e:
+        log(f"Failed to fetch SteamSpy data: {e}", "ERROR")
     return None
 
 
@@ -110,7 +142,7 @@ _preloaded_game_details_lock = threading.Lock()
 
 
 def preload_game_details(app_id):
-    """Pre-load game details from Steam Store API for instant display."""
+    """Pre-load game details from Steam Store API and SteamSpy for instant display."""
     global _preloaded_game_details
 
     if app_id == 0:
@@ -118,6 +150,13 @@ def preload_game_details(app_id):
 
     details = get_game_store_details(app_id)
     if details:
+        # Also fetch SteamSpy data and merge it
+        steamspy = get_steamspy_data(app_id)
+        if steamspy:
+            details['steamspy_owners'] = steamspy.get('owners')
+            details['steamspy_ccu'] = steamspy.get('ccu')
+            details['steamspy_user_score'] = steamspy.get('user_score')
+
         with _preloaded_game_details_lock:
             _preloaded_game_details = details
         log(f"Pre-loaded game details for AppID {app_id}", "CACHE")
@@ -224,6 +263,85 @@ def get_preloaded_header_image():
 
 
 # =============================================================================
+# Background Image Caching
+# =============================================================================
+
+def get_cached_background_image_path(app_id):
+    """Get the path to the cached background image for a game."""
+    return os.path.join(HEADER_IMAGE_CACHE_DIR, f"{app_id}_bg.jpg")
+
+
+def cache_game_background_image(app_id):
+    """Download and cache the game background image for later use.
+
+    Tries Steam library hero image first, then falls back to page background.
+    """
+    if app_id == 0:
+        return
+
+    cache_path = get_cached_background_image_path(app_id)
+
+    # Skip if already cached
+    if os.path.exists(cache_path):
+        log(f"Background image already cached for AppID {app_id}", "CACHE")
+        return
+
+    # Try library hero image first (better quality)
+    urls_to_try = [
+        f"https://cdn.akamai.steamstatic.com/steam/apps/{app_id}/library_hero.jpg",
+        f"https://steamcdn-a.akamaihd.net/steam/apps/{app_id}/page_bg_generated_v6b.jpg",
+    ]
+
+    for url in urls_to_try:
+        try:
+            response = requests.get(url, timeout=10)
+            if response.status_code == 200:
+                with open(cache_path, 'wb') as f:
+                    f.write(response.content)
+                log(f"Cached background image for AppID {app_id}", "CACHE")
+                return
+        except Exception:
+            continue
+
+    log(f"No background image available for AppID {app_id}", "CACHE")
+
+
+# Pre-loaded background image for instant popup display
+_preloaded_background_image = None
+_preloaded_background_image_lock = threading.Lock()
+
+
+def preload_background_image(app_id):
+    """Pre-load the background image into memory for instant display."""
+    global _preloaded_background_image
+    from PIL import Image
+
+    if app_id == 0:
+        return
+
+    cache_path = get_cached_background_image_path(app_id)
+    if not os.path.exists(cache_path):
+        return
+
+    try:
+        pil_image = Image.open(cache_path)
+        with _preloaded_background_image_lock:
+            _preloaded_background_image = pil_image
+        log(f"Pre-loaded background image for AppID {app_id}", "CACHE")
+    except Exception as e:
+        log(f"Failed to pre-load background image: {e}", "ERROR")
+
+
+def get_preloaded_background_image():
+    """Get the pre-loaded background image (or None if not available)."""
+    global _preloaded_background_image
+    with _preloaded_background_image_lock:
+        img = _preloaded_background_image
+        _preloaded_background_image = None  # Clear after use
+        return img
+
+
+# =============================================================================
 # Session Popup Preparation
 # =============================================================================
 
@@ -247,11 +365,13 @@ def warmup_customtkinter():
 def prepare_session_popup(app_id):
     """Background task to prepare everything needed for the session popup.
 
-    Called when a game starts. Downloads/caches image, pre-loads it into memory,
-    fetches game details from Steam, and warms up CustomTkinter so the popup
+    Called when a game starts. Downloads/caches images, pre-loads them into memory,
+    fetches game details from Steam and SteamSpy, and warms up CustomTkinter so the popup
     appears instantly when the game ends.
     """
     cache_game_header_image(app_id)
+    cache_game_background_image(app_id)
     preload_header_image(app_id)
+    preload_background_image(app_id)
     preload_game_details(app_id)
     warmup_customtkinter()

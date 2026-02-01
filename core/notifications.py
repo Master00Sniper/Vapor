@@ -8,7 +8,9 @@ import winreg
 import win11toast
 
 from utils import appdata_dir, base_dir, TRAY_ICON_PATH, log
-from core.steam_api import get_preloaded_game_details, get_preloaded_header_image, get_cached_header_image_path
+from core.steam_api import (
+    get_preloaded_game_details, get_preloaded_header_image, get_cached_header_image_path
+)
 
 
 # =============================================================================
@@ -415,7 +417,7 @@ def show_detailed_summary(session_data):
         popup.protocol("WM_DELETE_WINDOW", on_close)
 
         # Window dimensions - account for taskbar and smaller screens
-        window_width = 550
+        window_width = 700
         screen_height = popup.winfo_screenheight()
         screen_width = popup.winfo_screenwidth()
 
@@ -560,7 +562,7 @@ def show_detailed_summary(session_data):
             )
             apps_list_label.pack(anchor="w")
 
-        # Game Info section (from Steam Store API)
+        # Game Info section (from Steam Store API and SteamSpy)
         if game_details:
             # Separator before game info
             sep_info = ctk.CTkFrame(master=content_frame, height=2, fg_color="gray50")
@@ -574,55 +576,137 @@ def show_detailed_summary(session_data):
             )
             game_info_title.pack(pady=(5, 5))
 
-            info_frame = ctk.CTkFrame(master=content_frame, fg_color="transparent")
-            info_frame.pack(pady=5, padx=20, fill="x")
+            # Two-column container
+            info_container = ctk.CTkFrame(master=content_frame, fg_color="transparent")
+            info_container.pack(pady=5, padx=20, fill="x")
+            info_container.grid_columnconfigure(0, weight=1)
+            info_container.grid_columnconfigure(1, weight=1)
 
-            info_row = 0
+            # Left column frame
+            left_frame = ctk.CTkFrame(master=info_container, fg_color="transparent")
+            left_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 15))
 
-            # Developer
+            # Right column frame
+            right_frame = ctk.CTkFrame(master=info_container, fg_color="transparent")
+            right_frame.grid(row=0, column=1, sticky="nsew", padx=(15, 0))
+
+            # === LEFT COLUMN: Developer, Publisher, Released, Recommendations ===
+            left_row = 0
+
+            # Developer (always show, red N/A if not available)
             developers = game_details.get('developers', [])
+            ctk.CTkLabel(master=left_frame, text="Developer:", font=("Calibri", 14, "bold"),
+                         anchor="w").grid(row=left_row, column=0, sticky="w", pady=2)
             if developers:
-                ctk.CTkLabel(master=info_frame, text="Developer:", font=("Calibri", 14, "bold"),
-                             anchor="w").grid(row=info_row, column=0, sticky="w", pady=2)
-                ctk.CTkLabel(master=info_frame, text=", ".join(developers[:2]), font=("Calibri", 14),
-                             anchor="e").grid(row=info_row, column=1, sticky="e", pady=2)
-                info_row += 1
+                ctk.CTkLabel(master=left_frame, text=", ".join(developers[:2]), font=("Calibri", 14),
+                             anchor="e").grid(row=left_row, column=1, sticky="e", pady=2)
+            else:
+                ctk.CTkLabel(master=left_frame, text="N/A", font=("Calibri", 14, "bold"),
+                             text_color="#FF0000", anchor="e").grid(row=left_row, column=1, sticky="e", pady=2)
+            left_row += 1
 
-            # Publisher (only if different from developer)
+            # Publisher (always show, red N/A if not available or same as developer)
             publishers = game_details.get('publishers', [])
+            ctk.CTkLabel(master=left_frame, text="Publisher:", font=("Calibri", 14, "bold"),
+                         anchor="w").grid(row=left_row, column=0, sticky="w", pady=2)
             if publishers and publishers != developers:
-                ctk.CTkLabel(master=info_frame, text="Publisher:", font=("Calibri", 14, "bold"),
-                             anchor="w").grid(row=info_row, column=0, sticky="w", pady=2)
-                ctk.CTkLabel(master=info_frame, text=", ".join(publishers[:2]), font=("Calibri", 14),
-                             anchor="e").grid(row=info_row, column=1, sticky="e", pady=2)
-                info_row += 1
+                ctk.CTkLabel(master=left_frame, text=", ".join(publishers[:2]), font=("Calibri", 14),
+                             anchor="e").grid(row=left_row, column=1, sticky="e", pady=2)
+            else:
+                ctk.CTkLabel(master=left_frame, text="N/A", font=("Calibri", 14, "bold"),
+                             text_color="#FF0000", anchor="e").grid(row=left_row, column=1, sticky="e", pady=2)
+            left_row += 1
 
-            # Release Date
+            # Release Date (always show, red N/A if not available)
             release_date = game_details.get('release_date')
+            ctk.CTkLabel(master=left_frame, text="Released:", font=("Calibri", 14, "bold"),
+                         anchor="w").grid(row=left_row, column=0, sticky="w", pady=2)
             if release_date and release_date != 'Unknown':
-                ctk.CTkLabel(master=info_frame, text="Released:", font=("Calibri", 14, "bold"),
-                             anchor="w").grid(row=info_row, column=0, sticky="w", pady=2)
-                ctk.CTkLabel(master=info_frame, text=release_date, font=("Calibri", 14),
-                             anchor="e").grid(row=info_row, column=1, sticky="e", pady=2)
-                info_row += 1
+                ctk.CTkLabel(master=left_frame, text=release_date, font=("Calibri", 14),
+                             anchor="e").grid(row=left_row, column=1, sticky="e", pady=2)
+            else:
+                ctk.CTkLabel(master=left_frame, text="N/A", font=("Calibri", 14, "bold"),
+                             text_color="#FF0000", anchor="e").grid(row=left_row, column=1, sticky="e", pady=2)
+            left_row += 1
 
-            # Metacritic Score
-            metacritic_score = game_details.get('metacritic_score')
-            if metacritic_score:
-                ctk.CTkLabel(master=info_frame, text="Metacritic:", font=("Calibri", 14, "bold"),
-                             anchor="w").grid(row=info_row, column=0, sticky="w", pady=2)
-                # Color code the score
-                if metacritic_score >= 75:
-                    score_color = "#66CC33"  # Green
-                elif metacritic_score >= 50:
-                    score_color = "#FFCC33"  # Yellow
+            # Recommendations (always show, with red N/A if not available)
+            recommendations = game_details.get('recommendations')
+            ctk.CTkLabel(master=left_frame, text="Recommendations:", font=("Calibri", 14, "bold"),
+                         anchor="w").grid(row=left_row, column=0, sticky="w", pady=2)
+            if recommendations:
+                ctk.CTkLabel(master=left_frame, text=f"{recommendations:,}", font=("Calibri", 14),
+                             anchor="e").grid(row=left_row, column=1, sticky="e", pady=2)
+            else:
+                ctk.CTkLabel(master=left_frame, text="N/A", font=("Calibri", 14, "bold"),
+                             text_color="#FF0000", anchor="e").grid(row=left_row, column=1, sticky="e", pady=2)
+            left_row += 1
+
+            left_frame.grid_columnconfigure(1, weight=1)
+
+            # === RIGHT COLUMN: SteamSpy data + Website ===
+            right_row = 0
+
+            # Estimated Owners (SteamSpy) - always show, red N/A if not available
+            steamspy_owners = game_details.get('steamspy_owners')
+            ctk.CTkLabel(master=right_frame, text="Estimated Owners:", font=("Calibri", 14, "bold"),
+                         anchor="w").grid(row=right_row, column=0, sticky="w", pady=2)
+            if steamspy_owners:
+                ctk.CTkLabel(master=right_frame, text=steamspy_owners, font=("Calibri", 14),
+                             anchor="e").grid(row=right_row, column=1, sticky="e", pady=2)
+            else:
+                ctk.CTkLabel(master=right_frame, text="N/A", font=("Calibri", 14, "bold"),
+                             text_color="#FF0000", anchor="e").grid(row=right_row, column=1, sticky="e", pady=2)
+            right_row += 1
+
+            # Concurrent Players (SteamSpy) - always show, red N/A if not available
+            steamspy_ccu = game_details.get('steamspy_ccu')
+            ctk.CTkLabel(master=right_frame, text="Concurrent Players:", font=("Calibri", 14, "bold"),
+                         anchor="w").grid(row=right_row, column=0, sticky="w", pady=2)
+            if steamspy_ccu:
+                ctk.CTkLabel(master=right_frame, text=f"{steamspy_ccu:,}", font=("Calibri", 14),
+                             anchor="e").grid(row=right_row, column=1, sticky="e", pady=2)
+            else:
+                ctk.CTkLabel(master=right_frame, text="N/A", font=("Calibri", 14, "bold"),
+                             text_color="#FF0000", anchor="e").grid(row=right_row, column=1, sticky="e", pady=2)
+            right_row += 1
+
+            # User Score (SteamSpy) - always show, red N/A if not available
+            steamspy_user_score = game_details.get('steamspy_user_score')
+            ctk.CTkLabel(master=right_frame, text="User Score:", font=("Calibri", 14, "bold"),
+                         anchor="w").grid(row=right_row, column=0, sticky="w", pady=2)
+            if steamspy_user_score:
+                # Color code user score: 85+: green, 70-84: yellow, 0-69: red
+                if steamspy_user_score > 85:
+                    user_score_color = "#66CC33"  # Green
+                elif steamspy_user_score >= 70:
+                    user_score_color = "#FFCC33"  # Yellow
                 else:
-                    score_color = "#FF0000"  # Red
-                ctk.CTkLabel(master=info_frame, text=str(metacritic_score), font=("Calibri", 14, "bold"),
-                             text_color=score_color, anchor="e").grid(row=info_row, column=1, sticky="e", pady=2)
-                info_row += 1
+                    user_score_color = "#FF0000"  # Red
+                ctk.CTkLabel(master=right_frame, text=f"{steamspy_user_score}%", font=("Calibri", 14, "bold"),
+                             text_color=user_score_color, anchor="e").grid(row=right_row, column=1, sticky="e", pady=2)
+            else:
+                ctk.CTkLabel(master=right_frame, text="N/A", font=("Calibri", 14, "bold"),
+                             text_color="#FF0000", anchor="e").grid(row=right_row, column=1, sticky="e", pady=2)
+            right_row += 1
 
-            info_frame.grid_columnconfigure(1, weight=1)
+            # Website (Steam Store API) - always show, red N/A if not available
+            website = game_details.get('website')
+            ctk.CTkLabel(master=right_frame, text="Website:", font=("Calibri", 14, "bold"),
+                         anchor="w").grid(row=right_row, column=0, sticky="w", pady=2)
+            if website:
+                website_btn = ctk.CTkButton(
+                    master=right_frame, text="Open", font=("Calibri", 12),
+                    width=60, height=22, corner_radius=5,
+                    fg_color="#1a73e8", hover_color="#1557b0",
+                    command=lambda url=website: __import__('webbrowser').open(url)
+                )
+                website_btn.grid(row=right_row, column=1, sticky="e", pady=2)
+            else:
+                ctk.CTkLabel(master=right_frame, text="N/A", font=("Calibri", 14, "bold"),
+                             text_color="#FF0000", anchor="e").grid(row=right_row, column=1, sticky="e", pady=2)
+            right_row += 1
+
+            right_frame.grid_columnconfigure(1, weight=1)
 
         # Separator
         sep2 = ctk.CTkFrame(master=content_frame, height=2, fg_color="gray50")
@@ -645,66 +729,79 @@ def show_detailed_summary(session_data):
         )
         temp_subtitle.pack(pady=(0, 8))
 
-        temp_frame = ctk.CTkFrame(master=content_frame, fg_color="transparent")
-        temp_frame.pack(pady=5, padx=20, fill="x")
+        # Two-column layout: CPU on left, GPU on right
+        temp_container = ctk.CTkFrame(master=content_frame, fg_color="transparent")
+        temp_container.pack(pady=5, padx=20, fill="x")
+        temp_container.grid_columnconfigure(0, weight=1)
+        temp_container.grid_columnconfigure(1, weight=1)
 
-        has_temps = False
+        # === CPU Section (left) ===
+        cpu_section = ctk.CTkFrame(master=temp_container, fg_color="transparent")
+        cpu_section.grid(row=0, column=0, sticky="nsew", padx=(0, 15))
 
-        # Column headers - changed "Lifetime" to "Lifetime Max"
-        ctk.CTkLabel(master=temp_frame, text="", font=("Calibri", 12),
-                     anchor="w").grid(row=0, column=0, sticky="w", pady=3)
-        ctk.CTkLabel(master=temp_frame, text="Start", font=("Calibri", 12, "bold"),
-                     text_color="gray60").grid(row=0, column=1, sticky="e", pady=3, padx=(15, 0))
-        ctk.CTkLabel(master=temp_frame, text="Session Max", font=("Calibri", 12, "bold"),
-                     text_color="gray60").grid(row=0, column=2, sticky="e", pady=3, padx=(15, 0))
-        ctk.CTkLabel(master=temp_frame, text="Lifetime Max", font=("Calibri", 12, "bold"),
-                     text_color="#FFD700").grid(row=0, column=3, sticky="e", pady=3, padx=(15, 0))
+        # CPU header row
+        ctk.CTkLabel(master=cpu_section, text="", font=("Calibri", 14),
+                     anchor="w").grid(row=0, column=0, sticky="w", pady=2)
+        ctk.CTkLabel(master=cpu_section, text="Start", font=("Calibri", 14, "bold"),
+                     text_color="gray60").grid(row=0, column=1, sticky="e", pady=2, padx=(8, 0))
+        ctk.CTkLabel(master=cpu_section, text="Session Max", font=("Calibri", 14, "bold"),
+                     text_color="gray60").grid(row=0, column=2, sticky="e", pady=2, padx=(8, 0))
+        ctk.CTkLabel(master=cpu_section, text="Lifetime Max", font=("Calibri", 14, "bold"),
+                     text_color="#FFD700").grid(row=0, column=3, sticky="e", pady=2, padx=(8, 0))
 
-        # CPU temps
-        if start_cpu_temp is not None or max_cpu_temp is not None or lifetime_max_cpu is not None:
-            has_temps = True
-            ctk.CTkLabel(master=temp_frame, text="CPU:", font=("Calibri", 14, "bold"),
-                         anchor="w").grid(row=1, column=0, sticky="w", pady=3)
+        # CPU data row - always show, red N/A if not available
+        ctk.CTkLabel(master=cpu_section, text="CPU:", font=("Calibri", 14, "bold"),
+                     anchor="w").grid(row=1, column=0, sticky="w", pady=2)
 
-            start_text = f"{start_cpu_temp}°C" if start_cpu_temp is not None else "N/A"
-            max_text = f"{max_cpu_temp}°C" if max_cpu_temp is not None else "N/A"
-            lifetime_text = f"{lifetime_max_cpu}°C" if lifetime_max_cpu is not None else "N/A"
+        cpu_start = f"{start_cpu_temp}°C" if start_cpu_temp is not None else "N/A"
+        cpu_max = f"{max_cpu_temp}°C" if max_cpu_temp is not None else "N/A"
+        cpu_lifetime = f"{lifetime_max_cpu}°C" if lifetime_max_cpu is not None else "N/A"
+        cpu_start_color = "#FF0000" if start_cpu_temp is None else None
+        cpu_max_color = "#FF0000" if max_cpu_temp is None else None
+        cpu_lifetime_color = "#FF0000" if lifetime_max_cpu is None else "#FFD700"
 
-            ctk.CTkLabel(master=temp_frame, text=start_text,
-                         font=("Calibri", 13)).grid(row=1, column=1, sticky="e", pady=3, padx=(15, 0))
-            ctk.CTkLabel(master=temp_frame, text=max_text,
-                         font=("Calibri", 13)).grid(row=1, column=2, sticky="e", pady=3, padx=(15, 0))
-            ctk.CTkLabel(master=temp_frame, text=lifetime_text,
-                         font=("Calibri", 13), text_color="#FFD700").grid(row=1, column=3, sticky="e", pady=3, padx=(15, 0))
+        ctk.CTkLabel(master=cpu_section, text=cpu_start, font=("Calibri", 14),
+                     text_color=cpu_start_color).grid(row=1, column=1, sticky="e", pady=2, padx=(8, 0))
+        ctk.CTkLabel(master=cpu_section, text=cpu_max, font=("Calibri", 14),
+                     text_color=cpu_max_color).grid(row=1, column=2, sticky="e", pady=2, padx=(8, 0))
+        ctk.CTkLabel(master=cpu_section, text=cpu_lifetime, font=("Calibri", 14),
+                     text_color=cpu_lifetime_color).grid(row=1, column=3, sticky="e", pady=2, padx=(8, 0))
 
-        # GPU temps
-        if start_gpu_temp is not None or max_gpu_temp is not None or lifetime_max_gpu is not None:
-            has_temps = True
-            row = 2 if (start_cpu_temp is not None or max_cpu_temp is not None or lifetime_max_cpu is not None) else 1
-            ctk.CTkLabel(master=temp_frame, text="GPU:", font=("Calibri", 14, "bold"),
-                         anchor="w").grid(row=row, column=0, sticky="w", pady=3)
+        cpu_section.grid_columnconfigure(3, weight=1)
 
-            start_text = f"{start_gpu_temp}°C" if start_gpu_temp is not None else "N/A"
-            max_text = f"{max_gpu_temp}°C" if max_gpu_temp is not None else "N/A"
-            lifetime_text = f"{lifetime_max_gpu}°C" if lifetime_max_gpu is not None else "N/A"
+        # === GPU Section (right) ===
+        gpu_section = ctk.CTkFrame(master=temp_container, fg_color="transparent")
+        gpu_section.grid(row=0, column=1, sticky="nsew", padx=(15, 0))
 
-            ctk.CTkLabel(master=temp_frame, text=start_text,
-                         font=("Calibri", 13)).grid(row=row, column=1, sticky="e", pady=3, padx=(15, 0))
-            ctk.CTkLabel(master=temp_frame, text=max_text,
-                         font=("Calibri", 13)).grid(row=row, column=2, sticky="e", pady=3, padx=(15, 0))
-            ctk.CTkLabel(master=temp_frame, text=lifetime_text,
-                         font=("Calibri", 13), text_color="#FFD700").grid(row=row, column=3, sticky="e", pady=3, padx=(15, 0))
+        # GPU header row
+        ctk.CTkLabel(master=gpu_section, text="", font=("Calibri", 14),
+                     anchor="w").grid(row=0, column=0, sticky="w", pady=2)
+        ctk.CTkLabel(master=gpu_section, text="Start", font=("Calibri", 14, "bold"),
+                     text_color="gray60").grid(row=0, column=1, sticky="e", pady=2, padx=(8, 0))
+        ctk.CTkLabel(master=gpu_section, text="Session Max", font=("Calibri", 14, "bold"),
+                     text_color="gray60").grid(row=0, column=2, sticky="e", pady=2, padx=(8, 0))
+        ctk.CTkLabel(master=gpu_section, text="Lifetime Max", font=("Calibri", 14, "bold"),
+                     text_color="#FFD700").grid(row=0, column=3, sticky="e", pady=2, padx=(8, 0))
 
-        # No temps available message
-        if not has_temps:
-            ctk.CTkLabel(
-                master=temp_frame,
-                text="Temperature monitoring not enabled",
-                font=("Calibri", 13),
-                text_color="gray60"
-            ).grid(row=0, column=0, columnspan=4, pady=10)
+        # GPU data row
+        ctk.CTkLabel(master=gpu_section, text="GPU:", font=("Calibri", 14, "bold"),
+                     anchor="w").grid(row=1, column=0, sticky="w", pady=2)
 
-        temp_frame.grid_columnconfigure(3, weight=1)
+        gpu_start = f"{start_gpu_temp}°C" if start_gpu_temp is not None else "N/A"
+        gpu_max = f"{max_gpu_temp}°C" if max_gpu_temp is not None else "N/A"
+        gpu_lifetime = f"{lifetime_max_gpu}°C" if lifetime_max_gpu is not None else "N/A"
+        gpu_start_color = "gray60" if start_gpu_temp is None else None
+        gpu_max_color = "gray60" if max_gpu_temp is None else None
+        gpu_lifetime_color = "gray60" if lifetime_max_gpu is None else "#FFD700"
+
+        ctk.CTkLabel(master=gpu_section, text=gpu_start, font=("Calibri", 14),
+                     text_color=gpu_start_color).grid(row=1, column=1, sticky="e", pady=2, padx=(8, 0))
+        ctk.CTkLabel(master=gpu_section, text=gpu_max, font=("Calibri", 14),
+                     text_color=gpu_max_color).grid(row=1, column=2, sticky="e", pady=2, padx=(8, 0))
+        ctk.CTkLabel(master=gpu_section, text=gpu_lifetime, font=("Calibri", 14),
+                     text_color=gpu_lifetime_color).grid(row=1, column=3, sticky="e", pady=2, padx=(8, 0))
+
+        gpu_section.grid_columnconfigure(3, weight=1)
 
         # Bring window to front
         popup.lift()

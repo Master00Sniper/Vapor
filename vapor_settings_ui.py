@@ -1430,17 +1430,18 @@ reset_hint.pack(pady=(0, 10), anchor='center')
 
 
 def reset_settings_and_restart():
-    """Delete settings file and restart Vapor."""
+    """Delete settings file and close Vapor."""
     debug_log("Reset settings requested", "Reset")
     response = show_vapor_dialog(
         title="Reset Settings",
-        message="This will delete all settings and restart Vapor.\n\n"
+        message="This will delete all settings and close Vapor.\n\n"
                 "Your settings will be reset to defaults.\n"
+                "You will need to start Vapor again manually.\n"
                 "Are you sure?",
         dialog_type="warning",
         buttons=[
-            {"text": "Reset & Restart", "value": True, "color": "#c9302c"},
-            {"text": "Cancel", "value": False, "color": "gray"}
+            {"text": "Reset & Stop", "value": True, "color": "red"},
+            {"text": "Cancel", "value": False, "color": "green"}
         ],
         parent=root
     )
@@ -1455,30 +1456,37 @@ def reset_settings_and_restart():
         except Exception as e:
             debug_log(f"Error deleting settings: {e}", "Reset")
 
-        # Restart Vapor
-        win11toast.notify(body="Settings reset. Restarting Vapor...", app_id='Vapor - Streamline Gaming',
-                          duration='short', icon=TRAY_ICON_PATH, audio={'silent': 'true'})
-
-        restart_vapor(main_pid, require_admin=False)
+        # Terminate main Vapor process and close (same as Stop Vapor button)
+        debug_log("Stopping Vapor after settings reset", "Reset")
+        if main_pid:
+            try:
+                debug_log(f"Terminating main Vapor process (PID: {main_pid})", "Reset")
+                main_process = psutil.Process(main_pid)
+                main_process.terminate()
+                debug_log("Main process terminated", "Reset")
+            except (psutil.NoSuchProcess, psutil.AccessDenied) as e:
+                debug_log(f"Could not terminate: {e}", "Reset")
         root.destroy()
     else:
         debug_log("User cancelled reset settings", "Reset")
 
 
 def reset_all_data_and_restart():
-    """Delete settings file and all temperature data, then restart Vapor."""
+    """Delete settings file, temperature data, and cached images, then close Vapor."""
     debug_log("Reset all data requested", "Reset")
     response = show_vapor_dialog(
         title="Reset All Data",
         message="This will delete ALL Vapor data including:\n\n"
                 "• All settings\n"
                 "• All temperature history\n"
-                "• Lifetime max temperatures for all games\n\n"
-                "This cannot be undone. Are you sure?",
+                "• Lifetime max temperatures for all games\n"
+                "• All cached game images\n\n"
+                "This cannot be undone. Vapor will close and you will\n"
+                "need to start it again manually. Are you sure?",
         dialog_type="warning",
         buttons=[
-            {"text": "Delete All & Restart", "value": True, "color": "#c9302c"},
-            {"text": "Cancel", "value": False, "color": "gray"}
+            {"text": "Delete All & Stop", "value": True, "color": "red"},
+            {"text": "Cancel", "value": False, "color": "green"}
         ],
         parent=root
     )
@@ -1502,11 +1510,25 @@ def reset_all_data_and_restart():
         except Exception as e:
             debug_log(f"Error deleting temp history: {e}", "Reset")
 
-        # Restart Vapor
-        win11toast.notify(body="All data deleted. Restarting Vapor...", app_id='Vapor - Streamline Gaming',
-                          duration='short', icon=TRAY_ICON_PATH, audio={'silent': 'true'})
+        # Delete cached images folder
+        images_dir = os.path.join(appdata_dir, 'images')
+        try:
+            if os.path.exists(images_dir):
+                shutil.rmtree(images_dir)
+                debug_log(f"Deleted images folder: {images_dir}", "Reset")
+        except Exception as e:
+            debug_log(f"Error deleting images: {e}", "Reset")
 
-        restart_vapor(main_pid, require_admin=False)
+        # Terminate main Vapor process and close (same as Stop Vapor button)
+        debug_log("Stopping Vapor after all data reset", "Reset")
+        if main_pid:
+            try:
+                debug_log(f"Terminating main Vapor process (PID: {main_pid})", "Reset")
+                main_process = psutil.Process(main_pid)
+                main_process.terminate()
+                debug_log("Main process terminated", "Reset")
+            except (psutil.NoSuchProcess, psutil.AccessDenied) as e:
+                debug_log(f"Could not terminate: {e}", "Reset")
         root.destroy()
     else:
         debug_log("User cancelled reset all data", "Reset")
