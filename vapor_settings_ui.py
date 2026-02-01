@@ -1035,15 +1035,9 @@ enable_gpu_thermal_switch = ctk.CTkSwitch(master=thermal_frame, text="Capture GP
 enable_gpu_thermal_switch.pack(pady=5, anchor='w')
 
 enable_cpu_thermal_var = tk.BooleanVar(value=enable_cpu_thermal)
-enable_cpu_thermal_switch = ctk.CTkSwitch(master=thermal_frame, text="Capture CPU Temperature",
+enable_cpu_thermal_switch = ctk.CTkSwitch(master=thermal_frame, text="Capture CPU Temperature (requires admin + driver)",
                                           variable=enable_cpu_thermal_var, font=("Calibri", 14))
 enable_cpu_thermal_switch.pack(pady=5, anchor='w')
-
-cpu_thermal_disclaimer = ctk.CTkLabel(master=thermal_frame,
-                                      text="Note: CPU temperature monitoring requires administrator privileges.\n"
-                                           "Vapor will prompt for admin access when this option is enabled.",
-                                      font=("Calibri", 11), text_color="orange", justify="left")
-cpu_thermal_disclaimer.pack(pady=(5, 0), anchor='w')
 
 # Temperature Alerts Section
 thermal_sep2 = ctk.CTkFrame(master=thermal_scroll_frame, height=2, fg_color="gray50")
