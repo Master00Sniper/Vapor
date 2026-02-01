@@ -8,7 +8,10 @@ import winreg
 import win11toast
 
 from utils import appdata_dir, base_dir, TRAY_ICON_PATH, log
-from core.steam_api import get_preloaded_game_details, get_preloaded_header_image, get_cached_header_image_path
+from core.steam_api import (
+    get_preloaded_game_details, get_preloaded_header_image, get_cached_header_image_path,
+    get_preloaded_background_image, get_cached_background_image_path
+)
 
 
 # =============================================================================
@@ -415,7 +418,7 @@ def show_detailed_summary(session_data):
         popup.protocol("WM_DELETE_WINDOW", on_close)
 
         # Window dimensions - account for taskbar and smaller screens
-        window_width = 550
+        window_width = 700
         screen_height = popup.winfo_screenheight()
         screen_width = popup.winfo_screenwidth()
 
@@ -434,6 +437,51 @@ def show_detailed_summary(session_data):
         x = (screen_width - window_width) // 2
         y = max(20, (usable_height - window_height) // 2)
         popup.geometry(f"{window_width}x{window_height}+{x}+{y}")
+
+        # Add background image if available
+        bg_image = get_preloaded_background_image()
+        if bg_image is None and app_id:
+            # Fallback: try loading from cache
+            cached_bg_path = get_cached_background_image_path(app_id)
+            if cached_bg_path and os.path.exists(cached_bg_path):
+                try:
+                    bg_image = Image.open(cached_bg_path)
+                except Exception:
+                    bg_image = None
+
+        bg_label = None
+        if bg_image is not None:
+            try:
+                from PIL import ImageEnhance
+                # Resize to fit window, maintaining aspect ratio to cover
+                img_ratio = bg_image.width / bg_image.height
+                win_ratio = window_width / window_height
+                if img_ratio > win_ratio:
+                    # Image is wider, scale by height
+                    new_height = window_height
+                    new_width = int(new_height * img_ratio)
+                else:
+                    # Image is taller, scale by width
+                    new_width = window_width
+                    new_height = int(new_width / img_ratio)
+                bg_resized = bg_image.resize((new_width, new_height), Image.LANCZOS)
+
+                # Crop to center to fit window
+                left = (new_width - window_width) // 2
+                top = (new_height - window_height) // 2
+                bg_resized = bg_resized.crop((left, top, left + window_width, top + window_height))
+
+                # Darken the image for better text readability
+                enhancer = ImageEnhance.Brightness(bg_resized)
+                bg_darkened = enhancer.enhance(0.3)  # 30% brightness
+
+                ctk_bg = ctk.CTkImage(light_image=bg_darkened, dark_image=bg_darkened,
+                                      size=(window_width, window_height))
+                bg_label = ctk.CTkLabel(master=popup, image=ctk_bg, text="")
+                bg_label.image = ctk_bg  # Keep reference
+                bg_label.place(x=0, y=0, relwidth=1, relheight=1)
+            except Exception as e:
+                log(f"Failed to set background image: {e}", "NOTIFY")
 
         # IMPORTANT: Pack bottom bar FIRST so it reserves space at the bottom
         bottom_bar = ctk.CTkFrame(master=popup, fg_color="transparent")
@@ -560,7 +608,7 @@ def show_detailed_summary(session_data):
             )
             apps_list_label.pack(anchor="w")
 
-        # Game Info section (from Steam Store API)
+        # Game Info section (from Steam Store API and SteamSpy)
         if game_details:
             # Separator before game info
             sep_info = ctk.CTkFrame(master=content_frame, height=2, fg_color="gray50")
@@ -574,43 +622,55 @@ def show_detailed_summary(session_data):
             )
             game_info_title.pack(pady=(5, 5))
 
-            info_frame = ctk.CTkFrame(master=content_frame, fg_color="transparent")
-            info_frame.pack(pady=5, padx=20, fill="x")
+            # Two-column container
+            info_container = ctk.CTkFrame(master=content_frame, fg_color="transparent")
+            info_container.pack(pady=5, padx=20, fill="x")
+            info_container.grid_columnconfigure(0, weight=1)
+            info_container.grid_columnconfigure(1, weight=1)
 
-            info_row = 0
+            # Left column frame
+            left_frame = ctk.CTkFrame(master=info_container, fg_color="transparent")
+            left_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 15))
+
+            # Right column frame
+            right_frame = ctk.CTkFrame(master=info_container, fg_color="transparent")
+            right_frame.grid(row=0, column=1, sticky="nsew", padx=(15, 0))
+
+            # === LEFT COLUMN: Developer, Publisher, Released, Metacritic ===
+            left_row = 0
 
             # Developer
             developers = game_details.get('developers', [])
             if developers:
-                ctk.CTkLabel(master=info_frame, text="Developer:", font=("Calibri", 14, "bold"),
-                             anchor="w").grid(row=info_row, column=0, sticky="w", pady=2)
-                ctk.CTkLabel(master=info_frame, text=", ".join(developers[:2]), font=("Calibri", 14),
-                             anchor="e").grid(row=info_row, column=1, sticky="e", pady=2)
-                info_row += 1
+                ctk.CTkLabel(master=left_frame, text="Developer:", font=("Calibri", 14, "bold"),
+                             anchor="w").grid(row=left_row, column=0, sticky="w", pady=2)
+                ctk.CTkLabel(master=left_frame, text=", ".join(developers[:2]), font=("Calibri", 14),
+                             anchor="e").grid(row=left_row, column=1, sticky="e", pady=2)
+                left_row += 1
 
             # Publisher (only if different from developer)
             publishers = game_details.get('publishers', [])
             if publishers and publishers != developers:
-                ctk.CTkLabel(master=info_frame, text="Publisher:", font=("Calibri", 14, "bold"),
-                             anchor="w").grid(row=info_row, column=0, sticky="w", pady=2)
-                ctk.CTkLabel(master=info_frame, text=", ".join(publishers[:2]), font=("Calibri", 14),
-                             anchor="e").grid(row=info_row, column=1, sticky="e", pady=2)
-                info_row += 1
+                ctk.CTkLabel(master=left_frame, text="Publisher:", font=("Calibri", 14, "bold"),
+                             anchor="w").grid(row=left_row, column=0, sticky="w", pady=2)
+                ctk.CTkLabel(master=left_frame, text=", ".join(publishers[:2]), font=("Calibri", 14),
+                             anchor="e").grid(row=left_row, column=1, sticky="e", pady=2)
+                left_row += 1
 
             # Release Date
             release_date = game_details.get('release_date')
             if release_date and release_date != 'Unknown':
-                ctk.CTkLabel(master=info_frame, text="Released:", font=("Calibri", 14, "bold"),
-                             anchor="w").grid(row=info_row, column=0, sticky="w", pady=2)
-                ctk.CTkLabel(master=info_frame, text=release_date, font=("Calibri", 14),
-                             anchor="e").grid(row=info_row, column=1, sticky="e", pady=2)
-                info_row += 1
+                ctk.CTkLabel(master=left_frame, text="Released:", font=("Calibri", 14, "bold"),
+                             anchor="w").grid(row=left_row, column=0, sticky="w", pady=2)
+                ctk.CTkLabel(master=left_frame, text=release_date, font=("Calibri", 14),
+                             anchor="e").grid(row=left_row, column=1, sticky="e", pady=2)
+                left_row += 1
 
             # Metacritic Score
             metacritic_score = game_details.get('metacritic_score')
             if metacritic_score:
-                ctk.CTkLabel(master=info_frame, text="Metacritic:", font=("Calibri", 14, "bold"),
-                             anchor="w").grid(row=info_row, column=0, sticky="w", pady=2)
+                ctk.CTkLabel(master=left_frame, text="Metacritic:", font=("Calibri", 14, "bold"),
+                             anchor="w").grid(row=left_row, column=0, sticky="w", pady=2)
                 # Color code the score
                 if metacritic_score >= 75:
                     score_color = "#66CC33"  # Green
@@ -618,11 +678,64 @@ def show_detailed_summary(session_data):
                     score_color = "#FFCC33"  # Yellow
                 else:
                     score_color = "#FF0000"  # Red
-                ctk.CTkLabel(master=info_frame, text=str(metacritic_score), font=("Calibri", 14, "bold"),
-                             text_color=score_color, anchor="e").grid(row=info_row, column=1, sticky="e", pady=2)
-                info_row += 1
+                ctk.CTkLabel(master=left_frame, text=str(metacritic_score), font=("Calibri", 14, "bold"),
+                             text_color=score_color, anchor="e").grid(row=left_row, column=1, sticky="e", pady=2)
+                left_row += 1
 
-            info_frame.grid_columnconfigure(1, weight=1)
+            left_frame.grid_columnconfigure(1, weight=1)
+
+            # === RIGHT COLUMN: SteamSpy data + Website ===
+            right_row = 0
+
+            # Estimated Owners (SteamSpy)
+            steamspy_owners = game_details.get('steamspy_owners')
+            if steamspy_owners:
+                ctk.CTkLabel(master=right_frame, text="Owners:", font=("Calibri", 14, "bold"),
+                             anchor="w").grid(row=right_row, column=0, sticky="w", pady=2)
+                ctk.CTkLabel(master=right_frame, text=steamspy_owners, font=("Calibri", 14),
+                             anchor="e").grid(row=right_row, column=1, sticky="e", pady=2)
+                right_row += 1
+
+            # Peak CCU Yesterday (SteamSpy)
+            steamspy_ccu = game_details.get('steamspy_ccu')
+            if steamspy_ccu:
+                ctk.CTkLabel(master=right_frame, text="Peak CCU (24h):", font=("Calibri", 14, "bold"),
+                             anchor="w").grid(row=right_row, column=0, sticky="w", pady=2)
+                ctk.CTkLabel(master=right_frame, text=f"{steamspy_ccu:,}", font=("Calibri", 14),
+                             anchor="e").grid(row=right_row, column=1, sticky="e", pady=2)
+                right_row += 1
+
+            # User Score (SteamSpy)
+            steamspy_user_score = game_details.get('steamspy_user_score')
+            if steamspy_user_score:
+                ctk.CTkLabel(master=right_frame, text="User Score:", font=("Calibri", 14, "bold"),
+                             anchor="w").grid(row=right_row, column=0, sticky="w", pady=2)
+                # Color code user score similar to metacritic
+                if steamspy_user_score >= 75:
+                    user_score_color = "#66CC33"  # Green
+                elif steamspy_user_score >= 50:
+                    user_score_color = "#FFCC33"  # Yellow
+                else:
+                    user_score_color = "#FF0000"  # Red
+                ctk.CTkLabel(master=right_frame, text=f"{steamspy_user_score}%", font=("Calibri", 14, "bold"),
+                             text_color=user_score_color, anchor="e").grid(row=right_row, column=1, sticky="e", pady=2)
+                right_row += 1
+
+            # Website (Steam Store API)
+            website = game_details.get('website')
+            if website:
+                ctk.CTkLabel(master=right_frame, text="Website:", font=("Calibri", 14, "bold"),
+                             anchor="w").grid(row=right_row, column=0, sticky="w", pady=2)
+                website_btn = ctk.CTkButton(
+                    master=right_frame, text="Open", font=("Calibri", 12),
+                    width=60, height=22, corner_radius=5,
+                    fg_color="#1a73e8", hover_color="#1557b0",
+                    command=lambda url=website: __import__('webbrowser').open(url)
+                )
+                website_btn.grid(row=right_row, column=1, sticky="e", pady=2)
+                right_row += 1
+
+            right_frame.grid_columnconfigure(1, weight=1)
 
         # Separator
         sep2 = ctk.CTkFrame(master=content_frame, height=2, fg_color="gray50")
