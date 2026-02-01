@@ -37,6 +37,12 @@ from utils import (
     DEFAULT_SETTINGS, set_setting
 )
 
+# Import platform utilities (admin checks, PawnIO driver)
+from platform import (
+    is_admin, is_winget_available, is_pawnio_installed,
+    clear_pawnio_cache, install_pawnio_silent, install_pawnio_with_elevation
+)
+
 # Alias for backward compatibility with existing code
 debug_log = log
 
@@ -66,16 +72,8 @@ except ImportError:
 
 
 # =============================================================================
-# Admin Privilege Functions
+# Vapor Restart Functions
 # =============================================================================
-
-def is_admin():
-    """Check if the current process has admin privileges."""
-    try:
-        return ctypes.windll.shell32.IsUserAnAdmin() != 0
-    except Exception:
-        return False
-
 
 def restart_vapor(main_pid, require_admin=False):
     """
@@ -181,238 +179,8 @@ def restart_vapor_as_admin(main_pid):
 
 
 # =============================================================================
-# PawnIO Driver Functions (for CPU temperature monitoring)
+# Icon Handling
 # =============================================================================
-
-# Cache for PawnIO installation status (to avoid repeated slow winget calls)
-_pawnio_installed_cache = None
-_pawnio_cache_time = 0
-PAWNIO_CACHE_DURATION = 60  # Cache for 60 seconds
-
-
-def is_winget_available():
-    """Check if winget is available on this system."""
-    try:
-        result = subprocess.run(
-            ['winget', '--version'],
-            capture_output=True, text=True, timeout=10,
-            creationflags=subprocess.CREATE_NO_WINDOW
-        )
-        available = result.returncode == 0
-        debug_log(f"Available: {available}, Version: {result.stdout.strip() if available else 'N/A'}", "Winget")
-        return available
-    except Exception as e:
-        debug_log(f"Error: {e}", "Winget")
-        return False
-
-
-def is_pawnio_installed(use_cache=True):
-    """Check if PawnIO driver is installed. Uses cache to avoid slow winget calls."""
-    global _pawnio_installed_cache, _pawnio_cache_time
-
-    # Return cached result if still valid
-    if use_cache and _pawnio_installed_cache is not None:
-        if time.time() - _pawnio_cache_time < PAWNIO_CACHE_DURATION:
-            debug_log(f"Using cached PawnIO status: {_pawnio_installed_cache}", "PawnIO")
-            return _pawnio_installed_cache
-
-    debug_log("Checking PawnIO installation (winget list)...", "PawnIO")
-    try:
-        result = subprocess.run(
-            ['winget', 'list', '--id', 'namazso.PawnIO'],
-            capture_output=True, text=True, timeout=15,
-            creationflags=subprocess.CREATE_NO_WINDOW
-        )
-        installed = 'PawnIO' in result.stdout
-        debug_log(f"Installed: {installed}", "PawnIO")
-
-        # Update cache
-        _pawnio_installed_cache = installed
-        _pawnio_cache_time = time.time()
-
-        return installed
-    except Exception as e:
-        debug_log(f"Check error: {e}", "PawnIO")
-        return False
-
-
-def clear_pawnio_cache():
-    """Clear the PawnIO installation cache (call after installation)."""
-    global _pawnio_installed_cache, _pawnio_cache_time
-    _pawnio_installed_cache = None
-    _pawnio_cache_time = 0
-
-
-def get_pawnio_installer_path():
-    """Get the path to the PawnIO installer script."""
-    return os.path.join(base_dir, 'install_pawnio.ps1')
-
-
-def install_pawnio_silent():
-    """
-    Install PawnIO driver silently with admin elevation.
-    Returns True if installation succeeded, False otherwise.
-    """
-    script_path = get_pawnio_installer_path()
-
-    if not os.path.exists(script_path):
-        return False
-
-    try:
-        # Run PowerShell elevated and hidden, wait for completion
-        # Using -WindowStyle Hidden to hide the PowerShell window
-        result = subprocess.run(
-            [
-                'powershell.exe',
-                '-ExecutionPolicy', 'Bypass',
-                '-WindowStyle', 'Hidden',
-                '-File', script_path,
-                '-Silent'
-            ],
-            capture_output=True,
-            timeout=120,  # 2 minute timeout for winget install
-            creationflags=subprocess.CREATE_NO_WINDOW
-        )
-        return result.returncode == 0
-    except subprocess.TimeoutExpired:
-        return False
-    except Exception:
-        return False
-
-
-def install_pawnio_with_elevation(progress_callback=None):
-    """
-    Install PawnIO driver with UAC elevation prompt (or directly if already admin).
-
-    Args:
-        progress_callback: Optional function(message, progress_pct) to update UI during install
-
-    Returns True if installation succeeded.
-    """
-    debug_log("Starting installation process...", "PawnIO")
-    debug_log(f"Running as admin: {is_admin()}", "PawnIO")
-
-    # Check if winget is available
-    if not is_winget_available():
-        debug_log("ERROR: winget not available!", "PawnIO")
-        if progress_callback:
-            progress_callback("Error: Windows Package Manager (winget) not found", 0)
-        return False
-
-    # First check if already installed
-    if is_pawnio_installed():
-        debug_log("Already installed, skipping.", "PawnIO")
-        return True
-
-    script_path = get_pawnio_installer_path()
-    debug_log(f"Script path: {script_path}", "PawnIO")
-    debug_log(f"Script exists: {os.path.exists(script_path)}", "PawnIO")
-
-    if not os.path.exists(script_path):
-        debug_log("ERROR: Script not found!", "PawnIO")
-        if progress_callback:
-            progress_callback("Error: Installation script not found", 0)
-        return False
-
-    process = None
-    try:
-        if progress_callback:
-            progress_callback("Starting installation...", 5)
-
-        # If already running as admin, run directly and capture output
-        if is_admin():
-            debug_log("Running as admin, executing PowerShell directly...", "PawnIO")
-            # Run PowerShell directly and capture output for debugging
-            process = subprocess.Popen(
-                [
-                    'powershell.exe',
-                    '-ExecutionPolicy', 'Bypass',
-                    '-File', script_path
-                    # Note: removed -Silent so we get output for debugging
-                ],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                creationflags=subprocess.CREATE_NO_WINDOW
-            )
-            debug_log(f"Started process PID: {process.pid}", "PawnIO")
-        else:
-            # Need elevation - use ShellExecuteW with 'runas'
-            debug_log("Not admin, requesting elevation via ShellExecuteW...", "PawnIO")
-            if progress_callback:
-                progress_callback("Requesting administrator approval...", 5)
-
-            result = ctypes.windll.shell32.ShellExecuteW(
-                None,
-                "runas",
-                "powershell.exe",
-                f'-ExecutionPolicy Bypass -File "{script_path}"',
-                os.path.dirname(script_path),
-                0  # SW_HIDE
-            )
-
-            debug_log(f"ShellExecuteW result: {result}", "PawnIO")
-            if result <= 32:
-                debug_log("ERROR: ShellExecuteW failed!", "PawnIO")
-                return False
-
-        if progress_callback:
-            progress_callback("Installing PawnIO driver...", 15)
-
-        # Check periodically if PawnIO is installed (up to 90 seconds)
-        for i in range(45):
-            time.sleep(2)
-
-            # Check if process completed (when running as admin)
-            if process is not None:
-                poll_result = process.poll()
-                if poll_result is not None:
-                    # Process finished, get output
-                    stdout, stderr = process.communicate()
-                    debug_log(f"Process exited with code: {poll_result}", "PawnIO")
-                    if stdout:
-                        debug_log(f"stdout: {stdout}", "PawnIO")
-                    if stderr:
-                        debug_log(f"stderr: {stderr}", "PawnIO")
-
-                    if poll_result == 0:
-                        if progress_callback:
-                            progress_callback("Installation complete!", 100)
-                        debug_log("Installation succeeded (exit code 0)", "PawnIO")
-                        return True
-                    else:
-                        debug_log(f"Process failed with exit code {poll_result}", "PawnIO")
-                        if progress_callback:
-                            progress_callback(f"Installation failed (code {poll_result})", 0)
-                        return False
-
-            # Update progress
-            if progress_callback:
-                pct = 15 + int((i / 45) * 80)  # Progress from 15% to 95%
-                progress_callback(f"Installing PawnIO driver... ({(i+1)*2}s)", pct)
-
-            # Log every 10 seconds
-            if i % 5 == 4:
-                debug_log(f"Still waiting... ({(i+1)*2}s elapsed)", "PawnIO")
-
-            if is_pawnio_installed():
-                if progress_callback:
-                    progress_callback("Installation complete!", 100)
-                debug_log("Verified installed!", "PawnIO")
-                return True
-
-        # Final check
-        debug_log("Timeout reached (90s), doing final check...", "PawnIO")
-        result = is_pawnio_installed()
-        debug_log(f"Final result: {result}", "PawnIO")
-        return result
-
-    except Exception as e:
-        debug_log(f"ERROR: {e}", "PawnIO")
-        import traceback
-        debug_log(f"Traceback: {traceback.format_exc()}", "PawnIO")
-        return False
-
 
 def set_vapor_icon(window):
     """Set the Vapor icon on a window. Call this after window is created."""

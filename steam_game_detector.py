@@ -258,14 +258,6 @@ import signal
 # Admin Privilege Functions
 # =============================================================================
 
-def is_admin():
-    """Check if the current process has admin privileges."""
-    try:
-        return ctypes.windll.shell32.IsUserAnAdmin() != 0
-    except Exception:
-        return False
-
-
 def request_admin_restart():
     """
     Request admin privileges by restarting the application elevated.
@@ -305,80 +297,6 @@ def request_admin_restart():
             return True  # Elevation requested, caller should exit
         return False
     except Exception:
-        return False
-
-
-# =============================================================================
-# PawnIO Driver Functions (for CPU temperature monitoring)
-# =============================================================================
-
-PAWNIO_CHECKED = False
-PAWNIO_INSTALLED = None
-
-def is_pawnio_installed():
-    """Check if PawnIO driver is installed."""
-    global PAWNIO_CHECKED, PAWNIO_INSTALLED
-
-    if PAWNIO_CHECKED:
-        return PAWNIO_INSTALLED
-
-    PAWNIO_CHECKED = True
-    try:
-        # Check via winget list
-        result = subprocess.run(
-            ['winget', 'list', '--id', 'PawnIO.PawnIO'],
-            capture_output=True, text=True, timeout=10,
-            creationflags=subprocess.CREATE_NO_WINDOW
-        )
-        PAWNIO_INSTALLED = 'PawnIO' in result.stdout
-        return PAWNIO_INSTALLED
-    except Exception:
-        # If winget check fails, assume not installed
-        PAWNIO_INSTALLED = False
-        return False
-
-
-def get_pawnio_installer_path():
-    """Get the path to the PawnIO installer script."""
-    if getattr(sys, 'frozen', False):
-        # Running as compiled executable
-        return os.path.join(sys._MEIPASS, 'install_pawnio.ps1')
-    else:
-        # Running as script
-        return os.path.join(os.path.dirname(os.path.abspath(__file__)), 'install_pawnio.ps1')
-
-
-def run_pawnio_installer():
-    """Run the PawnIO installer script with admin privileges."""
-    script_path = get_pawnio_installer_path()
-
-    if not os.path.exists(script_path):
-        log(f"PawnIO installer not found: {script_path}", "TEMP")
-        return False
-
-    try:
-        # Run PowerShell script elevated
-        result = ctypes.windll.shell32.ShellExecuteW(
-            None,
-            "runas",
-            "powershell.exe",
-            f'-ExecutionPolicy Bypass -File "{script_path}"',
-            os.path.dirname(script_path),
-            1  # SW_SHOWNORMAL
-        )
-
-        # ShellExecuteW returns > 32 on success
-        if result > 32:
-            log("PawnIO installer launched successfully", "TEMP")
-            # Reset the check so next temp read will re-check
-            global PAWNIO_CHECKED
-            PAWNIO_CHECKED = False
-            return True
-        else:
-            log(f"Failed to launch PawnIO installer: {result}", "TEMP")
-            return False
-    except Exception as e:
-        log(f"Error launching PawnIO installer: {e}", "TEMP")
         return False
 
 
@@ -430,6 +348,12 @@ from utils import (
     MAX_LOG_SIZE, TRAY_ICON_PATH, PROTECTED_PROCESSES, log,
     load_settings as load_settings_dict, save_settings as save_settings_dict,
     create_default_settings as create_default_settings_shared, DEFAULT_SETTINGS
+)
+
+# Import platform utilities (admin checks, PawnIO driver)
+from platform import (
+    is_admin, is_pawnio_installed, run_pawnio_installer,
+    clear_pawnio_cache
 )
 
 # Additional paths specific to main application
