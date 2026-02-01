@@ -252,10 +252,9 @@ def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=N
     y = (screen_height - height) // 2
     dialog.geometry(f"{width}x{height}+{x}+{y}")
 
-    # Make dialog modal
+    # Set transient (but don't grab yet - do that after deiconify)
     if parent:
         dialog.transient(parent)
-    dialog.grab_set()
 
     # Main content frame (expandable)
     content_frame = ctk.CTkFrame(master=dialog, fg_color="transparent")
@@ -347,6 +346,7 @@ def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=N
 
     # Show window and bring to front
     dialog.deiconify()
+    dialog.grab_set()  # Make modal (must be after deiconify)
     dialog.lift()
     dialog.attributes('-topmost', True)
     dialog.after(100, lambda: dialog.attributes('-topmost', False))
