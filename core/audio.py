@@ -51,54 +51,57 @@ def set_system_volume(level):
 # Game Audio Control
 # =============================================================================
 
+def _get_game_pids_from_folder(game_folder):
+    """Get all PIDs for processes running from the game folder (including children)."""
+    pids = set()
+    for proc in psutil.process_iter(['pid', 'exe']):
+        try:
+            exe = proc.info['exe']
+            if exe and os.path.exists(exe):
+                try:
+                    if os.path.commonpath([exe, game_folder]) == game_folder:
+                        pids.add(proc.pid)
+                        # Also add all child processes
+                        try:
+                            for child in proc.children(recursive=True):
+                                pids.add(child.pid)
+                        except Exception:
+                            pass
+                except ValueError:
+                    pass
+        except Exception:
+            pass
+    return pids
+
+
 def find_game_pids(game_folder):
     """Find process IDs for executables running from the game folder."""
     if not game_folder:
         return []
     log(f"Scanning for game processes in: {game_folder}", "PROCESS")
-    pids = []
-    base_procs = []
+
     for attempt in range(10):
-        for proc in psutil.process_iter(['pid', 'exe']):
-            try:
-                exe = proc.info['exe']
-                if exe and os.path.exists(exe):
-                    try:
-                        if os.path.commonpath([exe, game_folder]) == game_folder:
-                            base_procs.append(proc)
-                    except ValueError:
-                        pass
-            except Exception:
-                pass
-        if base_procs:
-            break
+        pids = _get_game_pids_from_folder(game_folder)
+        if pids:
+            log(f"Found {len(pids)} game process(es)", "PROCESS")
+            return list(pids)
         log(f"No game processes found yet (attempt {attempt + 1}/10)...", "PROCESS")
         time.sleep(1)
 
-    for proc in base_procs:
-        pids.append(proc.pid)
-        try:
-            children = proc.children(recursive=True)
-            for child in children:
-                pids.append(child.pid)
-        except Exception:
-            pass
-
-    pids = list(set(pids))
-    if pids:
-        log(f"Found {len(pids)} game process(es)", "PROCESS")
-    else:
-        log("No game processes found", "PROCESS")
-    return pids
+    log("No game processes found", "PROCESS")
+    return []
 
 
-def set_game_volume(game_pids, level):
+def set_game_volume(game_pids, level, game_folder=None):
     """Set volume for game processes (0-100) with retry logic.
 
     Games can have multiple audio sessions that appear at different times,
     so we continue monitoring for new sessions after finding the first one.
+
+    If game_folder is provided, will dynamically discover new child processes
+    that spawn during the monitoring period.
     """
-    if not game_pids:
+    if not game_pids and not game_folder:
         return
     log(f"Setting game volume to {level}% for {len(game_pids)} PID(s)...", "AUDIO")
     comtypes.CoInitializeEx(comtypes.COINIT_MULTITHREADED)
@@ -114,12 +117,22 @@ def set_game_volume(game_pids, level):
         stable_count = 0  # Count of consecutive polls with no new sessions
         stable_threshold = 6  # Stop after 6 consecutive polls (3 seconds) with no new sessions
 
+        # Keep track of all known PIDs (will be updated if game_folder provided)
+        known_pids = set(game_pids)
+
         for attempt in range(max_attempts):
+            # Refresh PIDs to catch newly spawned child processes
+            if game_folder and attempt % 2 == 0:  # Refresh every second (every 2 attempts)
+                new_pids = _get_game_pids_from_folder(game_folder)
+                if new_pids - known_pids:
+                    log(f"Discovered {len(new_pids - known_pids)} new game process(es)", "AUDIO")
+                    known_pids.update(new_pids)
+
             sessions = AudioUtilities.GetAllSessions()
             new_set_count = 0
 
             for session in sessions:
-                if session.ProcessId in game_pids:
+                if session.ProcessId in known_pids:
                     # Use the session's stable Identifier property
                     session_id = session.Identifier
 
