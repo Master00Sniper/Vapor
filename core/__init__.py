@@ -56,3 +56,21 @@ from core.steam_filesystem import (
     get_library_folders,
     get_game_folder,
 )
+
+from core.notifications import (
+    # Popup management
+    register_popup,
+    unregister_popup,
+    close_all_popups,
+    # Windows notification check
+    NOTIFICATION_WARNING_DISMISSED_FILE,
+    are_windows_notifications_enabled,
+    was_notification_warning_dismissed,
+    mark_notification_warning_dismissed,
+    show_notification_warning_popup,
+    check_and_warn_notifications,
+    # Toast notifications
+    show_notification,
+    show_brief_summary,
+    show_detailed_summary,
+)
