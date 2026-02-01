@@ -159,9 +159,12 @@ def restart_vapor(main_pid, require_admin=False, delay_seconds=3):
         need_elevation = require_admin and not is_admin()
         debug_log(f"Need elevation: {need_elevation}", "Restart")
 
+        # Both paths use PowerShell's Start-Process which creates a clean process
+        # The only difference is "runas" (UAC prompt) vs "open" (no UAC prompt)
+        ps_command = f'Start-Sleep -Seconds {delay_seconds}; Start-Process -FilePath \\"{executable}\\"{args_part}'
+
         if need_elevation:
             # Need UAC elevation - use ShellExecuteW with runas
-            ps_command = f'Start-Sleep -Seconds {delay_seconds}; Start-Process -FilePath \\"{executable}\\"{args_part}'
             debug_log(f"Using runas with PowerShell", "Restart")
             result = ctypes.windll.shell32.ShellExecuteW(
                 None,
@@ -174,17 +177,13 @@ def restart_vapor(main_pid, require_admin=False, delay_seconds=3):
             debug_log(f"ShellExecuteW result: {result}", "Restart")
             return result > 32
         else:
-            # Already admin or no elevation needed - use cmd.exe with start command
-            # This avoids PowerShell which may have issues with MEI folder cleanup
-            # The /I flag ensures a clean environment (no inheritance from parent)
-            # The /D flag sets the working directory
-            cmd_args = f'/C timeout /t {delay_seconds} /nobreak >nul & start "" /I /D "{working_dir}" "{executable}"'
-            debug_log(f"Using ShellExecuteW with cmd.exe: {cmd_args}", "Restart")
+            # Already admin or no elevation needed - use same PowerShell approach but with "open"
+            debug_log(f"Using open with PowerShell", "Restart")
             result = ctypes.windll.shell32.ShellExecuteW(
                 None,
                 "open",
-                "cmd.exe",
-                cmd_args,
+                "powershell.exe",
+                f'-WindowStyle Hidden -Command "{ps_command}"',
                 working_dir,
                 0  # SW_HIDE
             )
