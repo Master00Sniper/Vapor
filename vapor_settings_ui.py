@@ -1466,7 +1466,7 @@ def reset_settings_and_restart():
 
 
 def reset_all_data_and_restart():
-    """Delete settings file and all temperature data, then restart Vapor."""
+    """Delete settings file and all temperature data, then close Vapor."""
     debug_log("Reset all data requested", "Reset")
     response = show_vapor_dialog(
         title="Reset All Data",
@@ -1474,11 +1474,12 @@ def reset_all_data_and_restart():
                 "• All settings\n"
                 "• All temperature history\n"
                 "• Lifetime max temperatures for all games\n\n"
-                "This cannot be undone. Are you sure?",
+                "This cannot be undone. Vapor will close and you will\n"
+                "need to start it again manually. Are you sure?",
         dialog_type="warning",
         buttons=[
-            {"text": "Delete All & Restart", "value": True, "color": "#c9302c"},
-            {"text": "Cancel", "value": False, "color": "gray"}
+            {"text": "Delete All & Stop", "value": True, "color": "#c9302c"},
+            {"text": "Cancel", "value": False, "color": "#28a745"}
         ],
         parent=root
     )
@@ -1502,12 +1503,12 @@ def reset_all_data_and_restart():
         except Exception as e:
             debug_log(f"Error deleting temp history: {e}", "Reset")
 
-        # Restart Vapor
-        win11toast.notify(body="All data deleted. Restarting Vapor...", app_id='Vapor - Streamline Gaming',
+        # Close Vapor
+        win11toast.notify(body="All data deleted. Please restart Vapor manually.", app_id='Vapor - Streamline Gaming',
                           duration='short', icon=TRAY_ICON_PATH, audio={'silent': 'true'})
 
-        restart_vapor(main_pid, require_admin=False)
         root.destroy()
+        os._exit(0)
     else:
         debug_log("User cancelled reset all data", "Reset")
 
