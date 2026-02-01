@@ -570,6 +570,18 @@ def kill_processes(process_names, killed_processes, purpose=""):
             log(f"Closed {killed_count} instance(s) of {name}{purpose_str}", "PROCESS")
 
 
+def kill_processes_async(process_names, killed_processes, purpose=""):
+    """
+    Run kill_processes in a background thread so it doesn't block other operations.
+    """
+    thread = threading.Thread(
+        target=kill_processes,
+        args=(process_names, killed_processes, purpose),
+        daemon=True
+    )
+    thread.start()
+
+
 def relaunch_processes(killed_processes, relaunch_on_exit, purpose=""):
     """Relaunch previously terminated processes (minimized)."""
     purpose_str = f" ({purpose})" if purpose else ""
@@ -755,9 +767,9 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
         start_time = time.time()
         current_game_name = game_name
         if notification_close_on_startup:
-            kill_processes(notification_processes, killed_notification, "notification")
+            kill_processes_async(notification_processes, killed_notification, "notification")
         if resource_close_on_startup:
-            kill_processes(resource_processes, killed_resource, "resource")
+            kill_processes_async(resource_processes, killed_resource, "resource")
         if enable_system_audio:
             set_system_volume(system_audio_level)
         if enable_game_audio:
@@ -969,10 +981,10 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
 
                         if notification_close_on_startup:
                             log("Closing notification apps...", "GAME")
-                            kill_processes(notification_processes, killed_notification, "notification")
+                            kill_processes_async(notification_processes, killed_notification, "notification")
                         if resource_close_on_startup:
                             log("Closing resource apps...", "GAME")
-                            kill_processes(resource_processes, killed_resource, "resource")
+                            kill_processes_async(resource_processes, killed_resource, "resource")
                         if enable_system_audio:
                             set_system_volume(system_audio_level)
                         if enable_game_audio:
