@@ -176,20 +176,45 @@ def restart_vapor(main_pid, require_admin=False, delay_seconds=3):
             return result > 32
         else:
             # Already admin or no elevation needed
-            # Clear PyInstaller environment variables and use -UseNewEnvironment
-            # to ensure the new process doesn't inherit any MEI folder references
-            ps_command = (
-                f'Remove-Item Env:_MEIPASS -ErrorAction SilentlyContinue; '
-                f'Remove-Item Env:_MEIPASS2 -ErrorAction SilentlyContinue; '
-                f'Start-Sleep -Seconds {delay_seconds}; '
-                f'Start-Process -FilePath \\"{executable}\\" -WorkingDirectory \\"{working_dir}\\" -UseNewEnvironment{args_part}'
-            )
-            debug_log(f"Using open with PowerShell (UseNewEnvironment)", "Restart")
+            # Use a launcher batch file that waits for the old process to fully exit
+            # before starting the new one. This avoids PyInstaller _MEI folder conflicts.
+            current_pid = os.getpid()
+
+            # Create batch file in the Vapor directory (stable location, not temp)
+            batch_path = os.path.join(working_dir, '_vapor_restart.bat')
+            batch_content = f'''@echo off
+:: Vapor restart helper - waits for old process to exit before launching new one
+:: This avoids PyInstaller _MEI folder conflicts
+
+:: Wait for the old Vapor process to fully exit
+:waitloop
+tasklist /FI "PID eq {current_pid}" 2>NUL | find /I "{current_pid}" >NUL
+if not errorlevel 1 (
+    timeout /t 1 /nobreak >nul
+    goto waitloop
+)
+
+:: Additional delay to ensure _MEI folder cleanup is complete
+timeout /t 2 /nobreak >nul
+
+:: Launch Vapor with a clean environment
+start "" /D "{working_dir}" "{executable}"
+
+:: Clean up this batch file
+del "%~f0"
+'''
+            with open(batch_path, 'w') as f:
+                f.write(batch_content)
+
+            debug_log(f"Created restart launcher: {batch_path}", "Restart")
+
+            # Launch the batch file completely detached
+            # Use cmd.exe /C to run it independently
             result = ctypes.windll.shell32.ShellExecuteW(
                 None,
                 "open",
-                "powershell.exe",
-                f'-WindowStyle Hidden -Command "{ps_command}"',
+                "cmd.exe",
+                f'/C "{batch_path}"',
                 working_dir,
                 0  # SW_HIDE
             )
