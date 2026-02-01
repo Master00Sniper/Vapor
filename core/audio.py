@@ -75,7 +75,17 @@ def _get_game_pids_from_folder(game_folder):
 
 
 def _get_sibling_pids(pid):
-    """Get all sibling PIDs (processes with the same parent) for a given PID."""
+    """Get all sibling PIDs (processes with the same parent) for a given PID.
+
+    Excludes Steam-related processes to avoid setting volume on Steam client
+    components when Steam is the parent process of the game.
+    """
+    # Steam processes to exclude from sibling matching
+    STEAM_PROCESS_NAMES = {
+        'steam.exe', 'steamwebhelper.exe', 'steamservice.exe',
+        'steamerrorreporter.exe', 'steamwebhelper', 'steam'
+    }
+
     siblings = set()
     try:
         proc = psutil.Process(pid)
@@ -83,10 +93,25 @@ def _get_sibling_pids(pid):
         if parent:
             # Add all children of parent (siblings including self)
             for sibling in parent.children(recursive=False):
+                # Skip Steam-related processes
+                try:
+                    sibling_name = sibling.name().lower()
+                    if sibling_name in STEAM_PROCESS_NAMES:
+                        continue
+                except Exception:
+                    pass
+
                 siblings.add(sibling.pid)
                 # Also add children of siblings (for Electron helper processes)
                 try:
                     for child in sibling.children(recursive=True):
+                        # Also skip Steam processes in children
+                        try:
+                            child_name = child.name().lower()
+                            if child_name in STEAM_PROCESS_NAMES:
+                                continue
+                        except Exception:
+                            pass
                         siblings.add(child.pid)
                 except Exception:
                     pass
