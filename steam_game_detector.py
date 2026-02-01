@@ -1036,7 +1036,9 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
                         # This avoids any interference with game loading
                         def delayed_prepare_popup(app_id):
                             time.sleep(60)
-                            prepare_session_popup(app_id)
+                            # Only run if the game is still running (skip if game ended early)
+                            if get_running_steam_app_id() == app_id:
+                                prepare_session_popup(app_id)
                         threading.Thread(target=delayed_prepare_popup, args=(current_app_id,), daemon=True).start()
 
                         log(f"Game session started for: {game_name}", "GAME")
