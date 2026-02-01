@@ -1582,21 +1582,25 @@ bug_desc_textbox = ctk.CTkTextbox(master=help_scroll_frame, width=400, height=12
                                   wrap="word")
 bug_desc_textbox.pack(pady=(0, 10), anchor='center')
 
+# Checkbox container frame for left-alignment
+checkbox_frame = ctk.CTkFrame(master=help_scroll_frame, fg_color="transparent")
+checkbox_frame.pack(pady=(5, 5), anchor='center')
+
 # System info checkbox
 include_system_info_var = ctk.BooleanVar(value=True)
-system_info_checkbox = ctk.CTkCheckBox(master=help_scroll_frame,
+system_info_checkbox = ctk.CTkCheckBox(master=checkbox_frame,
                                         text="Include system information (OS, Vapor version, Python version)",
                                         variable=include_system_info_var,
                                         font=("Calibri", 12))
-system_info_checkbox.pack(pady=(0, 5), anchor='center')
+system_info_checkbox.pack(pady=(0, 8), anchor='w')
 
 # Recent logs checkbox
 include_logs_var = ctk.BooleanVar(value=True)
-logs_checkbox = ctk.CTkCheckBox(master=help_scroll_frame,
+logs_checkbox = ctk.CTkCheckBox(master=checkbox_frame,
                                  text="Include recent logs (last 250 lines)",
                                  variable=include_logs_var,
                                  font=("Calibri", 12))
-logs_checkbox.pack(pady=(0, 3), anchor='center')
+logs_checkbox.pack(pady=(0, 3), anchor='w')
 
 # Privacy disclaimer
 logs_disclaimer = ctk.CTkLabel(master=help_scroll_frame,

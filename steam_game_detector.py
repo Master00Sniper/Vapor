@@ -909,11 +909,14 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
             current_app_id = get_running_steam_app_id()
             poll_count += 1
 
-            # Log polling status every 20 polls (~20 seconds)
-            if poll_count % 20 == 0:
-                if current_app_id == 0:
+            # Log polling status periodically
+            if current_app_id == 0:
+                # Log "No game detected" only once per hour (3600 polls at 1 poll/second)
+                if poll_count % 3600 == 0:
                     log("Polling... No game detected", "MONITOR")
-                else:
+            else:
+                # Log "Game running" every 20 polls (~20 seconds)
+                if poll_count % 20 == 0:
                     log(f"Polling... Game running: AppID {current_app_id}", "MONITOR")
 
             if current_app_id != previous_app_id:
