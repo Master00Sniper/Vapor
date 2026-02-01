@@ -75,7 +75,7 @@ def _get_all_sessions_all_devices():
         collection = device_enumerator.EnumAudioEndpoints(0, 1)
         device_count = collection.GetCount()
 
-        log(f"Found {device_count} active audio render device(s)", "AUDIO")
+        # log(f"Found {device_count} active audio render device(s)", "AUDIO")  # Only log if actually used
 
         for i in range(device_count):
             try:
@@ -258,15 +258,15 @@ def set_game_volume(game_pids, level, game_folder=None, game_name=None, is_game_
                     log(f"Discovered {len(new_pids - known_pids)} new game process(es)", "AUDIO")
                     known_pids.update(new_pids)
 
-            # Get sessions from ALL audio devices (not just default)
-            sessions_with_devices = _get_all_sessions_all_devices()
+            # Get sessions from default audio device (proven working method)
+            sessions = AudioUtilities.GetAllSessions()
             new_set_count = 0
 
             # Log all sessions on first attempt for debugging
             if attempt == 0:
-                log(f"All audio sessions found (across all devices):", "AUDIO")
+                log(f"All audio sessions found:", "AUDIO")
                 pid_counts = {}  # Track how many sessions each PID has
-                for s, device_id in sessions_with_devices:
+                for s in sessions:
                     if s.ProcessId == 0:
                         continue
                     pid_counts[s.ProcessId] = pid_counts.get(s.ProcessId, 0) + 1
@@ -274,16 +274,13 @@ def set_game_volume(game_pids, level, game_folder=None, game_name=None, is_game_
                         pname = s.Process.name() if s.Process else "?"
                     except:
                         pname = "?"
-                    # Log full session ID for debugging
-                    device_short = device_id[-20:] if device_id else "?"
                     log(f"  - PID {s.ProcessId}: {pname} (DisplayName: {s.DisplayName})", "AUDIO")
-                    log(f"      Device: ...{device_short}", "AUDIO")
                 # Warn about processes with multiple audio sessions
                 multi_session_pids = [pid for pid, count in pid_counts.items() if count > 1]
                 if multi_session_pids:
                     log(f"Note: {len(multi_session_pids)} process(es) have multiple audio sessions", "AUDIO")
 
-            for session, device_id in sessions_with_devices:
+            for session in sessions:
                 # Skip system sounds (ProcessId 0)
                 if session.ProcessId == 0:
                     continue
@@ -335,19 +332,16 @@ def set_game_volume(game_pids, level, game_folder=None, game_name=None, is_game_
                                 configured_sessions[session_id] = {
                                     'vol_interface': vol_interface,
                                     'pid': session.ProcessId,
-                                    'name': process_name,
-                                    'device_id': device_id
+                                    'name': process_name
                                 }
                                 new_set_count += 1
                                 total_set_count += 1
                                 display_info = f" [{process_name}]" if process_name else ""
                                 display_name_info = f" DisplayName='{session.DisplayName}'" if session.DisplayName else ""
-                                device_short = device_id[-20:] if device_id else "?"
                                 actual_percent = int(actual_level * 100)
 
                                 # Log with before/after for debugging
                                 log(f"Set volume for PID {session.ProcessId}{display_info}{display_name_info}: {before_percent}% -> {actual_percent}% (target: {level}%)", "AUDIO")
-                                log(f"  Device: ...{device_short}", "AUDIO")
 
                                 # Expand known_pids to include siblings of matched process
                                 # This helps catch Electron helper processes with separate audio
