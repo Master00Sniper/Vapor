@@ -1328,11 +1328,11 @@ custom_resource_entry.pack(pady=(0, 20), anchor='center')
 help_scroll_frame = ctk.CTkScrollableFrame(master=help_tab, fg_color="transparent")
 help_scroll_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
-help_title = ctk.CTkLabel(master=help_scroll_frame, text="Help & Support", font=("Calibri", 25, "bold"))
+help_title = ctk.CTkLabel(master=help_scroll_frame, text="Help, Support & Bug Reports", font=("Calibri", 25, "bold"))
 help_title.pack(pady=(10, 5), anchor='center')
 
 help_description = ctk.CTkLabel(master=help_scroll_frame,
-                                text="Get help with Vapor, learn how it works, and troubleshoot common issues.",
+                                text="Get help with Vapor, troubleshoot issues, and submit bug reports.",
                                 font=("Calibri", 13), text_color="gray60")
 help_description.pack(pady=(0, 15), anchor='center')
 
