@@ -1062,29 +1062,29 @@ gpu_alert_row.pack(pady=5, fill='x')
 
 enable_gpu_temp_alert_var = tk.BooleanVar(value=enable_gpu_temp_alert)
 enable_gpu_temp_alert_switch = ctk.CTkSwitch(master=gpu_alert_row, text="Enable",
-                                              variable=enable_gpu_temp_alert_var, font=("Calibri", 13))
+                                              variable=enable_gpu_temp_alert_var, font=("Calibri", 14))
 enable_gpu_temp_alert_switch.pack(side='left', padx=(0, 20))
 
-gpu_warning_label = ctk.CTkLabel(master=gpu_alert_row, text="Warning:", font=("Calibri", 13))
+gpu_warning_label = ctk.CTkLabel(master=gpu_alert_row, text="Warning:", font=("Calibri", 14))
 gpu_warning_label.pack(side='left', padx=(0, 5))
 
 gpu_temp_warning_threshold_var = tk.StringVar(value=str(gpu_temp_warning_threshold))
 gpu_warning_entry = ctk.CTkEntry(master=gpu_alert_row, textvariable=gpu_temp_warning_threshold_var,
-                                  width=45, font=("Calibri", 13))
+                                  width=50, font=("Calibri", 14))
 gpu_warning_entry.pack(side='left', padx=(0, 3))
 
-gpu_warning_unit = ctk.CTkLabel(master=gpu_alert_row, text="°C", font=("Calibri", 13))
+gpu_warning_unit = ctk.CTkLabel(master=gpu_alert_row, text="°C", font=("Calibri", 14))
 gpu_warning_unit.pack(side='left', padx=(0, 15))
 
-gpu_critical_label = ctk.CTkLabel(master=gpu_alert_row, text="Critical:", font=("Calibri", 13), text_color="#ff6b6b")
+gpu_critical_label = ctk.CTkLabel(master=gpu_alert_row, text="Critical:", font=("Calibri", 14), text_color="#ff6b6b")
 gpu_critical_label.pack(side='left', padx=(0, 5))
 
 gpu_temp_critical_threshold_var = tk.StringVar(value=str(gpu_temp_critical_threshold))
 gpu_critical_entry = ctk.CTkEntry(master=gpu_alert_row, textvariable=gpu_temp_critical_threshold_var,
-                                   width=45, font=("Calibri", 13))
+                                   width=50, font=("Calibri", 14))
 gpu_critical_entry.pack(side='left', padx=(0, 3))
 
-gpu_critical_unit = ctk.CTkLabel(master=gpu_alert_row, text="°C", font=("Calibri", 13))
+gpu_critical_unit = ctk.CTkLabel(master=gpu_alert_row, text="°C", font=("Calibri", 14))
 gpu_critical_unit.pack(side='left')
 
 # CPU Temperature Alerts
@@ -1096,29 +1096,29 @@ cpu_alert_row.pack(pady=5, fill='x')
 
 enable_cpu_temp_alert_var = tk.BooleanVar(value=enable_cpu_temp_alert)
 enable_cpu_temp_alert_switch = ctk.CTkSwitch(master=cpu_alert_row, text="Enable",
-                                              variable=enable_cpu_temp_alert_var, font=("Calibri", 13))
+                                              variable=enable_cpu_temp_alert_var, font=("Calibri", 14))
 enable_cpu_temp_alert_switch.pack(side='left', padx=(0, 20))
 
-cpu_warning_label = ctk.CTkLabel(master=cpu_alert_row, text="Warning:", font=("Calibri", 13))
+cpu_warning_label = ctk.CTkLabel(master=cpu_alert_row, text="Warning:", font=("Calibri", 14))
 cpu_warning_label.pack(side='left', padx=(0, 5))
 
 cpu_temp_warning_threshold_var = tk.StringVar(value=str(cpu_temp_warning_threshold))
 cpu_warning_entry = ctk.CTkEntry(master=cpu_alert_row, textvariable=cpu_temp_warning_threshold_var,
-                                  width=45, font=("Calibri", 13))
+                                  width=50, font=("Calibri", 14))
 cpu_warning_entry.pack(side='left', padx=(0, 3))
 
-cpu_warning_unit = ctk.CTkLabel(master=cpu_alert_row, text="°C", font=("Calibri", 13))
+cpu_warning_unit = ctk.CTkLabel(master=cpu_alert_row, text="°C", font=("Calibri", 14))
 cpu_warning_unit.pack(side='left', padx=(0, 15))
 
-cpu_critical_label = ctk.CTkLabel(master=cpu_alert_row, text="Critical:", font=("Calibri", 13), text_color="#ff6b6b")
+cpu_critical_label = ctk.CTkLabel(master=cpu_alert_row, text="Critical:", font=("Calibri", 14), text_color="#ff6b6b")
 cpu_critical_label.pack(side='left', padx=(0, 5))
 
 cpu_temp_critical_threshold_var = tk.StringVar(value=str(cpu_temp_critical_threshold))
 cpu_critical_entry = ctk.CTkEntry(master=cpu_alert_row, textvariable=cpu_temp_critical_threshold_var,
-                                   width=45, font=("Calibri", 13))
+                                   width=50, font=("Calibri", 14))
 cpu_critical_entry.pack(side='left', padx=(0, 3))
 
-cpu_critical_unit = ctk.CTkLabel(master=cpu_alert_row, text="°C", font=("Calibri", 13))
+cpu_critical_unit = ctk.CTkLabel(master=cpu_alert_row, text="°C", font=("Calibri", 14))
 cpu_critical_unit.pack(side='left')
 
 thermal_alerts_note = ctk.CTkLabel(master=thermal_alerts_frame,
