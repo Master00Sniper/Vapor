@@ -1663,8 +1663,7 @@ def submit_bug_report():
 
         payload = {
             "title": f"[Bug Report] {title}",
-            "body": issue_body,
-            "labels": ["bug", "user-reported"]
+            "body": issue_body
         }
 
         response = requests.post(proxy_url, headers=headers, json=payload, timeout=15)
