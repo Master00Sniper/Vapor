@@ -146,11 +146,21 @@ import win11toast
 
 # Core modules (temperature and audio)
 from core import (
+    # Temperature monitoring
     NVML_AVAILABLE, PYADL_AVAILABLE, WMI_AVAILABLE, HWMON_AVAILABLE, LHM_AVAILABLE,
     get_gpu_temperature, get_cpu_temperature, show_temperature_alert,
     TemperatureTracker, temperature_tracker,
     TEMP_HISTORY_DIR, get_temp_history_path, load_temp_history, save_temp_history, get_lifetime_max_temps,
+    # Audio control
     set_system_volume, find_game_pids, set_game_volume,
+    # Steam API
+    get_running_steam_app_id, get_game_name, get_game_header_image, get_game_store_details,
+    preload_game_details, get_preloaded_game_details,
+    HEADER_IMAGE_CACHE_DIR, get_cached_header_image_path, cache_game_header_image,
+    preload_header_image, get_preloaded_header_image,
+    warmup_customtkinter, prepare_session_popup,
+    # Steam filesystem
+    DEFAULT_STEAM_PATH, get_steam_path, get_library_folders, get_game_folder,
 )
 
 import atexit
@@ -262,7 +272,6 @@ from platform_utils import (
 # Additional paths specific to main application
 NOTIFICATION_WARNING_DISMISSED_FILE = os.path.join(appdata_dir, 'notification_warning_dismissed')
 UI_SCRIPT_PATH = os.path.join(base_dir, 'vapor_settings_ui.py')
-STEAM_PATH = r"C:\Program Files (x86)\Steam\steamapps"
 
 from updater import check_for_updates, CURRENT_VERSION
 
@@ -660,238 +669,6 @@ def set_startup(enabled):
         winreg.CloseKey(key)
     except Exception as e:
         log(f"Startup registry error: {e}", "ERROR")
-
-
-# =============================================================================
-# Steam Integration
-# =============================================================================
-
-def get_running_steam_app_id():
-    """Get the AppID of currently running Steam game (0 if none)."""
-    try:
-        key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Valve\Steam")
-        app_id, _ = winreg.QueryValueEx(key, "RunningAppID")
-        winreg.CloseKey(key)
-        return int(app_id)
-    except:
-        return 0
-
-
-def get_game_name(app_id):
-    """Fetch game name from Steam API for given AppID."""
-    if app_id == 0:
-        return "No game running"
-    log(f"Fetching game name for AppID {app_id} from Steam API...", "STEAM")
-    try:
-        url = f"http://store.steampowered.com/api/appdetails?appids={app_id}"
-        response = requests.get(url, timeout=5)
-        data = response.json()
-        if response.status_code == 200 and str(app_id) in data and data[str(app_id)]["success"]:
-            name = data[str(app_id)]["data"]["name"]
-            log(f"Game name resolved: {name}", "STEAM")
-            return name
-    except Exception as e:
-        log(f"Failed to fetch game name: {e}", "ERROR")
-    return "Unknown"
-
-
-def get_game_header_image(app_id):
-    """Fetch game header image URL from Steam API for given AppID."""
-    if app_id == 0:
-        return None
-    try:
-        url = f"http://store.steampowered.com/api/appdetails?appids={app_id}"
-        response = requests.get(url, timeout=5)
-        data = response.json()
-        if response.status_code == 200 and str(app_id) in data and data[str(app_id)]["success"]:
-            header_image = data[str(app_id)]["data"].get("header_image")
-            if header_image:
-                log(f"Got header image URL for AppID {app_id}", "STEAM")
-                return header_image
-    except Exception as e:
-        log(f"Failed to fetch game header image: {e}", "ERROR")
-    return None
-
-
-def get_game_store_details(app_id):
-    """Fetch game details from Steam Store API.
-
-    Returns dict with: developers, publishers, release_date, metacritic_score, metacritic_url
-    """
-    if app_id == 0:
-        return None
-    try:
-        url = f"http://store.steampowered.com/api/appdetails?appids={app_id}"
-        response = requests.get(url, timeout=5)
-        data = response.json()
-        if response.status_code == 200 and str(app_id) in data and data[str(app_id)]["success"]:
-            game_data = data[str(app_id)]["data"]
-
-            details = {
-                'developers': game_data.get('developers', []),
-                'publishers': game_data.get('publishers', []),
-                'release_date': game_data.get('release_date', {}).get('date', 'Unknown'),
-                'metacritic_score': None,
-                'metacritic_url': None
-            }
-
-            # Metacritic data (may not exist for all games)
-            metacritic = game_data.get('metacritic')
-            if metacritic:
-                details['metacritic_score'] = metacritic.get('score')
-                details['metacritic_url'] = metacritic.get('url')
-
-            log(f"Got store details for AppID {app_id}", "STEAM")
-            return details
-    except Exception as e:
-        log(f"Failed to fetch game store details: {e}", "ERROR")
-    return None
-
-
-# Pre-loaded game details for instant popup display
-_preloaded_game_details = None
-_preloaded_game_details_lock = threading.Lock()
-
-
-def preload_game_details(app_id):
-    """Pre-load game details from Steam Store API for instant display."""
-    global _preloaded_game_details
-
-    if app_id == 0:
-        return
-
-    details = get_game_store_details(app_id)
-    if details:
-        with _preloaded_game_details_lock:
-            _preloaded_game_details = details
-        log(f"Pre-loaded game details for AppID {app_id}", "CACHE")
-
-
-def get_preloaded_game_details():
-    """Get the pre-loaded game details (or None if not available)."""
-    global _preloaded_game_details
-    with _preloaded_game_details_lock:
-        details = _preloaded_game_details
-        _preloaded_game_details = None  # Clear after use
-        return details
-
-
-# Directory for cached game header images
-HEADER_IMAGE_CACHE_DIR = os.path.join(appdata_dir, 'images')
-os.makedirs(HEADER_IMAGE_CACHE_DIR, exist_ok=True)
-
-
-def get_cached_header_image_path(app_id):
-    """Get the path to the cached header image for a game."""
-    return os.path.join(HEADER_IMAGE_CACHE_DIR, f"{app_id}.jpg")
-
-
-def cache_game_header_image(app_id):
-    """Download and cache the game header image for later use.
-
-    Should be called when a game starts so the image is ready when the game ends.
-    Runs in the background to avoid blocking.
-    """
-    if app_id == 0:
-        return
-
-    cache_path = get_cached_header_image_path(app_id)
-
-    # Skip if already cached
-    if os.path.exists(cache_path):
-        log(f"Header image already cached for AppID {app_id}", "CACHE")
-        return
-
-    try:
-        # Get the image URL from Steam API
-        header_image_url = get_game_header_image(app_id)
-        if not header_image_url:
-            return
-
-        # Download the image
-        response = requests.get(header_image_url, timeout=10)
-        if response.status_code == 200:
-            # Save to cache
-            with open(cache_path, 'wb') as f:
-                f.write(response.content)
-            log(f"Cached header image for AppID {app_id}", "CACHE")
-    except Exception as e:
-        log(f"Failed to cache header image for AppID {app_id}: {e}", "ERROR")
-
-
-# Pre-loaded image for instant popup display
-_preloaded_header_image = None
-_preloaded_header_image_lock = threading.Lock()
-
-
-def preload_header_image(app_id):
-    """Pre-load and resize the header image into memory for instant display.
-
-    Should be called after cache_game_header_image() completes.
-    """
-    global _preloaded_header_image
-    from PIL import Image
-
-    if app_id == 0:
-        return
-
-    cache_path = get_cached_header_image_path(app_id)
-    if not os.path.exists(cache_path):
-        return
-
-    try:
-        pil_image = Image.open(cache_path)
-        # Pre-resize to the exact size needed for the popup
-        aspect_ratio = pil_image.height / pil_image.width
-        new_width = 400
-        new_height = int(new_width * aspect_ratio)
-        pil_image = pil_image.resize((new_width, new_height), Image.LANCZOS)
-
-        with _preloaded_header_image_lock:
-            _preloaded_header_image = pil_image
-        log(f"Pre-loaded header image for AppID {app_id}", "CACHE")
-    except Exception as e:
-        log(f"Failed to pre-load header image: {e}", "ERROR")
-
-
-def get_preloaded_header_image():
-    """Get the pre-loaded header image (or None if not available)."""
-    global _preloaded_header_image
-    with _preloaded_header_image_lock:
-        img = _preloaded_header_image
-        _preloaded_header_image = None  # Clear after use
-        return img
-
-
-def warmup_customtkinter():
-    """Pre-initialize CustomTkinter by creating and destroying a hidden window.
-
-    This loads themes, fonts, etc. so the actual popup appears faster.
-    """
-    try:
-        import customtkinter as ctk
-        # Create a tiny hidden window to trigger CTk initialization
-        root = ctk.CTk()
-        root.withdraw()  # Hide immediately
-        root.update()    # Process initialization
-        root.destroy()   # Clean up
-        log("CustomTkinter pre-initialized", "CACHE")
-    except Exception as e:
-        log(f"Failed to pre-initialize CustomTkinter: {e}", "ERROR")
-
-
-def prepare_session_popup(app_id):
-    """Background task to prepare everything needed for the session popup.
-
-    Called when a game starts. Downloads/caches image, pre-loads it into memory,
-    fetches game details from Steam, and warms up CustomTkinter so the popup
-    appears instantly when the game ends.
-    """
-    cache_game_header_image(app_id)
-    preload_header_image(app_id)
-    preload_game_details(app_id)
-    warmup_customtkinter()
-
 
 # =============================================================================
 # Process Management
@@ -1414,83 +1191,6 @@ def close_all_popups():
             except Exception:
                 pass
         _open_popups.clear()
-
-
-# =============================================================================
-# Steam Path Detection
-# =============================================================================
-
-def get_steam_path():
-    """Detect Steam installation path from registry."""
-    log("Detecting Steam installation path...", "STEAM")
-    try:
-        key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Valve\Steam")
-        path, _ = winreg.QueryValueEx(key, "SteamPath")
-        winreg.CloseKey(key)
-        steamapps = os.path.join(path, "steamapps")
-        log(f"Steam path detected: {steamapps}", "STEAM")
-        return steamapps
-    except Exception as e:
-        log(f"Failed to auto-detect Steam path: {e} - using default", "STEAM")
-        return STEAM_PATH
-
-
-def get_library_folders():
-    """Scan for all Steam library folders (including additional drives)."""
-    log("Scanning for Steam library folders...", "STEAM")
-    main_steamapps = get_steam_path()
-    steam_install_dir = os.path.dirname(main_steamapps)
-    vdf_paths = [
-        os.path.join(steam_install_dir, 'steamapps', 'libraryfolders.vdf'),
-        os.path.join(steam_install_dir, 'config', 'libraryfolders.vdf')
-    ]
-
-    libraries = set()
-    for vdf_path in vdf_paths:
-        if os.path.exists(vdf_path):
-            log(f"Found VDF: {vdf_path}", "STEAM")
-            try:
-                with open(vdf_path, 'r', encoding='utf-8') as f:
-                    content = f.read()
-                paths = re.findall(r'"path"\s+"(.*?)"', content)
-                for p in paths:
-                    lib_path = p.replace('\\\\', '\\')
-                    steamapps = os.path.join(lib_path, 'steamapps')
-                    if os.path.exists(steamapps):
-                        libraries.add(steamapps)
-            except Exception as e:
-                log(f"Error parsing VDF: {e}", "ERROR")
-
-    if os.path.exists(main_steamapps):
-        libraries.add(main_steamapps)
-
-    libraries = list(libraries)
-    log(f"Found {len(libraries)} library folder(s)", "STEAM")
-    return libraries
-
-
-def get_game_folder(app_id):
-    """Locate the installation folder for a Steam game by AppID."""
-    log(f"Locating game folder for AppID {app_id}...", "STEAM")
-    libraries = get_library_folders()
-    for lib in libraries:
-        manifest_path = os.path.join(lib, f"appmanifest_{app_id}.acf")
-        if os.path.exists(manifest_path):
-            log(f"Found manifest: {manifest_path}", "STEAM")
-            try:
-                with open(manifest_path, 'r', encoding='utf-8') as f:
-                    content = f.read()
-                installdir_match = re.search(r'"installdir"\s+"(.*?)"', content)
-                if installdir_match:
-                    installdir = installdir_match.group(1).replace('\\\\', '\\')
-                    game_folder = os.path.join(lib, "common", installdir)
-                    if os.path.exists(game_folder):
-                        log(f"Game folder found: {game_folder}", "STEAM")
-                        return game_folder
-            except Exception as e:
-                log(f"Error parsing manifest: {e}", "ERROR")
-    log(f"Could not find game folder for AppID {app_id}", "STEAM")
-    return None
 
 
 # =============================================================================

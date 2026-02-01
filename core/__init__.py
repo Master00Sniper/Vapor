@@ -28,3 +28,31 @@ from core.audio import (
     find_game_pids,
     set_game_volume,
 )
+
+from core.steam_api import (
+    # Registry access
+    get_running_steam_app_id,
+    # Steam Store API
+    get_game_name,
+    get_game_header_image,
+    get_game_store_details,
+    # Game details preloading
+    preload_game_details,
+    get_preloaded_game_details,
+    # Header image caching
+    HEADER_IMAGE_CACHE_DIR,
+    get_cached_header_image_path,
+    cache_game_header_image,
+    preload_header_image,
+    get_preloaded_header_image,
+    # Session popup preparation
+    warmup_customtkinter,
+    prepare_session_popup,
+)
+
+from core.steam_filesystem import (
+    DEFAULT_STEAM_PATH,
+    get_steam_path,
+    get_library_folders,
+    get_game_folder,
+)
