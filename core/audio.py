@@ -138,7 +138,7 @@ def find_game_pids(game_folder):
     return []
 
 
-def set_game_volume(game_pids, level, game_folder=None, game_name=None):
+def set_game_volume(game_pids, level, game_folder=None, game_name=None, is_game_running_func=None):
     """Set volume for game processes (0-100) with retry logic.
 
     Games can have multiple audio sessions that appear at different times,
@@ -149,6 +149,9 @@ def set_game_volume(game_pids, level, game_folder=None, game_name=None):
 
     If game_name is provided, will also match audio sessions by display name
     (useful for Electron apps where audio comes from helper processes).
+
+    If is_game_running_func is provided, monitoring will stop early if the
+    game is no longer running.
     """
     if not game_pids and not game_folder:
         return
@@ -290,6 +293,15 @@ def set_game_volume(game_pids, level, game_folder=None, game_name=None):
                         log(f"No audio sessions found yet (attempt {attempt + 1}/{max_attempts})...", "AUDIO")
                 else:
                     log("No audio sessions found after all attempts", "AUDIO")
+
+            # Check if game is still running (every 4 attempts = every second)
+            if is_game_running_func and attempt % 4 == 0:
+                if not is_game_running_func():
+                    if total_set_count > 0:
+                        log(f"Game ended - stopping audio monitoring ({total_set_count} session(s) configured)", "AUDIO")
+                    else:
+                        log("Game ended - stopping audio monitoring (no sessions found)", "AUDIO")
+                    break
 
             time.sleep(retry_delay)
     except Exception as e:
