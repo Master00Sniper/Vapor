@@ -167,6 +167,8 @@ def set_game_volume(game_pids, level, game_folder=None, game_name=None):
         # After finding first session, continue checking for additional sessions
         stable_count = 0  # Count of consecutive polls with no new sessions
         stable_threshold = 4  # Stop after 4 consecutive polls (1 second) with no new sessions
+        first_session_attempt = None  # Track when first session was found
+        min_monitor_duration = 120  # Minimum polls after first session (30 seconds at 0.25s/poll)
 
         # Keep track of all known PIDs (will be updated if game_folder provided)
         known_pids = set(game_pids)
@@ -263,10 +265,15 @@ def set_game_volume(game_pids, level, game_folder=None, game_name=None):
             if new_set_count > 0:
                 log(f"Configured {new_set_count} new audio session(s) (total: {total_set_count})", "AUDIO")
                 stable_count = 0  # Reset stability counter when we find new sessions
+                # Track when first session was found for minimum monitoring duration
+                if first_session_attempt is None:
+                    first_session_attempt = attempt
             elif total_set_count > 0:
                 # We've set at least one session, now waiting to see if more appear
                 stable_count += 1
-                if stable_count >= stable_threshold:
+                # Only stop if: stable AND minimum monitoring time has passed
+                polls_since_first = attempt - first_session_attempt if first_session_attempt is not None else 0
+                if stable_count >= stable_threshold and polls_since_first >= min_monitor_duration:
                     log(f"Audio sessions stable - {total_set_count} total session(s) configured", "AUDIO")
                     break
             else:
