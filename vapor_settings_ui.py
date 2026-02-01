@@ -1593,7 +1593,7 @@ system_info_checkbox.pack(pady=(0, 5), anchor='center')
 # Recent logs checkbox
 include_logs_var = ctk.BooleanVar(value=True)
 logs_checkbox = ctk.CTkCheckBox(master=help_scroll_frame,
-                                 text="Include recent logs (last 150 lines)",
+                                 text="Include recent logs (last 250 lines)",
                                  variable=include_logs_var,
                                  font=("Calibri", 12))
 logs_checkbox.pack(pady=(0, 3), anchor='center')
@@ -1620,9 +1620,32 @@ def get_system_info():
         f"- **Architecture**: {platform.machine()}",
     ]
 
-    # Try to get GPU info
+    # Admin status
     try:
-        import subprocess
+        info_lines.append(f"- **Running as Admin**: {'Yes' if is_admin() else 'No'}")
+    except:
+        pass
+
+    # PawnIO driver status
+    try:
+        info_lines.append(f"- **PawnIO Driver**: {'Installed' if is_pawnio_installed() else 'Not installed'}")
+    except:
+        pass
+
+    # CPU info
+    try:
+        result = subprocess.run(
+            ['wmic', 'cpu', 'get', 'name'],
+            capture_output=True, text=True, timeout=5
+        )
+        cpu_lines = [line.strip() for line in result.stdout.strip().split('\n') if line.strip() and line.strip() != 'Name']
+        if cpu_lines:
+            info_lines.append(f"- **CPU**: {cpu_lines[0]}")
+    except:
+        pass
+
+    # GPU info
+    try:
         result = subprocess.run(
             ['wmic', 'path', 'win32_VideoController', 'get', 'name'],
             capture_output=True, text=True, timeout=5
@@ -1630,6 +1653,14 @@ def get_system_info():
         gpu_lines = [line.strip() for line in result.stdout.strip().split('\n') if line.strip() and line.strip() != 'Name']
         if gpu_lines:
             info_lines.append(f"- **GPU**: {', '.join(gpu_lines)}")
+    except:
+        pass
+
+    # RAM info
+    try:
+        mem = psutil.virtual_memory()
+        total_gb = mem.total / (1024 ** 3)
+        info_lines.append(f"- **RAM**: {total_gb:.1f} GB")
     except:
         pass
 
@@ -1646,7 +1677,7 @@ def sanitize_logs(log_content):
     return sanitized
 
 
-def get_recent_logs(num_lines=150):
+def get_recent_logs(num_lines=250):
     """Read the last N lines from the Vapor log file."""
     log_file = os.path.join(appdata_dir, 'vapor_logs.log')
 
@@ -1691,11 +1722,11 @@ def submit_bug_report():
         body_parts.append(get_system_info())
 
     if include_logs_var.get():
-        recent_logs = get_recent_logs(150)
+        recent_logs = get_recent_logs(250)
         if recent_logs:
             body_parts.append("\n## Recent Logs")
             body_parts.append("<details>")
-            body_parts.append("<summary>Click to expand logs (last 150 lines)</summary>")
+            body_parts.append("<summary>Click to expand logs (last 250 lines)</summary>")
             body_parts.append("")
             body_parts.append("```")
             body_parts.append(recent_logs)
