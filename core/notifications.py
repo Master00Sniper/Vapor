@@ -178,7 +178,14 @@ def show_notification_warning_popup(reason="notifications_disabled"):
 
     # Create popup window
     popup = ctk.CTk()
-    popup.withdraw()  # Hide while setting up to avoid icon flash
+
+    # Set icon immediately to minimize flash of default icon
+    icon_path = os.path.join(base_dir, 'Images', 'exe_icon.ico')
+    if os.path.exists(icon_path):
+        try:
+            popup.iconbitmap(icon_path)
+        except Exception:
+            pass
 
     # Register popup for cleanup on quit
     register_popup(popup)
@@ -228,14 +235,6 @@ Windows Settings > System > Notifications"""
     x = (screen_width - 500) // 2
     y = (screen_height - 340) // 2
     popup.geometry(f"500x340+{x}+{y}")
-
-    # Set window icon
-    icon_path = os.path.join(base_dir, 'Images', 'exe_icon.ico')
-    if os.path.exists(icon_path):
-        try:
-            popup.iconbitmap(icon_path)
-        except Exception:
-            pass
 
     # Title
     title_label = ctk.CTkLabel(
@@ -294,8 +293,7 @@ Windows Settings > System > Notifications"""
     )
     dont_show_button.pack(side="left", padx=10)
 
-    # Show window and bring to front
-    popup.deiconify()
+    # Bring window to front
     popup.lift()
     popup.attributes('-topmost', True)
     popup.after(100, lambda: popup.attributes('-topmost', False))
@@ -396,7 +394,15 @@ def show_detailed_summary(session_data):
         game_details = get_preloaded_game_details()
 
         popup = ctk.CTk()
-        popup.withdraw()  # Hide while setting up to avoid icon flash
+
+        # Set icon immediately to minimize flash of default icon
+        icon_path = os.path.join(base_dir, 'Images', 'exe_icon.ico')
+        if os.path.exists(icon_path):
+            try:
+                popup.iconbitmap(icon_path)
+            except Exception:
+                pass
+
         popup.title("Vapor - Game Session Details")
 
         # Register popup for cleanup on quit
@@ -423,14 +429,6 @@ def show_detailed_summary(session_data):
         x = (screen_width - window_width) // 2
         y = (screen_height - window_height) // 2
         popup.geometry(f"{window_width}x{window_height}+{x}+{y}")
-
-        # Set window icon
-        icon_path = os.path.join(base_dir, 'Images', 'exe_icon.ico')
-        if os.path.exists(icon_path):
-            try:
-                popup.iconbitmap(icon_path)
-            except Exception:
-                pass
 
         # IMPORTANT: Pack bottom bar FIRST so it reserves space at the bottom
         bottom_bar = ctk.CTkFrame(master=popup, fg_color="transparent")
@@ -687,8 +685,7 @@ def show_detailed_summary(session_data):
 
         temp_frame.grid_columnconfigure(3, weight=1)
 
-        # Show window and bring to front
-        popup.deiconify()
+        # Bring window to front
         popup.lift()
         popup.attributes('-topmost', True)
         popup.after(100, lambda: popup.attributes('-topmost', False))
