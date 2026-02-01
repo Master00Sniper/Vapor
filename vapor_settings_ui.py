@@ -945,7 +945,7 @@ enable_game_audio_switch.pack(pady=8, anchor='center')
 audio_note = ctk.CTkLabel(master=pref_scroll_frame,
                           text="Note: Some games use exclusive audio mode and won't reflect changes in Windows Volume Mixer.\n"
                                "Vapor will still set the volume for these games, but further adjustments require restarting the game.",
-                          font=("Calibri", 11), text_color="gray50", justify="center", wraplength=450)
+                          font=("Calibri", 12), text_color="gray50", justify="center", wraplength=520)
 audio_note.pack(pady=(15, 5), anchor='center')
 
 pref_sep3 = ctk.CTkFrame(master=pref_scroll_frame, height=2, fg_color="gray50")
