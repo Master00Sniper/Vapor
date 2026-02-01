@@ -1522,9 +1522,9 @@ developer_name = ctk.CTkLabel(master=about_scroll_frame, text="Greg Morton (@Mas
 developer_name.pack(pady=(0, 10), anchor='center')
 
 bio_text = """I'm a passionate gamer, Sr. Systems Administrator by profession, wine enthusiast, and proud 
-small winery owner. Vapor was born from my own frustration with notifications interrupting epic gaming 
-moments, and constantly having to adjust audio levels for games. I hope it enhances your gaming sessions 
-as much as it has mine."""
+small winery owner. Vapor was born from my own frustration with notifications interrupting
+epic gaming moments, and constantly having to adjust audio levels for games. I hope it enhances
+your gaming sessions as much as it has mine."""
 
 bio_label = ctk.CTkLabel(master=about_scroll_frame, text=bio_text, font=("Calibri", 13),
                          wraplength=520, justify="center")
