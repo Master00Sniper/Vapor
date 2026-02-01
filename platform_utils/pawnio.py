@@ -160,6 +160,12 @@ def install_pawnio_silent():
             clear_pawnio_cache()
         else:
             log(f"PawnIO installation failed: {result.stderr}", "PAWNIO")
+
+        # Explicitly release subprocess resources to avoid MEI folder issues on restart
+        del result
+        import gc
+        gc.collect()
+
         return success
     except subprocess.TimeoutExpired:
         log("PawnIO installation timed out", "PAWNIO")
