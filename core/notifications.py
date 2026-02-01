@@ -593,32 +593,41 @@ def show_detailed_summary(session_data):
             # === LEFT COLUMN: Developer, Publisher, Released, Metacritic ===
             left_row = 0
 
-            # Developer
+            # Developer (always show, red N/A if not available)
             developers = game_details.get('developers', [])
+            ctk.CTkLabel(master=left_frame, text="Developer:", font=("Calibri", 14, "bold"),
+                         anchor="w").grid(row=left_row, column=0, sticky="w", pady=2)
             if developers:
-                ctk.CTkLabel(master=left_frame, text="Developer:", font=("Calibri", 14, "bold"),
-                             anchor="w").grid(row=left_row, column=0, sticky="w", pady=2)
                 ctk.CTkLabel(master=left_frame, text=", ".join(developers[:2]), font=("Calibri", 14),
                              anchor="e").grid(row=left_row, column=1, sticky="e", pady=2)
-                left_row += 1
+            else:
+                ctk.CTkLabel(master=left_frame, text="N/A", font=("Calibri", 14, "bold"),
+                             text_color="#FF0000", anchor="e").grid(row=left_row, column=1, sticky="e", pady=2)
+            left_row += 1
 
-            # Publisher (only if different from developer)
+            # Publisher (always show, red N/A if not available or same as developer)
             publishers = game_details.get('publishers', [])
+            ctk.CTkLabel(master=left_frame, text="Publisher:", font=("Calibri", 14, "bold"),
+                         anchor="w").grid(row=left_row, column=0, sticky="w", pady=2)
             if publishers and publishers != developers:
-                ctk.CTkLabel(master=left_frame, text="Publisher:", font=("Calibri", 14, "bold"),
-                             anchor="w").grid(row=left_row, column=0, sticky="w", pady=2)
                 ctk.CTkLabel(master=left_frame, text=", ".join(publishers[:2]), font=("Calibri", 14),
                              anchor="e").grid(row=left_row, column=1, sticky="e", pady=2)
-                left_row += 1
+            else:
+                ctk.CTkLabel(master=left_frame, text="N/A", font=("Calibri", 14, "bold"),
+                             text_color="#FF0000", anchor="e").grid(row=left_row, column=1, sticky="e", pady=2)
+            left_row += 1
 
-            # Release Date
+            # Release Date (always show, red N/A if not available)
             release_date = game_details.get('release_date')
+            ctk.CTkLabel(master=left_frame, text="Released:", font=("Calibri", 14, "bold"),
+                         anchor="w").grid(row=left_row, column=0, sticky="w", pady=2)
             if release_date and release_date != 'Unknown':
-                ctk.CTkLabel(master=left_frame, text="Released:", font=("Calibri", 14, "bold"),
-                             anchor="w").grid(row=left_row, column=0, sticky="w", pady=2)
                 ctk.CTkLabel(master=left_frame, text=release_date, font=("Calibri", 14),
                              anchor="e").grid(row=left_row, column=1, sticky="e", pady=2)
-                left_row += 1
+            else:
+                ctk.CTkLabel(master=left_frame, text="N/A", font=("Calibri", 14, "bold"),
+                             text_color="#FF0000", anchor="e").grid(row=left_row, column=1, sticky="e", pady=2)
+            left_row += 1
 
             # Metacritic Score (always show, with red N/A if not available)
             metacritic_score = game_details.get('metacritic_score')
@@ -644,29 +653,35 @@ def show_detailed_summary(session_data):
             # === RIGHT COLUMN: SteamSpy data + Website ===
             right_row = 0
 
-            # Estimated Owners (SteamSpy)
+            # Estimated Owners (SteamSpy) - always show, red N/A if not available
             steamspy_owners = game_details.get('steamspy_owners')
+            ctk.CTkLabel(master=right_frame, text="Estimated Owners:", font=("Calibri", 14, "bold"),
+                         anchor="w").grid(row=right_row, column=0, sticky="w", pady=2)
             if steamspy_owners:
-                ctk.CTkLabel(master=right_frame, text="Estimated Owners:", font=("Calibri", 14, "bold"),
-                             anchor="w").grid(row=right_row, column=0, sticky="w", pady=2)
                 ctk.CTkLabel(master=right_frame, text=steamspy_owners, font=("Calibri", 14),
                              anchor="e").grid(row=right_row, column=1, sticky="e", pady=2)
-                right_row += 1
+            else:
+                ctk.CTkLabel(master=right_frame, text="N/A", font=("Calibri", 14, "bold"),
+                             text_color="#FF0000", anchor="e").grid(row=right_row, column=1, sticky="e", pady=2)
+            right_row += 1
 
-            # Concurrent Players (SteamSpy)
+            # Concurrent Players (SteamSpy) - always show, red N/A if not available
             steamspy_ccu = game_details.get('steamspy_ccu')
+            ctk.CTkLabel(master=right_frame, text="Concurrent Players:", font=("Calibri", 14, "bold"),
+                         anchor="w").grid(row=right_row, column=0, sticky="w", pady=2)
             if steamspy_ccu:
-                ctk.CTkLabel(master=right_frame, text="Concurrent Players:", font=("Calibri", 14, "bold"),
-                             anchor="w").grid(row=right_row, column=0, sticky="w", pady=2)
                 ctk.CTkLabel(master=right_frame, text=f"{steamspy_ccu:,}", font=("Calibri", 14),
                              anchor="e").grid(row=right_row, column=1, sticky="e", pady=2)
-                right_row += 1
+            else:
+                ctk.CTkLabel(master=right_frame, text="N/A", font=("Calibri", 14, "bold"),
+                             text_color="#FF0000", anchor="e").grid(row=right_row, column=1, sticky="e", pady=2)
+            right_row += 1
 
-            # User Score (SteamSpy)
+            # User Score (SteamSpy) - always show, red N/A if not available
             steamspy_user_score = game_details.get('steamspy_user_score')
+            ctk.CTkLabel(master=right_frame, text="User Score:", font=("Calibri", 14, "bold"),
+                         anchor="w").grid(row=right_row, column=0, sticky="w", pady=2)
             if steamspy_user_score:
-                ctk.CTkLabel(master=right_frame, text="User Score:", font=("Calibri", 14, "bold"),
-                             anchor="w").grid(row=right_row, column=0, sticky="w", pady=2)
                 # Color code user score similar to metacritic
                 if steamspy_user_score >= 75:
                     user_score_color = "#66CC33"  # Green
@@ -676,13 +691,16 @@ def show_detailed_summary(session_data):
                     user_score_color = "#FF0000"  # Red
                 ctk.CTkLabel(master=right_frame, text=f"{steamspy_user_score}%", font=("Calibri", 14, "bold"),
                              text_color=user_score_color, anchor="e").grid(row=right_row, column=1, sticky="e", pady=2)
-                right_row += 1
+            else:
+                ctk.CTkLabel(master=right_frame, text="N/A", font=("Calibri", 14, "bold"),
+                             text_color="#FF0000", anchor="e").grid(row=right_row, column=1, sticky="e", pady=2)
+            right_row += 1
 
-            # Website (Steam Store API)
+            # Website (Steam Store API) - always show, red N/A if not available
             website = game_details.get('website')
+            ctk.CTkLabel(master=right_frame, text="Website:", font=("Calibri", 14, "bold"),
+                         anchor="w").grid(row=right_row, column=0, sticky="w", pady=2)
             if website:
-                ctk.CTkLabel(master=right_frame, text="Website:", font=("Calibri", 14, "bold"),
-                             anchor="w").grid(row=right_row, column=0, sticky="w", pady=2)
                 website_btn = ctk.CTkButton(
                     master=right_frame, text="Open", font=("Calibri", 12),
                     width=60, height=22, corner_radius=5,
@@ -690,7 +708,10 @@ def show_detailed_summary(session_data):
                     command=lambda url=website: __import__('webbrowser').open(url)
                 )
                 website_btn.grid(row=right_row, column=1, sticky="e", pady=2)
-                right_row += 1
+            else:
+                ctk.CTkLabel(master=right_frame, text="N/A", font=("Calibri", 14, "bold"),
+                             text_color="#FF0000", anchor="e").grid(row=right_row, column=1, sticky="e", pady=2)
+            right_row += 1
 
             right_frame.grid_columnconfigure(1, weight=1)
 
@@ -726,17 +747,17 @@ def show_detailed_summary(session_data):
         cpu_section.grid(row=0, column=0, sticky="nsew", padx=(0, 15))
 
         # CPU header row
-        ctk.CTkLabel(master=cpu_section, text="", font=("Calibri", 12),
+        ctk.CTkLabel(master=cpu_section, text="", font=("Calibri", 14),
                      anchor="w").grid(row=0, column=0, sticky="w", pady=2)
-        ctk.CTkLabel(master=cpu_section, text="Start", font=("Calibri", 11, "bold"),
+        ctk.CTkLabel(master=cpu_section, text="Start", font=("Calibri", 14, "bold"),
                      text_color="gray60").grid(row=0, column=1, sticky="e", pady=2, padx=(8, 0))
-        ctk.CTkLabel(master=cpu_section, text="Session Max", font=("Calibri", 11, "bold"),
+        ctk.CTkLabel(master=cpu_section, text="Session Max", font=("Calibri", 14, "bold"),
                      text_color="gray60").grid(row=0, column=2, sticky="e", pady=2, padx=(8, 0))
-        ctk.CTkLabel(master=cpu_section, text="Lifetime Max", font=("Calibri", 11, "bold"),
+        ctk.CTkLabel(master=cpu_section, text="Lifetime Max", font=("Calibri", 14, "bold"),
                      text_color="#FFD700").grid(row=0, column=3, sticky="e", pady=2, padx=(8, 0))
 
         # CPU data row - always show, red N/A if not available
-        ctk.CTkLabel(master=cpu_section, text="CPU:", font=("Calibri", 13, "bold"),
+        ctk.CTkLabel(master=cpu_section, text="CPU:", font=("Calibri", 14, "bold"),
                      anchor="w").grid(row=1, column=0, sticky="w", pady=2)
 
         cpu_start = f"{start_cpu_temp}°C" if start_cpu_temp is not None else "N/A"
@@ -746,11 +767,11 @@ def show_detailed_summary(session_data):
         cpu_max_color = "#FF0000" if max_cpu_temp is None else None
         cpu_lifetime_color = "#FF0000" if lifetime_max_cpu is None else "#FFD700"
 
-        ctk.CTkLabel(master=cpu_section, text=cpu_start, font=("Calibri", 12),
+        ctk.CTkLabel(master=cpu_section, text=cpu_start, font=("Calibri", 14),
                      text_color=cpu_start_color).grid(row=1, column=1, sticky="e", pady=2, padx=(8, 0))
-        ctk.CTkLabel(master=cpu_section, text=cpu_max, font=("Calibri", 12),
+        ctk.CTkLabel(master=cpu_section, text=cpu_max, font=("Calibri", 14),
                      text_color=cpu_max_color).grid(row=1, column=2, sticky="e", pady=2, padx=(8, 0))
-        ctk.CTkLabel(master=cpu_section, text=cpu_lifetime, font=("Calibri", 12),
+        ctk.CTkLabel(master=cpu_section, text=cpu_lifetime, font=("Calibri", 14),
                      text_color=cpu_lifetime_color).grid(row=1, column=3, sticky="e", pady=2, padx=(8, 0))
 
         cpu_section.grid_columnconfigure(3, weight=1)
@@ -760,17 +781,17 @@ def show_detailed_summary(session_data):
         gpu_section.grid(row=0, column=1, sticky="nsew", padx=(15, 0))
 
         # GPU header row
-        ctk.CTkLabel(master=gpu_section, text="", font=("Calibri", 12),
+        ctk.CTkLabel(master=gpu_section, text="", font=("Calibri", 14),
                      anchor="w").grid(row=0, column=0, sticky="w", pady=2)
-        ctk.CTkLabel(master=gpu_section, text="Start", font=("Calibri", 11, "bold"),
+        ctk.CTkLabel(master=gpu_section, text="Start", font=("Calibri", 14, "bold"),
                      text_color="gray60").grid(row=0, column=1, sticky="e", pady=2, padx=(8, 0))
-        ctk.CTkLabel(master=gpu_section, text="Session Max", font=("Calibri", 11, "bold"),
+        ctk.CTkLabel(master=gpu_section, text="Session Max", font=("Calibri", 14, "bold"),
                      text_color="gray60").grid(row=0, column=2, sticky="e", pady=2, padx=(8, 0))
-        ctk.CTkLabel(master=gpu_section, text="Lifetime Max", font=("Calibri", 11, "bold"),
+        ctk.CTkLabel(master=gpu_section, text="Lifetime Max", font=("Calibri", 14, "bold"),
                      text_color="#FFD700").grid(row=0, column=3, sticky="e", pady=2, padx=(8, 0))
 
         # GPU data row
-        ctk.CTkLabel(master=gpu_section, text="GPU:", font=("Calibri", 13, "bold"),
+        ctk.CTkLabel(master=gpu_section, text="GPU:", font=("Calibri", 14, "bold"),
                      anchor="w").grid(row=1, column=0, sticky="w", pady=2)
 
         gpu_start = f"{start_gpu_temp}°C" if start_gpu_temp is not None else "N/A"
@@ -780,11 +801,11 @@ def show_detailed_summary(session_data):
         gpu_max_color = "gray60" if max_gpu_temp is None else None
         gpu_lifetime_color = "gray60" if lifetime_max_gpu is None else "#FFD700"
 
-        ctk.CTkLabel(master=gpu_section, text=gpu_start, font=("Calibri", 12),
+        ctk.CTkLabel(master=gpu_section, text=gpu_start, font=("Calibri", 14),
                      text_color=gpu_start_color).grid(row=1, column=1, sticky="e", pady=2, padx=(8, 0))
-        ctk.CTkLabel(master=gpu_section, text=gpu_max, font=("Calibri", 12),
+        ctk.CTkLabel(master=gpu_section, text=gpu_max, font=("Calibri", 14),
                      text_color=gpu_max_color).grid(row=1, column=2, sticky="e", pady=2, padx=(8, 0))
-        ctk.CTkLabel(master=gpu_section, text=gpu_lifetime, font=("Calibri", 12),
+        ctk.CTkLabel(master=gpu_section, text=gpu_lifetime, font=("Calibri", 14),
                      text_color=gpu_lifetime_color).grid(row=1, column=3, sticky="e", pady=2, padx=(8, 0))
 
         gpu_section.grid_columnconfigure(3, weight=1)
