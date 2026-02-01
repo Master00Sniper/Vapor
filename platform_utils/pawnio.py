@@ -1,4 +1,4 @@
-# platform/pawnio.py
+# platform_utils/pawnio.py
 # PawnIO driver management for CPU temperature monitoring
 
 import os
@@ -9,7 +9,7 @@ import subprocess
 
 from utils.logging import log
 from utils.constants import base_dir
-from platform.windows import is_admin
+from platform_utils.windows import is_admin
 
 # =============================================================================
 # Cache Configuration

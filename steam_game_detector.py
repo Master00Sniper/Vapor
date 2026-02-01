@@ -351,7 +351,7 @@ from utils import (
 )
 
 # Import platform utilities (admin checks, PawnIO driver)
-from platform import (
+from platform_utils import (
     is_admin, is_pawnio_installed, run_pawnio_installer,
     clear_pawnio_cache
 )

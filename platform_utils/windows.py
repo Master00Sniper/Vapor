@@ -1,4 +1,4 @@
-# platform/windows.py
+# platform_utils/windows.py
 # Windows-specific platform utilities for Vapor application
 
 import ctypes

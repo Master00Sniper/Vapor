@@ -1,8 +1,8 @@
-# platform/__init__.py
+# platform_utils/__init__.py
 # Platform-specific utilities for Vapor application
 
-from platform.windows import is_admin
-from platform.pawnio import (
+from platform_utils.windows import is_admin
+from platform_utils.pawnio import (
     is_winget_available,
     is_pawnio_installed,
     clear_pawnio_cache,
