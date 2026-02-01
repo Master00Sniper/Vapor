@@ -255,22 +255,50 @@ def set_game_volume(game_pids, level, game_folder=None, game_name=None, is_game_
                         if hasattr(session, 'SimpleAudioVolume') and session.SimpleAudioVolume:
                             try:
                                 vol_interface = session.SimpleAudioVolume
-                                # Log volume BEFORE setting for debugging
-                                before_level = vol_interface.GetMasterVolume()
-                                before_percent = int(before_level * 100)
+                                display_info = f" [{process_name}]" if process_name else ""
 
+                                # VERBOSE LOGGING for NMS debugging
+                                log(f"DEBUG: Found matching session PID {session.ProcessId}{display_info}", "AUDIO")
+                                log(f"DEBUG:   Session.Identifier: {session.Identifier}", "AUDIO")
+                                log(f"DEBUG:   Session.DisplayName: '{session.DisplayName}'", "AUDIO")
+
+                                # Check if muted
+                                try:
+                                    is_muted = vol_interface.GetMute()
+                                    log(f"DEBUG:   Muted: {is_muted}", "AUDIO")
+                                except Exception as e:
+                                    log(f"DEBUG:   GetMute failed: {e}", "AUDIO")
+
+                                # Log volume BEFORE setting
+                                before_level = vol_interface.GetMasterVolume()
+                                log(f"DEBUG:   GetMasterVolume() BEFORE = {before_level} ({int(before_level * 100)}%)", "AUDIO")
+
+                                # Set the volume
+                                log(f"DEBUG:   Calling SetMasterVolume({target_level}, None)...", "AUDIO")
                                 vol_interface.SetMasterVolume(target_level, None)
-                                # Verify the volume was actually set
-                                actual_level = vol_interface.GetMasterVolume()
+
+                                # Read multiple times to check consistency
+                                read1 = vol_interface.GetMasterVolume()
+                                time.sleep(0.05)  # Small delay
+                                read2 = vol_interface.GetMasterVolume()
+                                log(f"DEBUG:   GetMasterVolume() AFTER = {read1} ({int(read1 * 100)}%)", "AUDIO")
+                                log(f"DEBUG:   GetMasterVolume() AFTER (2nd read) = {read2} ({int(read2 * 100)}%)", "AUDIO")
+
+                                # Try setting again to see if it takes
+                                if abs(read1 - target_level) > 0.01:
+                                    log(f"DEBUG:   Volume didn't match target, trying SetMasterVolume again...", "AUDIO")
+                                    vol_interface.SetMasterVolume(target_level, None)
+                                    read3 = vol_interface.GetMasterVolume()
+                                    log(f"DEBUG:   GetMasterVolume() after 2nd set = {read3} ({int(read3 * 100)}%)", "AUDIO")
+
                                 set_session_ids.add(session_id)
                                 new_set_count += 1
                                 total_set_count += 1
-                                display_info = f" [{process_name}]" if process_name else ""
-                                display_name_info = f" DisplayName='{session.DisplayName}'" if session.DisplayName else ""
-                                actual_percent = int(actual_level * 100)
+                                actual_percent = int(read1 * 100)
+                                before_percent = int(before_level * 100)
 
-                                # Log with before/after for debugging
-                                log(f"Set volume for PID {session.ProcessId}{display_info}{display_name_info}: {before_percent}% -> {actual_percent}% (target: {level}%)", "AUDIO")
+                                # Summary log
+                                log(f"Set volume for PID {session.ProcessId}{display_info}: {before_percent}% -> {actual_percent}% (target: {level}%)", "AUDIO")
 
                                 # Expand known_pids to include siblings of matched process
                                 # This helps catch Electron helper processes with separate audio
