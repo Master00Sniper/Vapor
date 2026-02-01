@@ -200,8 +200,17 @@ def set_game_volume(game_pids, level, game_folder=None, game_name=None, is_game_
             sessions = AudioUtilities.GetAllSessions()
             new_set_count = 0
 
-            # Log all audio sessions on first attempt for debugging
+            # Log audio device and all sessions on first attempt for debugging
             if attempt == 0:
+                # Log the default audio device we're using
+                try:
+                    speakers = AudioUtilities.GetSpeakers()
+                    if speakers:
+                        device_id = speakers.GetId()
+                        log(f"Default audio device ID: {device_id}", "AUDIO")
+                except Exception as e:
+                    log(f"Could not get audio device: {e}", "AUDIO")
+
                 log(f"All audio sessions found:", "AUDIO")
                 pid_counts = {}  # Track how many sessions each PID has
                 for s in sessions:
@@ -212,9 +221,9 @@ def set_game_volume(game_pids, level, game_folder=None, game_name=None, is_game_
                         pname = s.Process.name() if s.Process else "?"
                     except:
                         pname = "?"
-                    # Include session ID in log to identify multiple sessions per process
-                    session_id_short = s.Identifier[-8:] if s.Identifier else "none"
-                    log(f"  - PID {s.ProcessId}: {pname} (DisplayName: {s.DisplayName}, SessionID: ...{session_id_short})", "AUDIO")
+                    # Log full session ID for debugging
+                    log(f"  - PID {s.ProcessId}: {pname} (DisplayName: {s.DisplayName})", "AUDIO")
+                    log(f"      SessionID: {s.Identifier}", "AUDIO")
                 # Warn about processes with multiple audio sessions
                 multi_session_pids = [pid for pid, count in pid_counts.items() if count > 1]
                 if multi_session_pids:
@@ -283,6 +292,7 @@ def set_game_volume(game_pids, level, game_folder=None, game_name=None, is_game_
 
                                 # Log with before/after for debugging
                                 log(f"Set volume for PID {session.ProcessId}{display_info}{display_name_info}: {before_percent}% -> {actual_percent}% (target: {level}%)", "AUDIO")
+                                log(f"  Session identifier: {session.Identifier}", "AUDIO")
 
                                 # Expand known_pids to include siblings of matched process
                                 # This helps catch Electron helper processes with separate audio
