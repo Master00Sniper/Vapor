@@ -300,6 +300,25 @@ def set_game_volume(game_pids, level, game_folder=None, game_name=None, is_game_
                                 # Summary log
                                 log(f"Set volume for PID {session.ProcessId}{display_info}: {before_percent}% -> {actual_percent}% (target: {level}%)", "AUDIO")
 
+                                # DEBUG: Dump ALL sessions after setting to check for duplicates/ghost sessions
+                                log(f"DEBUG: Dumping ALL sessions after setting PID {session.ProcessId}:", "AUDIO")
+                                all_sessions_now = AudioUtilities.GetAllSessions()
+                                for s in all_sessions_now:
+                                    if s.ProcessId == 0:
+                                        continue
+                                    try:
+                                        sname = s.Process.name() if s.Process else "?"
+                                    except:
+                                        sname = "?"
+                                    try:
+                                        svol = s.SimpleAudioVolume.GetMasterVolume() if s.SimpleAudioVolume else "N/A"
+                                        svol_pct = f"{int(svol * 100)}%" if isinstance(svol, float) else svol
+                                    except:
+                                        svol_pct = "ERR"
+                                    # Highlight if this is the session we just set
+                                    marker = " <<< JUST SET" if session.ProcessId == s.ProcessId else ""
+                                    log(f"DEBUG:   PID {s.ProcessId}: {sname} vol={svol_pct}{marker}", "AUDIO")
+
                                 # Expand known_pids to include siblings of matched process
                                 # This helps catch Electron helper processes with separate audio
                                 sibling_pids = _get_sibling_pids(session.ProcessId)
