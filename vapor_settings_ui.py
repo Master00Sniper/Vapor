@@ -1430,17 +1430,18 @@ reset_hint.pack(pady=(0, 10), anchor='center')
 
 
 def reset_settings_and_restart():
-    """Delete settings file and restart Vapor."""
+    """Delete settings file and close Vapor."""
     debug_log("Reset settings requested", "Reset")
     response = show_vapor_dialog(
         title="Reset Settings",
-        message="This will delete all settings and restart Vapor.\n\n"
+        message="This will delete all settings and close Vapor.\n\n"
                 "Your settings will be reset to defaults.\n"
+                "You will need to start Vapor again manually.\n"
                 "Are you sure?",
         dialog_type="warning",
         buttons=[
-            {"text": "Reset & Restart", "value": True, "color": "#c9302c"},
-            {"text": "Cancel", "value": False, "color": "gray"}
+            {"text": "Reset & Stop", "value": True, "color": "red"},
+            {"text": "Cancel", "value": False, "color": "green"}
         ],
         parent=root
     )
@@ -1455,12 +1456,12 @@ def reset_settings_and_restart():
         except Exception as e:
             debug_log(f"Error deleting settings: {e}", "Reset")
 
-        # Restart Vapor
-        win11toast.notify(body="Settings reset. Restarting Vapor...", app_id='Vapor - Streamline Gaming',
+        # Close Vapor
+        win11toast.notify(body="Settings reset. Please restart Vapor manually.", app_id='Vapor - Streamline Gaming',
                           duration='short', icon=TRAY_ICON_PATH, audio={'silent': 'true'})
 
-        restart_vapor(main_pid, require_admin=False)
         root.destroy()
+        os._exit(0)
     else:
         debug_log("User cancelled reset settings", "Reset")
 
