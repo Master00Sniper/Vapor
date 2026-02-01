@@ -257,12 +257,6 @@ def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=N
         dialog.transient(parent)
     dialog.grab_set()
 
-    # Bring window to front and give it focus
-    dialog.lift()
-    dialog.attributes('-topmost', True)
-    dialog.after(100, lambda: dialog.attributes('-topmost', False))
-    dialog.focus_force()
-
     # Main content frame (expandable)
     content_frame = ctk.CTkFrame(master=dialog, fg_color="transparent")
     content_frame.pack(fill="both", expand=True, padx=25, pady=(25, 10))
@@ -350,7 +344,13 @@ def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=N
     # Set icon before showing the dialog to avoid flash of default icon
     set_vapor_icon(dialog)
     dialog.update()
-    dialog.deiconify()  # Now show the dialog with icon already set
+
+    # Show window and bring to front
+    dialog.deiconify()
+    dialog.lift()
+    dialog.attributes('-topmost', True)
+    dialog.after(100, lambda: dialog.attributes('-topmost', False))
+    dialog.focus_force()
 
     # Wait for dialog to close
     if parent:
