@@ -701,34 +701,93 @@ def show_detailed_summary(session_data):
         # Temperature section
         temp_title = ctk.CTkLabel(
             master=content_frame,
-            text="Temperatures (Session Max)",
+            text="Temperatures",
             font=("Calibri", 15, "bold")
         )
-        temp_title.pack(pady=(5, 5))
+        temp_title.pack(pady=(5, 3))
 
-        temp_frame = ctk.CTkFrame(master=content_frame, fg_color="transparent")
-        temp_frame.pack(pady=5, padx=20, fill="x")
-        temp_frame.grid_columnconfigure(0, weight=1)
-        temp_frame.grid_columnconfigure(1, weight=1)
+        # Subtitle explaining lifetime max
+        temp_subtitle = ctk.CTkLabel(
+            master=content_frame,
+            text=f"Lifetime Max = highest recorded temperature for {game_name}",
+            font=("Calibri", 12),
+            text_color="gray50"
+        )
+        temp_subtitle.pack(pady=(0, 8))
 
-        # CPU temperature (left side) - always show, red N/A if not available
-        cpu_frame = ctk.CTkFrame(master=temp_frame, fg_color="transparent")
-        cpu_frame.grid(row=0, column=0, sticky="w")
+        # Two-column layout: CPU on left, GPU on right
+        temp_container = ctk.CTkFrame(master=content_frame, fg_color="transparent")
+        temp_container.pack(pady=5, padx=20, fill="x")
+        temp_container.grid_columnconfigure(0, weight=1)
+        temp_container.grid_columnconfigure(1, weight=1)
 
-        ctk.CTkLabel(master=cpu_frame, text="CPU:", font=("Calibri", 14, "bold")).pack(side="left")
-        if max_cpu_temp is not None:
-            ctk.CTkLabel(master=cpu_frame, text=f" {max_cpu_temp}°C", font=("Calibri", 14)).pack(side="left")
-        else:
-            ctk.CTkLabel(master=cpu_frame, text=" N/A", font=("Calibri", 14, "bold"),
-                         text_color="#FF0000").pack(side="left")
+        # === CPU Section (left) ===
+        cpu_section = ctk.CTkFrame(master=temp_container, fg_color="transparent")
+        cpu_section.grid(row=0, column=0, sticky="nsew", padx=(0, 15))
 
-        # GPU temperature (right side) - only show if available
-        gpu_frame = ctk.CTkFrame(master=temp_frame, fg_color="transparent")
-        gpu_frame.grid(row=0, column=1, sticky="e")
+        # CPU header row
+        ctk.CTkLabel(master=cpu_section, text="", font=("Calibri", 12),
+                     anchor="w").grid(row=0, column=0, sticky="w", pady=2)
+        ctk.CTkLabel(master=cpu_section, text="Start", font=("Calibri", 11, "bold"),
+                     text_color="gray60").grid(row=0, column=1, sticky="e", pady=2, padx=(8, 0))
+        ctk.CTkLabel(master=cpu_section, text="Session Max", font=("Calibri", 11, "bold"),
+                     text_color="gray60").grid(row=0, column=2, sticky="e", pady=2, padx=(8, 0))
+        ctk.CTkLabel(master=cpu_section, text="Lifetime Max", font=("Calibri", 11, "bold"),
+                     text_color="#FFD700").grid(row=0, column=3, sticky="e", pady=2, padx=(8, 0))
 
-        if max_gpu_temp is not None:
-            ctk.CTkLabel(master=gpu_frame, text="GPU:", font=("Calibri", 14, "bold")).pack(side="left")
-            ctk.CTkLabel(master=gpu_frame, text=f" {max_gpu_temp}°C", font=("Calibri", 14)).pack(side="left")
+        # CPU data row - always show, red N/A if not available
+        ctk.CTkLabel(master=cpu_section, text="CPU:", font=("Calibri", 13, "bold"),
+                     anchor="w").grid(row=1, column=0, sticky="w", pady=2)
+
+        cpu_start = f"{start_cpu_temp}°C" if start_cpu_temp is not None else "N/A"
+        cpu_max = f"{max_cpu_temp}°C" if max_cpu_temp is not None else "N/A"
+        cpu_lifetime = f"{lifetime_max_cpu}°C" if lifetime_max_cpu is not None else "N/A"
+        cpu_start_color = "#FF0000" if start_cpu_temp is None else None
+        cpu_max_color = "#FF0000" if max_cpu_temp is None else None
+        cpu_lifetime_color = "#FF0000" if lifetime_max_cpu is None else "#FFD700"
+
+        ctk.CTkLabel(master=cpu_section, text=cpu_start, font=("Calibri", 12),
+                     text_color=cpu_start_color).grid(row=1, column=1, sticky="e", pady=2, padx=(8, 0))
+        ctk.CTkLabel(master=cpu_section, text=cpu_max, font=("Calibri", 12),
+                     text_color=cpu_max_color).grid(row=1, column=2, sticky="e", pady=2, padx=(8, 0))
+        ctk.CTkLabel(master=cpu_section, text=cpu_lifetime, font=("Calibri", 12),
+                     text_color=cpu_lifetime_color).grid(row=1, column=3, sticky="e", pady=2, padx=(8, 0))
+
+        cpu_section.grid_columnconfigure(3, weight=1)
+
+        # === GPU Section (right) ===
+        gpu_section = ctk.CTkFrame(master=temp_container, fg_color="transparent")
+        gpu_section.grid(row=0, column=1, sticky="nsew", padx=(15, 0))
+
+        # GPU header row
+        ctk.CTkLabel(master=gpu_section, text="", font=("Calibri", 12),
+                     anchor="w").grid(row=0, column=0, sticky="w", pady=2)
+        ctk.CTkLabel(master=gpu_section, text="Start", font=("Calibri", 11, "bold"),
+                     text_color="gray60").grid(row=0, column=1, sticky="e", pady=2, padx=(8, 0))
+        ctk.CTkLabel(master=gpu_section, text="Session Max", font=("Calibri", 11, "bold"),
+                     text_color="gray60").grid(row=0, column=2, sticky="e", pady=2, padx=(8, 0))
+        ctk.CTkLabel(master=gpu_section, text="Lifetime Max", font=("Calibri", 11, "bold"),
+                     text_color="#FFD700").grid(row=0, column=3, sticky="e", pady=2, padx=(8, 0))
+
+        # GPU data row
+        ctk.CTkLabel(master=gpu_section, text="GPU:", font=("Calibri", 13, "bold"),
+                     anchor="w").grid(row=1, column=0, sticky="w", pady=2)
+
+        gpu_start = f"{start_gpu_temp}°C" if start_gpu_temp is not None else "N/A"
+        gpu_max = f"{max_gpu_temp}°C" if max_gpu_temp is not None else "N/A"
+        gpu_lifetime = f"{lifetime_max_gpu}°C" if lifetime_max_gpu is not None else "N/A"
+        gpu_start_color = "gray60" if start_gpu_temp is None else None
+        gpu_max_color = "gray60" if max_gpu_temp is None else None
+        gpu_lifetime_color = "gray60" if lifetime_max_gpu is None else "#FFD700"
+
+        ctk.CTkLabel(master=gpu_section, text=gpu_start, font=("Calibri", 12),
+                     text_color=gpu_start_color).grid(row=1, column=1, sticky="e", pady=2, padx=(8, 0))
+        ctk.CTkLabel(master=gpu_section, text=gpu_max, font=("Calibri", 12),
+                     text_color=gpu_max_color).grid(row=1, column=2, sticky="e", pady=2, padx=(8, 0))
+        ctk.CTkLabel(master=gpu_section, text=gpu_lifetime, font=("Calibri", 12),
+                     text_color=gpu_lifetime_color).grid(row=1, column=3, sticky="e", pady=2, padx=(8, 0))
+
+        gpu_section.grid_columnconfigure(3, weight=1)
 
         # Bring window to front
         popup.lift()
