@@ -92,7 +92,7 @@ def find_game_pids(game_folder):
     return []
 
 
-def set_game_volume(game_pids, level, game_folder=None):
+def set_game_volume(game_pids, level, game_folder=None, game_name=None):
     """Set volume for game processes (0-100) with retry logic.
 
     Games can have multiple audio sessions that appear at different times,
@@ -100,10 +100,15 @@ def set_game_volume(game_pids, level, game_folder=None):
 
     If game_folder is provided, will dynamically discover new child processes
     that spawn during the monitoring period.
+
+    If game_name is provided, will also match audio sessions by display name
+    (useful for Electron apps where audio comes from helper processes).
     """
     if not game_pids and not game_folder:
         return
     log(f"Setting game volume to {level}% for {len(game_pids)} PID(s)...", "AUDIO")
+    if game_name:
+        log(f"Also matching audio sessions by name: {game_name}", "AUDIO")
     comtypes.CoInitializeEx(comtypes.COINIT_MULTITHREADED)
     try:
         target_level = max(0, min(100, level)) / 100.0
@@ -120,6 +125,9 @@ def set_game_volume(game_pids, level, game_folder=None):
         # Keep track of all known PIDs (will be updated if game_folder provided)
         known_pids = set(game_pids)
 
+        # Normalize game name for matching
+        game_name_lower = game_name.lower() if game_name else None
+
         for attempt in range(max_attempts):
             # Refresh PIDs to catch newly spawned child processes
             if game_folder and attempt % 2 == 0:  # Refresh every second (every 2 attempts)
@@ -132,7 +140,17 @@ def set_game_volume(game_pids, level, game_folder=None):
             new_set_count = 0
 
             for session in sessions:
-                if session.ProcessId in known_pids:
+                # Match by PID or by display name
+                is_match = session.ProcessId in known_pids
+
+                # Also match by display name if game_name provided
+                if not is_match and game_name_lower and session.DisplayName:
+                    display_lower = session.DisplayName.lower()
+                    # Match if display name contains game name or vice versa
+                    if game_name_lower in display_lower or display_lower in game_name_lower:
+                        is_match = True
+
+                if is_match:
                     # Use the session's stable Identifier property
                     session_id = session.Identifier
 
@@ -144,7 +162,8 @@ def set_game_volume(game_pids, level, game_folder=None):
                                 set_session_ids.add(session_id)
                                 new_set_count += 1
                                 total_set_count += 1
-                                log(f"Set volume for session {session.ProcessId} to {level}%", "AUDIO")
+                                display_info = f" ({session.DisplayName})" if session.DisplayName else ""
+                                log(f"Set volume for session {session.ProcessId}{display_info} to {level}%", "AUDIO")
                             except Exception as e:
                                 log(f"Failed to set volume for session {session.ProcessId}: {e}", "AUDIO")
 

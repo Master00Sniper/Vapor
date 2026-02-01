@@ -1575,7 +1575,7 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
         if enable_game_audio:
             game_folder = get_game_folder(previous_app_id)
             game_pids = find_game_pids(game_folder)
-            set_game_volume(game_pids, game_audio_level, game_folder)
+            set_game_volume(game_pids, game_audio_level, game_folder, current_game_name)
         if enable_during_power:
             set_power_plan(during_power_plan)
         if enable_game_mode_start:
@@ -1789,7 +1789,7 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
                             log("Configuring game audio...", "GAME")
                             game_folder = get_game_folder(current_app_id)
                             game_pids = find_game_pids(game_folder)
-                            set_game_volume(game_pids, game_audio_level, game_folder)
+                            set_game_volume(game_pids, game_audio_level, game_folder, game_name)
                         if enable_during_power:
                             set_power_plan(during_power_plan)
                         if enable_game_mode_start:
