@@ -1705,7 +1705,9 @@ def on_save():
             message="CPU temperature monitoring requires administrator privileges.\n\n"
                     "Would you like to restart Vapor with admin privileges now?\n\n"
                     "If you click 'Restart as Admin', Vapor will close and relaunch\n"
-                    "with elevated permissions to enable CPU temperature monitoring.",
+                    "with elevated permissions to enable CPU temperature monitoring.\n\n"
+                    "Note: Vapor will continue to request admin privileges at startup\n"
+                    "while Capture CPU Temperature is enabled.",
             dialog_type="warning",
             buttons=[
                 {"text": "Restart as Admin", "value": True, "color": "green"},
