@@ -1035,11 +1035,10 @@ if __name__ == '__main__':
     else:
         # === NORMAL TRAY MODE ===
         try:
-            global _stop_event, _tray_icon
             killed_notification = {}
             killed_resource = {}
             stop_event = threading.Event()
-            _stop_event = stop_event  # Make accessible to signal handler
+            _stop_event = stop_event  # Make accessible to signal handler (module-level var)
 
             # Check if this is the first run (no settings file exists)
             is_first_run = not os.path.exists(SETTINGS_FILE)
