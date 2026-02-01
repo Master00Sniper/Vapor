@@ -1003,6 +1003,15 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
                         start_time = time.time()
                         current_game_name = game_name
 
+                        # VERY LOW PRIORITY: Pre-cache session popup after 60 second delay
+                        # Start this FIRST so the 60s timer begins immediately when game is detected
+                        def delayed_prepare_popup(app_id):
+                            time.sleep(60)
+                            # Only run if the game is still running (skip if game ended early)
+                            if get_running_steam_app_id() == app_id:
+                                prepare_session_popup(app_id)
+                        threading.Thread(target=delayed_prepare_popup, args=(current_app_id,), daemon=True).start()
+
                         # HIGH PRIORITY: Audio settings first (most time-sensitive for player experience)
                         if enable_system_audio:
                             set_system_volume(system_audio_level)
@@ -1034,15 +1043,6 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
                                                              cpu_temp_critical_threshold, enable_gpu_temp_alert,
                                                              gpu_temp_warning_threshold, gpu_temp_critical_threshold,
                                                              game_name=game_name)
-
-                        # VERY LOW PRIORITY: Pre-cache session popup after 60 second delay
-                        # This avoids any interference with game loading
-                        def delayed_prepare_popup(app_id):
-                            time.sleep(60)
-                            # Only run if the game is still running (skip if game ended early)
-                            if get_running_steam_app_id() == app_id:
-                                prepare_session_popup(app_id)
-                        threading.Thread(target=delayed_prepare_popup, args=(current_app_id,), daemon=True).start()
 
                         log(f"Game session started for: {game_name}", "GAME")
 
