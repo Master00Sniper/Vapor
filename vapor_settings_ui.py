@@ -180,8 +180,8 @@ def restart_vapor(main_pid, require_admin=False, delay_seconds=3):
             # before starting the new one. This avoids PyInstaller _MEI folder conflicts.
             current_pid = os.getpid()
 
-            # Create batch file in the Vapor directory (stable location, not temp)
-            batch_path = os.path.join(working_dir, '_vapor_restart.bat')
+            # Create batch file in AppData folder (hidden from user, stable location)
+            batch_path = os.path.join(appdata_dir, '_vapor_restart.bat')
             batch_content = f'''@echo off
 :: Vapor restart helper - waits for old process to exit before launching new one
 :: This avoids PyInstaller _MEI folder conflicts
