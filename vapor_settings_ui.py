@@ -1596,7 +1596,14 @@ logs_checkbox = ctk.CTkCheckBox(master=help_scroll_frame,
                                  text="Include recent logs (last 150 lines)",
                                  variable=include_logs_var,
                                  font=("Calibri", 12))
-logs_checkbox.pack(pady=(0, 10), anchor='center')
+logs_checkbox.pack(pady=(0, 3), anchor='center')
+
+# Privacy disclaimer
+logs_disclaimer = ctk.CTkLabel(master=help_scroll_frame,
+                               text="Your Windows username is redacted from logs, but other folder names\n"
+                                    "in paths where Vapor is running may be visible in the public report.",
+                               font=("Calibri", 11), text_color="gray50")
+logs_disclaimer.pack(pady=(0, 10), anchor='center')
 
 # Status label for feedback
 bug_status_label = ctk.CTkLabel(master=help_scroll_frame, text="", font=("Calibri", 12))
@@ -1629,6 +1636,16 @@ def get_system_info():
     return '\n'.join(info_lines)
 
 
+def sanitize_logs(log_content):
+    """Redact Windows usernames from log content."""
+    import re
+    # Match C:\Users\<username>\ or C:/Users/<username>/ (case-insensitive)
+    # Captures the username and replaces it with [REDACTED]
+    pattern = r'(C:[/\\][Uu]sers[/\\])([^/\\]+)([/\\])'
+    sanitized = re.sub(pattern, r'\1[REDACTED]\3', log_content)
+    return sanitized
+
+
 def get_recent_logs(num_lines=150):
     """Read the last N lines from the Vapor log file."""
     log_file = os.path.join(appdata_dir, 'vapor_logs.log')
@@ -1642,7 +1659,10 @@ def get_recent_logs(num_lines=150):
 
         # Get last N lines
         recent_lines = lines[-num_lines:] if len(lines) > num_lines else lines
-        return ''.join(recent_lines).strip()
+        log_content = ''.join(recent_lines).strip()
+
+        # Sanitize to remove usernames from paths
+        return sanitize_logs(log_content)
     except Exception as e:
         debug_log(f"Failed to read logs for bug report: {e}", "BugReport")
         return None
