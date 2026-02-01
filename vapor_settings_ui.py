@@ -75,7 +75,7 @@ except ImportError:
 # Vapor Restart Functions
 # =============================================================================
 
-def restart_vapor(main_pid, require_admin=False):
+def restart_vapor(main_pid, require_admin=False, delay_seconds=3):
     """
     Restart the main Vapor process.
 
@@ -83,10 +83,12 @@ def restart_vapor(main_pid, require_admin=False):
         main_pid: PID of the main Vapor process to terminate before restart
         require_admin: If True and not already admin, will request elevation.
                       If False, restarts without elevation prompt.
+        delay_seconds: Seconds to wait before starting new process (default 3).
+                      Use longer delays after driver installations.
 
     Uses a delayed start via PowerShell to avoid MEI folder cleanup errors.
     """
-    debug_log(f"Restarting Vapor (main_pid={main_pid}, require_admin={require_admin})", "Restart")
+    debug_log(f"Restarting Vapor (main_pid={main_pid}, require_admin={require_admin}, delay={delay_seconds}s)", "Restart")
 
     # Terminate current main process if running
     if main_pid:
@@ -147,7 +149,7 @@ def restart_vapor(main_pid, require_admin=False):
     # Use PowerShell with a delay to start the new process
     # This ensures the old process (settings UI) has fully exited before new Vapor starts
     # The delay prevents "Failed to remove temporary directory" MEI folder errors
-    ps_command = f'Start-Sleep -Seconds 2; Start-Process -FilePath \\"{executable}\\"{args_part}'
+    ps_command = f'Start-Sleep -Seconds {delay_seconds}; Start-Process -FilePath \\"{executable}\\"{args_part}'
 
     try:
         # Only use "runas" if elevation is required AND we're not already admin
@@ -1876,7 +1878,8 @@ def on_save():
                 )
                 if restart_response:
                     # Restart Vapor (already running as admin if we got here)
-                    if restart_vapor(main_pid, require_admin=False):
+                    # Use longer delay after driver install to ensure cleanup completes
+                    if restart_vapor(main_pid, require_admin=False, delay_seconds=5):
                         root.destroy()
                         return True
             else:
@@ -2109,7 +2112,8 @@ def check_pending_pawnio_install():
                 parent=root
             )
             if restart_response:
-                if restart_vapor(main_pid, require_admin=False):
+                # Use longer delay after driver install to ensure cleanup completes
+                if restart_vapor(main_pid, require_admin=False, delay_seconds=5):
                     root.destroy()
                     return
         else:
