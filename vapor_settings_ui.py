@@ -174,16 +174,17 @@ def restart_vapor(main_pid, require_admin=False, delay_seconds=3):
             debug_log(f"ShellExecuteW result: {result}", "Restart")
             return result > 32
         else:
-            # Already admin or no elevation needed - use ShellExecuteW with "open" verb
-            # This creates a completely independent process without inheriting any environment
-            # from the current process, avoiding PyInstaller MEI folder issues
-            ps_command = f'Start-Sleep -Seconds {delay_seconds}; Start-Process -FilePath \\"{executable}\\"{args_part}'
-            debug_log(f"Using ShellExecuteW with 'open' verb", "Restart")
+            # Already admin or no elevation needed - use cmd.exe with start command
+            # This avoids PowerShell which may have issues with MEI folder cleanup
+            # The /I flag ensures a clean environment (no inheritance from parent)
+            # The /D flag sets the working directory
+            cmd_args = f'/C timeout /t {delay_seconds} /nobreak >nul & start "" /I /D "{working_dir}" "{executable}"'
+            debug_log(f"Using ShellExecuteW with cmd.exe: {cmd_args}", "Restart")
             result = ctypes.windll.shell32.ShellExecuteW(
                 None,
-                "open",  # "open" instead of "runas" - no UAC prompt needed
-                "powershell.exe",
-                f'-WindowStyle Hidden -Command "{ps_command}"',
+                "open",
+                "cmd.exe",
+                cmd_args,
                 working_dir,
                 0  # SW_HIDE
             )
