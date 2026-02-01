@@ -74,6 +74,27 @@ def _get_game_pids_from_folder(game_folder):
     return pids
 
 
+def _get_sibling_pids(pid):
+    """Get all sibling PIDs (processes with the same parent) for a given PID."""
+    siblings = set()
+    try:
+        proc = psutil.Process(pid)
+        parent = proc.parent()
+        if parent:
+            # Add all children of parent (siblings including self)
+            for sibling in parent.children(recursive=False):
+                siblings.add(sibling.pid)
+                # Also add children of siblings (for Electron helper processes)
+                try:
+                    for child in sibling.children(recursive=True):
+                        siblings.add(child.pid)
+                except Exception:
+                    pass
+    except Exception:
+        pass
+    return siblings
+
+
 def find_game_pids(game_folder):
     """Find process IDs for executables running from the game folder."""
     if not game_folder:
@@ -124,6 +145,13 @@ def set_game_volume(game_pids, level, game_folder=None, game_name=None):
 
         # Keep track of all known PIDs (will be updated if game_folder provided)
         known_pids = set(game_pids)
+
+        # Expand to include siblings of initial PIDs (helps with Electron apps)
+        for pid in list(known_pids):
+            sibling_pids = _get_sibling_pids(pid)
+            known_pids.update(sibling_pids)
+        if len(known_pids) > len(game_pids):
+            log(f"Expanded to {len(known_pids)} PIDs (including siblings)", "AUDIO")
 
         # Normalize game name for matching
         game_name_lower = game_name.lower() if game_name else None
@@ -199,6 +227,13 @@ def set_game_volume(game_pids, level, game_folder=None, game_name=None):
                                 total_set_count += 1
                                 display_info = f" [{process_name}]" if process_name else ""
                                 log(f"Set volume for PID {session.ProcessId}{display_info} to {level}%", "AUDIO")
+
+                                # Expand known_pids to include siblings of matched process
+                                # This helps catch Electron helper processes with separate audio
+                                sibling_pids = _get_sibling_pids(session.ProcessId)
+                                if sibling_pids - known_pids:
+                                    log(f"Adding {len(sibling_pids - known_pids)} sibling process(es) to search", "AUDIO")
+                                    known_pids.update(sibling_pids)
                             except Exception as e:
                                 log(f"Failed to set volume for session {session.ProcessId}: {e}", "AUDIO")
 
