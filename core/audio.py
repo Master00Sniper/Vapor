@@ -93,7 +93,11 @@ def find_game_pids(game_folder):
 
 
 def set_game_volume(game_pids, level):
-    """Set volume for game processes (0-100) with retry logic."""
+    """Set volume for game processes (0-100) with retry logic.
+
+    Games can have multiple audio sessions that appear at different times,
+    so we continue monitoring for new sessions after finding the first one.
+    """
     if not game_pids:
         return
     log(f"Setting game volume to {level}% for {len(game_pids)} PID(s)...", "AUDIO")
@@ -103,25 +107,48 @@ def set_game_volume(game_pids, level):
         max_attempts = 240  # 240 attempts x 0.5s = 120 seconds (2 min) max wait
         retry_delay = 0.5
 
+        # Track sessions we've already set to avoid redundant operations
+        set_session_ids = set()
+        total_set_count = 0
+        # After finding first session, continue checking for additional sessions
+        stable_count = 0  # Count of consecutive polls with no new sessions
+        stable_threshold = 6  # Stop after 6 consecutive polls (3 seconds) with no new sessions
+
         for attempt in range(max_attempts):
             sessions = AudioUtilities.GetAllSessions()
-            set_count = 0
+            new_set_count = 0
+
             for session in sessions:
                 if session.ProcessId in game_pids:
-                    if hasattr(session, 'SimpleAudioVolume'):
-                        volume = session.SimpleAudioVolume
-                        volume.SetMasterVolume(level, None)
-                        set_count += 1
+                    # Create unique identifier for this session
+                    session_id = (session.ProcessId, id(session._ctl))
 
-            if set_count > 0:
-                log(f"Game volume set for {set_count} audio session(s)", "AUDIO")
-                break
+                    if session_id not in set_session_ids:
+                        if hasattr(session, 'SimpleAudioVolume'):
+                            volume = session.SimpleAudioVolume
+                            volume.SetMasterVolume(level, None)
+                            set_session_ids.add(session_id)
+                            new_set_count += 1
+                            total_set_count += 1
+
+            if new_set_count > 0:
+                log(f"Game volume set for {new_set_count} new audio session(s) (total: {total_set_count})", "AUDIO")
+                stable_count = 0  # Reset stability counter when we find new sessions
+            elif total_set_count > 0:
+                # We've set at least one session, now waiting to see if more appear
+                stable_count += 1
+                if stable_count >= stable_threshold:
+                    log(f"Audio sessions stable - {total_set_count} total session(s) configured", "AUDIO")
+                    break
             else:
+                # No sessions found yet
                 if attempt < max_attempts - 1:
-                    log(f"No audio sessions found (attempt {attempt + 1}/{max_attempts})...", "AUDIO")
-                    time.sleep(retry_delay)
+                    if attempt % 10 == 0:  # Log every 5 seconds instead of every attempt
+                        log(f"No audio sessions found yet (attempt {attempt + 1}/{max_attempts})...", "AUDIO")
                 else:
                     log("No audio sessions found after all attempts", "AUDIO")
+
+            time.sleep(retry_delay)
     except Exception as e:
         log(f"Failed to set game volume: {e}", "ERROR")
     finally:
