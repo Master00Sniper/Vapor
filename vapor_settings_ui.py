@@ -941,6 +941,14 @@ enable_game_audio_switch = ctk.CTkSwitch(master=game_audio_column, text="Enable"
                                          font=("Calibri", 14))
 enable_game_audio_switch.pack(pady=8, anchor='center')
 
+# Note about exclusive audio mode - centered below both columns
+audio_note = ctk.CTkLabel(master=pref_scroll_frame,
+                          text="Note: Some games use exclusive audio mode and won't reflect changes\n"
+                               "in Windows Volume Mixer. Vapor will still set the volume for these\n"
+                               "games, but further adjustments require restarting the game.",
+                          font=("Calibri", 12), text_color="gray50", justify="center", wraplength=400)
+audio_note.pack(pady=(15, 5), anchor='center')
+
 pref_sep3 = ctk.CTkFrame(master=pref_scroll_frame, height=2, fg_color="gray50")
 pref_sep3.pack(fill="x", padx=40, pady=15)
 
@@ -1328,11 +1336,11 @@ custom_resource_entry.pack(pady=(0, 20), anchor='center')
 help_scroll_frame = ctk.CTkScrollableFrame(master=help_tab, fg_color="transparent")
 help_scroll_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
-help_title = ctk.CTkLabel(master=help_scroll_frame, text="Help & Support", font=("Calibri", 25, "bold"))
+help_title = ctk.CTkLabel(master=help_scroll_frame, text="Help, Support & Bug Reports", font=("Calibri", 25, "bold"))
 help_title.pack(pady=(10, 5), anchor='center')
 
 help_description = ctk.CTkLabel(master=help_scroll_frame,
-                                text="Get help with Vapor, learn how it works, and troubleshoot common issues.",
+                                text="Get help with Vapor, troubleshoot issues, and submit bug reports.",
                                 font=("Calibri", 13), text_color="gray60")
 help_description.pack(pady=(0, 15), anchor='center')
 
@@ -1549,6 +1557,266 @@ reset_all_button = ctk.CTkButton(master=reset_buttons_frame, text="Reset All Dat
                                  fg_color="#8b0000", hover_color="#5c0000", text_color="white", width=160,
                                  font=("Calibri", 14))
 reset_all_button.pack(side='left', padx=5)
+
+# =============================================================================
+# Bug Report Section
+# =============================================================================
+
+help_sep5 = ctk.CTkFrame(master=help_scroll_frame, height=2, fg_color="gray50")
+help_sep5.pack(fill="x", padx=40, pady=15)
+
+bug_report_title = ctk.CTkLabel(master=help_scroll_frame, text="Report a Bug", font=("Calibri", 17, "bold"))
+bug_report_title.pack(pady=(10, 5), anchor='center')
+
+bug_report_hint = ctk.CTkLabel(master=help_scroll_frame,
+                               text="Found a bug? Let us know! Your report will be submitted to GitHub Issues.",
+                               font=("Calibri", 12), text_color="gray60")
+bug_report_hint.pack(pady=(0, 10), anchor='center')
+
+# Bug title entry
+bug_title_label = ctk.CTkLabel(master=help_scroll_frame, text="Title (brief summary)", font=("Calibri", 13))
+bug_title_label.pack(pady=(5, 2), anchor='center')
+
+bug_title_entry = ctk.CTkEntry(master=help_scroll_frame, width=400, height=32, font=("Calibri", 13),
+                               placeholder_text="e.g., App crashes when starting a game")
+bug_title_entry.pack(pady=(0, 10), anchor='center')
+
+# Bug description textbox
+bug_desc_label = ctk.CTkLabel(master=help_scroll_frame, text="Description (steps to reproduce, expected vs actual behavior)",
+                              font=("Calibri", 13))
+bug_desc_label.pack(pady=(5, 2), anchor='center')
+
+bug_desc_textbox = ctk.CTkTextbox(master=help_scroll_frame, width=400, height=120, font=("Calibri", 13),
+                                  wrap="word")
+bug_desc_textbox.pack(pady=(0, 10), anchor='center')
+
+# Checkbox container frame for left-alignment
+checkbox_frame = ctk.CTkFrame(master=help_scroll_frame, fg_color="transparent")
+checkbox_frame.pack(pady=(5, 5), anchor='center')
+
+# System info checkbox
+include_system_info_var = ctk.BooleanVar(value=True)
+system_info_checkbox = ctk.CTkCheckBox(master=checkbox_frame,
+                                        text="Include system information (OS, Vapor version, Python version)",
+                                        variable=include_system_info_var,
+                                        font=("Calibri", 12))
+system_info_checkbox.pack(pady=(0, 8), anchor='w')
+
+# Recent logs checkbox
+include_logs_var = ctk.BooleanVar(value=True)
+logs_checkbox = ctk.CTkCheckBox(master=checkbox_frame,
+                                 text="Include recent logs (last 250 lines)",
+                                 variable=include_logs_var,
+                                 font=("Calibri", 12))
+logs_checkbox.pack(pady=(0, 3), anchor='w')
+
+# Privacy disclaimer
+logs_disclaimer = ctk.CTkLabel(master=help_scroll_frame,
+                               text="Your Windows username is redacted from logs, but other folder names\n"
+                                    "in paths where Vapor is running may be visible in the public report.",
+                               font=("Calibri", 11), text_color="gray50")
+logs_disclaimer.pack(pady=(0, 10), anchor='center')
+
+# Status label for feedback
+bug_status_label = ctk.CTkLabel(master=help_scroll_frame, text="", font=("Calibri", 12))
+bug_status_label.pack(pady=(0, 5), anchor='center')
+
+
+def get_system_info():
+    """Collect system information for bug reports."""
+    import platform
+    info_lines = [
+        f"- **Vapor Version**: {CURRENT_VERSION}",
+        f"- **OS**: {platform.system()} {platform.release()} ({platform.version()})",
+        f"- **Python**: {platform.python_version()}",
+        f"- **Architecture**: {platform.machine()}",
+    ]
+
+    # Admin status
+    try:
+        info_lines.append(f"- **Running as Admin**: {'Yes' if is_admin() else 'No'}")
+    except:
+        pass
+
+    # PawnIO driver status
+    try:
+        info_lines.append(f"- **PawnIO Driver**: {'Installed' if is_pawnio_installed() else 'Not installed'}")
+    except:
+        pass
+
+    # CPU info
+    try:
+        result = subprocess.run(
+            ['wmic', 'cpu', 'get', 'name'],
+            capture_output=True, text=True, timeout=5
+        )
+        cpu_lines = [line.strip() for line in result.stdout.strip().split('\n') if line.strip() and line.strip() != 'Name']
+        if cpu_lines:
+            info_lines.append(f"- **CPU**: {cpu_lines[0]}")
+    except:
+        pass
+
+    # GPU info
+    try:
+        result = subprocess.run(
+            ['wmic', 'path', 'win32_VideoController', 'get', 'name'],
+            capture_output=True, text=True, timeout=5
+        )
+        gpu_lines = [line.strip() for line in result.stdout.strip().split('\n') if line.strip() and line.strip() != 'Name']
+        if gpu_lines:
+            info_lines.append(f"- **GPU**: {', '.join(gpu_lines)}")
+    except:
+        pass
+
+    # RAM info
+    try:
+        mem = psutil.virtual_memory()
+        total_gb = mem.total / (1024 ** 3)
+        info_lines.append(f"- **RAM**: {total_gb:.1f} GB")
+    except:
+        pass
+
+    return '\n'.join(info_lines)
+
+
+def sanitize_logs(log_content):
+    """Redact Windows usernames from log content."""
+    import re
+    # Match C:\Users\<username>\ or C:/Users/<username>/ (case-insensitive)
+    # Captures the username and replaces it with [REDACTED]
+    pattern = r'(C:[/\\][Uu]sers[/\\])([^/\\]+)([/\\])'
+    sanitized = re.sub(pattern, r'\1[REDACTED]\3', log_content)
+    return sanitized
+
+
+def get_recent_logs(num_lines=250):
+    """Read the last N lines from the Vapor log file."""
+    log_file = os.path.join(appdata_dir, 'vapor_logs.log')
+
+    if not os.path.exists(log_file):
+        return None
+
+    try:
+        with open(log_file, 'r', encoding='utf-8', errors='replace') as f:
+            lines = f.readlines()
+
+        # Get last N lines
+        recent_lines = lines[-num_lines:] if len(lines) > num_lines else lines
+        log_content = ''.join(recent_lines).strip()
+
+        # Sanitize to remove usernames from paths
+        return sanitize_logs(log_content)
+    except Exception as e:
+        debug_log(f"Failed to read logs for bug report: {e}", "BugReport")
+        return None
+
+
+def submit_bug_report():
+    """Submit bug report to GitHub Issues via proxy."""
+    import requests
+
+    # Disable button to prevent multiple submissions
+    submit_bug_button.configure(state="disabled", fg_color="gray50")
+    submit_start_time = time.time()
+
+    def re_enable_button():
+        """Re-enable the submit button after minimum delay."""
+        submit_bug_button.configure(state="normal", fg_color="#2563eb")
+
+    def schedule_re_enable():
+        """Schedule button re-enable with minimum 5 second delay."""
+        elapsed = time.time() - submit_start_time
+        remaining = max(0, 5.0 - elapsed)
+        root.after(int(remaining * 1000), re_enable_button)
+
+    title = bug_title_entry.get().strip()
+    description = bug_desc_textbox.get("1.0", "end-1c").strip()
+
+    if not title:
+        bug_status_label.configure(text="Please enter a title for your bug report.", text_color="#ff6b6b")
+        schedule_re_enable()
+        return
+
+    if not description:
+        bug_status_label.configure(text="Please describe the bug.", text_color="#ff6b6b")
+        schedule_re_enable()
+        return
+
+    # Build the issue body
+    body_parts = ["## Description", description]
+
+    if include_system_info_var.get():
+        body_parts.append("\n## System Information")
+        body_parts.append(get_system_info())
+
+    if include_logs_var.get():
+        recent_logs = get_recent_logs(250)
+        if recent_logs:
+            body_parts.append("\n## Recent Logs")
+            body_parts.append("<details>")
+            body_parts.append("<summary>Click to expand logs (last 250 lines)</summary>")
+            body_parts.append("")
+            body_parts.append("```")
+            body_parts.append(recent_logs)
+            body_parts.append("```")
+            body_parts.append("</details>")
+
+    body_parts.append("\n---")
+    body_parts.append("*Submitted via Vapor Settings UI*")
+
+    issue_body = '\n'.join(body_parts)
+
+    # Submit to GitHub via proxy
+    bug_status_label.configure(text="Submitting...", text_color="gray60")
+    root.update()
+
+    try:
+        proxy_url = "https://vapor-proxy.mortonapps.com/repos/Master00Sniper/Vapor/issues"
+        headers = {
+            "Accept": "application/vnd.github.v3+json",
+            "User-Agent": "Vapor-BugReport/1.0",
+            "X-Vapor-Auth": "ombxslvdyyqvlkiiogwmjlkpocwqufaa",
+            "Content-Type": "application/json"
+        }
+
+        payload = {
+            "title": f"[Bug Report] {title}",
+            "body": issue_body
+        }
+
+        response = requests.post(proxy_url, headers=headers, json=payload, timeout=15)
+
+        if response.status_code == 201:
+            issue_data = response.json()
+            issue_number = issue_data.get('number', 'N/A')
+            bug_status_label.configure(text=f"Bug report submitted successfully! (Issue #{issue_number})", text_color="#4ade80")
+            # Clear the form
+            bug_title_entry.delete(0, 'end')
+            bug_desc_textbox.delete("1.0", "end")
+            debug_log(f"Bug report submitted: Issue #{issue_number}", "BugReport")
+        else:
+            error_msg = f"Failed to submit (HTTP {response.status_code})"
+            bug_status_label.configure(text=error_msg, text_color="#ff6b6b")
+            debug_log(f"Bug report failed: {error_msg} - {response.text}", "BugReport")
+    except requests.exceptions.Timeout:
+        bug_status_label.configure(text="Request timed out. Please try again.", text_color="#ff6b6b")
+        debug_log("Bug report failed: Timeout", "BugReport")
+    except requests.exceptions.RequestException as e:
+        bug_status_label.configure(text="Network error. Please check your connection.", text_color="#ff6b6b")
+        debug_log(f"Bug report failed: {e}", "BugReport")
+    except Exception as e:
+        bug_status_label.configure(text="An error occurred. Please try again.", text_color="#ff6b6b")
+        debug_log(f"Bug report failed: {e}", "BugReport")
+
+    # Re-enable button after minimum 5 second delay
+    schedule_re_enable()
+
+
+submit_bug_button = ctk.CTkButton(master=help_scroll_frame, text="Submit Bug Report", command=submit_bug_report,
+                                  corner_radius=10,
+                                  fg_color="#2563eb", hover_color="#1d4ed8", text_color="white", width=180,
+                                  font=("Calibri", 14))
+submit_bug_button.pack(pady=(5, 20), anchor='center')
 
 # =============================================================================
 # About Tab

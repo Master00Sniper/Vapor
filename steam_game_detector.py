@@ -793,7 +793,8 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
         if enable_game_audio:
             game_folder = get_game_folder(previous_app_id)
             game_pids = find_game_pids(game_folder)
-            set_game_volume(game_pids, game_audio_level, game_folder, current_game_name)
+            is_game_running = lambda app_id=previous_app_id: get_running_steam_app_id() == app_id
+            set_game_volume(game_pids, game_audio_level, game_folder, current_game_name, is_game_running)
         if enable_during_power:
             set_power_plan(during_power_plan)
         if enable_game_mode_start:
@@ -909,11 +910,14 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
             current_app_id = get_running_steam_app_id()
             poll_count += 1
 
-            # Log polling status every 20 polls (~20 seconds)
-            if poll_count % 20 == 0:
-                if current_app_id == 0:
+            # Log polling status periodically
+            if current_app_id == 0:
+                # Log "No game detected" only once per hour (3600 polls at 1 poll/second)
+                if poll_count % 3600 == 0:
                     log("Polling... No game detected", "MONITOR")
-                else:
+            else:
+                # Log "Game running" every 20 polls (~20 seconds)
+                if poll_count % 20 == 0:
                     log(f"Polling... Game running: AppID {current_app_id}", "MONITOR")
 
             if current_app_id != previous_app_id:
@@ -964,6 +968,8 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
                             }
 
                             if playtime_summary_mode == 'detailed':
+                                # Ensure session popup data is ready (in case game ended before delayed prep)
+                                prepare_session_popup(previous_app_id)
                                 # Show detailed popup window
                                 show_detailed_summary(session_data)
                             else:
@@ -997,19 +1003,35 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
                         start_time = time.time()
                         current_game_name = game_name
 
-                        if notification_close_on_startup:
-                            log("Closing notification apps...", "GAME")
-                            kill_processes_async(notification_processes, killed_notification, "notification")
-                        if resource_close_on_startup:
-                            log("Closing resource apps...", "GAME")
-                            kill_processes_async(resource_processes, killed_resource, "resource")
+                        # VERY LOW PRIORITY: Pre-cache session popup after 60 second delay
+                        # Start this FIRST so the 60s timer begins immediately when game is detected
+                        def delayed_prepare_popup(app_id):
+                            time.sleep(60)
+                            # Only run if the game is still running (skip if game ended early)
+                            if get_running_steam_app_id() == app_id:
+                                prepare_session_popup(app_id)
+                        threading.Thread(target=delayed_prepare_popup, args=(current_app_id,), daemon=True).start()
+
+                        # HIGH PRIORITY: Audio settings first (most time-sensitive for player experience)
                         if enable_system_audio:
                             set_system_volume(system_audio_level)
                         if enable_game_audio:
                             log("Configuring game audio...", "GAME")
                             game_folder = get_game_folder(current_app_id)
                             game_pids = find_game_pids(game_folder)
-                            set_game_volume(game_pids, game_audio_level, game_folder, game_name)
+                            # Pass a function to check if game is still running (stops monitoring if game ends)
+                            is_game_running = lambda app_id=current_app_id: get_running_steam_app_id() == app_id
+                            set_game_volume(game_pids, game_audio_level, game_folder, game_name, is_game_running)
+
+                        # MEDIUM PRIORITY: Close apps (async, won't block game loading)
+                        if notification_close_on_startup:
+                            log("Closing notification apps...", "GAME")
+                            kill_processes_async(notification_processes, killed_notification, "notification")
+                        if resource_close_on_startup:
+                            log("Closing resource apps...", "GAME")
+                            kill_processes_async(resource_processes, killed_resource, "resource")
+
+                        # LOW PRIORITY: System optimizations
                         if enable_during_power:
                             set_power_plan(during_power_plan)
                         if enable_game_mode_start:
@@ -1021,9 +1043,6 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
                                                              cpu_temp_critical_threshold, enable_gpu_temp_alert,
                                                              gpu_temp_warning_threshold, gpu_temp_critical_threshold,
                                                              game_name=game_name)
-
-                        # Pre-cache image, pre-load into memory, and warm up CTk for instant session popup
-                        threading.Thread(target=prepare_session_popup, args=(current_app_id,), daemon=True).start()
 
                         log(f"Game session started for: {game_name}", "GAME")
 

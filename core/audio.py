@@ -20,10 +20,12 @@ from utils import log
 
 def set_system_volume(level):
     """Set system master volume (0-100)."""
+    # Round to nearest integer to avoid fractional percentages
+    level = round(max(0, min(100, level)))
     log(f"Setting system volume to {level}%...", "AUDIO")
     comtypes.CoInitializeEx(comtypes.COINIT_MULTITHREADED)
     try:
-        level = max(0, min(100, level)) / 100.0
+        target_level = level / 100.0
 
         device_enumerator = comtypes.CoCreateInstance(
             CLSID_MMDeviceEnumerator,
@@ -39,8 +41,8 @@ def set_system_volume(level):
         interface = default_device.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
         volume = interface.QueryInterface(IAudioEndpointVolume)
 
-        volume.SetMasterVolumeLevelScalar(level, None)
-        log(f"System volume set to {int(level * 100)}%", "AUDIO")
+        volume.SetMasterVolumeLevelScalar(target_level, None)
+        log(f"System volume set to {level}%", "AUDIO")
     except Exception as e:
         log(f"Failed to set system volume: {e}", "ERROR")
     finally:
@@ -75,7 +77,17 @@ def _get_game_pids_from_folder(game_folder):
 
 
 def _get_sibling_pids(pid):
-    """Get all sibling PIDs (processes with the same parent) for a given PID."""
+    """Get all sibling PIDs (processes with the same parent) for a given PID.
+
+    Excludes Steam-related processes to avoid setting volume on Steam client
+    components when Steam is the parent process of the game.
+    """
+    # Steam processes to exclude from sibling matching
+    STEAM_PROCESS_NAMES = {
+        'steam.exe', 'steamwebhelper.exe', 'steamservice.exe',
+        'steamerrorreporter.exe', 'steamwebhelper', 'steam'
+    }
+
     siblings = set()
     try:
         proc = psutil.Process(pid)
@@ -83,10 +95,25 @@ def _get_sibling_pids(pid):
         if parent:
             # Add all children of parent (siblings including self)
             for sibling in parent.children(recursive=False):
+                # Skip Steam-related processes
+                try:
+                    sibling_name = sibling.name().lower()
+                    if sibling_name in STEAM_PROCESS_NAMES:
+                        continue
+                except Exception:
+                    pass
+
                 siblings.add(sibling.pid)
                 # Also add children of siblings (for Electron helper processes)
                 try:
                     for child in sibling.children(recursive=True):
+                        # Also skip Steam processes in children
+                        try:
+                            child_name = child.name().lower()
+                            if child_name in STEAM_PROCESS_NAMES:
+                                continue
+                        except Exception:
+                            pass
                         siblings.add(child.pid)
                 except Exception:
                     pass
@@ -113,7 +140,7 @@ def find_game_pids(game_folder):
     return []
 
 
-def set_game_volume(game_pids, level, game_folder=None, game_name=None):
+def set_game_volume(game_pids, level, game_folder=None, game_name=None, is_game_running_func=None):
     """Set volume for game processes (0-100) with retry logic.
 
     Games can have multiple audio sessions that appear at different times,
@@ -124,15 +151,20 @@ def set_game_volume(game_pids, level, game_folder=None, game_name=None):
 
     If game_name is provided, will also match audio sessions by display name
     (useful for Electron apps where audio comes from helper processes).
+
+    If is_game_running_func is provided, monitoring will stop early if the
+    game is no longer running.
     """
     if not game_pids and not game_folder:
         return
+    # Round to nearest integer to avoid fractional percentages
+    level = round(max(0, min(100, level)))
     log(f"Setting game volume to {level}% for {len(game_pids)} PID(s)...", "AUDIO")
     if game_name:
         log(f"Also matching audio sessions by name: {game_name}", "AUDIO")
     comtypes.CoInitializeEx(comtypes.COINIT_MULTITHREADED)
     try:
-        target_level = max(0, min(100, level)) / 100.0
+        target_level = level / 100.0
         max_attempts = 480  # 480 attempts x 0.25s = 120 seconds (2 min) max wait
         retry_delay = 0.25
 
@@ -142,6 +174,8 @@ def set_game_volume(game_pids, level, game_folder=None, game_name=None):
         # After finding first session, continue checking for additional sessions
         stable_count = 0  # Count of consecutive polls with no new sessions
         stable_threshold = 4  # Stop after 4 consecutive polls (1 second) with no new sessions
+        first_session_attempt = None  # Track when first session was found
+        min_monitor_duration = 120  # Minimum polls after first session (30 seconds at 0.25s/poll)
 
         # Keep track of all known PIDs (will be updated if game_folder provided)
         known_pids = set(game_pids)
@@ -164,20 +198,27 @@ def set_game_volume(game_pids, level, game_folder=None, game_name=None):
                     log(f"Discovered {len(new_pids - known_pids)} new game process(es)", "AUDIO")
                     known_pids.update(new_pids)
 
+            # Get sessions from default audio device (proven working method)
             sessions = AudioUtilities.GetAllSessions()
             new_set_count = 0
 
-            # Log all audio sessions on first attempt for debugging
+            # Log all sessions on first attempt for debugging
             if attempt == 0:
                 log(f"All audio sessions found:", "AUDIO")
+                pid_counts = {}  # Track how many sessions each PID has
                 for s in sessions:
                     if s.ProcessId == 0:
                         continue
+                    pid_counts[s.ProcessId] = pid_counts.get(s.ProcessId, 0) + 1
                     try:
                         pname = s.Process.name() if s.Process else "?"
                     except:
                         pname = "?"
                     log(f"  - PID {s.ProcessId}: {pname} (DisplayName: {s.DisplayName})", "AUDIO")
+                # Warn about processes with multiple audio sessions
+                multi_session_pids = [pid for pid, count in pid_counts.items() if count > 1]
+                if multi_session_pids:
+                    log(f"Note: {len(multi_session_pids)} process(es) have multiple audio sessions", "AUDIO")
 
             for session in sessions:
                 # Skip system sounds (ProcessId 0)
@@ -211,20 +252,26 @@ def set_game_volume(game_pids, level, game_folder=None, game_name=None):
                         log(f"Matched session by display name: {session.DisplayName} (PID {session.ProcessId})", "AUDIO")
 
                 if is_match:
-                    # Always use ProcessId for tracking to ensure uniqueness
-                    # (multiple processes can share the same session.Identifier)
+                    # Use ProcessId for tracking to ensure uniqueness
                     session_id = f"pid_{session.ProcessId}"
 
                     if session_id not in set_session_ids:
                         if hasattr(session, 'SimpleAudioVolume') and session.SimpleAudioVolume:
                             try:
                                 vol_interface = session.SimpleAudioVolume
+                                display_info = f" [{process_name}]" if process_name else ""
+
+                                before_level = vol_interface.GetMasterVolume()
                                 vol_interface.SetMasterVolume(target_level, None)
+                                after_level = vol_interface.GetMasterVolume()
+
                                 set_session_ids.add(session_id)
                                 new_set_count += 1
                                 total_set_count += 1
-                                display_info = f" [{process_name}]" if process_name else ""
-                                log(f"Set volume for PID {session.ProcessId}{display_info} to {level}%", "AUDIO")
+
+                                before_percent = int(before_level * 100)
+                                after_percent = int(after_level * 100)
+                                log(f"Set volume for PID {session.ProcessId}{display_info}: {before_percent}% -> {after_percent}% (target: {level}%)", "AUDIO")
 
                                 # Expand known_pids to include siblings of matched process
                                 # This helps catch Electron helper processes with separate audio
@@ -238,10 +285,15 @@ def set_game_volume(game_pids, level, game_folder=None, game_name=None):
             if new_set_count > 0:
                 log(f"Configured {new_set_count} new audio session(s) (total: {total_set_count})", "AUDIO")
                 stable_count = 0  # Reset stability counter when we find new sessions
+                # Track when first session was found for minimum monitoring duration
+                if first_session_attempt is None:
+                    first_session_attempt = attempt
             elif total_set_count > 0:
                 # We've set at least one session, now waiting to see if more appear
                 stable_count += 1
-                if stable_count >= stable_threshold:
+                # Only stop if: stable AND minimum monitoring time has passed
+                polls_since_first = attempt - first_session_attempt if first_session_attempt is not None else 0
+                if stable_count >= stable_threshold and polls_since_first >= min_monitor_duration:
                     log(f"Audio sessions stable - {total_set_count} total session(s) configured", "AUDIO")
                     break
             else:
@@ -251,6 +303,15 @@ def set_game_volume(game_pids, level, game_folder=None, game_name=None):
                         log(f"No audio sessions found yet (attempt {attempt + 1}/{max_attempts})...", "AUDIO")
                 else:
                     log("No audio sessions found after all attempts", "AUDIO")
+
+            # Check if game is still running (every 4 attempts = every second)
+            if is_game_running_func and attempt % 4 == 0:
+                if not is_game_running_func():
+                    if total_set_count > 0:
+                        log(f"Game ended - stopping audio monitoring ({total_set_count} session(s) configured)", "AUDIO")
+                    else:
+                        log("Game ended - stopping audio monitoring (no sessions found)", "AUDIO")
+                    break
 
             time.sleep(retry_delay)
     except Exception as e:
