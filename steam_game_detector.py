@@ -990,6 +990,7 @@ if __name__ == '__main__':
     else:
         # === NORMAL TRAY MODE ===
         try:
+            global _tray_icon  # Declare global at start of block
             killed_notification = {}
             killed_resource = {}
             stop_event = threading.Event()
@@ -1061,7 +1062,6 @@ if __name__ == '__main__':
             log("System tray icon created", "INIT")
 
             # Store reference for signal handler to use during shutdown
-            global _tray_icon
             _tray_icon = icon
 
             icon.run()
