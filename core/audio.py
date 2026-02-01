@@ -140,15 +140,35 @@ def set_game_volume(game_pids, level, game_folder=None, game_name=None):
             new_set_count = 0
 
             for session in sessions:
-                # Match by PID or by display name
+                # Skip system sounds (ProcessId 0)
+                if session.ProcessId == 0:
+                    continue
+
+                # Get process name for matching and logging
+                process_name = None
+                try:
+                    if session.Process:
+                        process_name = session.Process.name()
+                except Exception:
+                    pass
+
+                # Match by PID
                 is_match = session.ProcessId in known_pids
 
-                # Also match by display name if game_name provided
+                # Also try to match by process name if game_name provided
+                if not is_match and game_name_lower and process_name:
+                    proc_name_lower = process_name.lower().replace('.exe', '')
+                    # Match if process name contains game name or vice versa
+                    if game_name_lower in proc_name_lower or proc_name_lower in game_name_lower:
+                        is_match = True
+                        log(f"Matched session by process name: {process_name} (PID {session.ProcessId})", "AUDIO")
+
+                # Also try DisplayName if available
                 if not is_match and game_name_lower and session.DisplayName:
                     display_lower = session.DisplayName.lower()
-                    # Match if display name contains game name or vice versa
                     if game_name_lower in display_lower or display_lower in game_name_lower:
                         is_match = True
+                        log(f"Matched session by display name: {session.DisplayName} (PID {session.ProcessId})", "AUDIO")
 
                 if is_match:
                     # Use the session's stable Identifier property
@@ -157,13 +177,13 @@ def set_game_volume(game_pids, level, game_folder=None, game_name=None):
                     if session_id and session_id not in set_session_ids:
                         if hasattr(session, 'SimpleAudioVolume') and session.SimpleAudioVolume:
                             try:
-                                volume = session.SimpleAudioVolume
-                                volume.SetMasterVolume(target_level, None)
+                                vol_interface = session.SimpleAudioVolume
+                                vol_interface.SetMasterVolume(target_level, None)
                                 set_session_ids.add(session_id)
                                 new_set_count += 1
                                 total_set_count += 1
-                                display_info = f" ({session.DisplayName})" if session.DisplayName else ""
-                                log(f"Set volume for session {session.ProcessId}{display_info} to {level}%", "AUDIO")
+                                display_info = f" [{process_name}]" if process_name else ""
+                                log(f"Set volume for PID {session.ProcessId}{display_info} to {level}%", "AUDIO")
                             except Exception as e:
                                 log(f"Failed to set volume for session {session.ProcessId}: {e}", "AUDIO")
 
