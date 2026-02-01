@@ -967,6 +967,8 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
                             }
 
                             if playtime_summary_mode == 'detailed':
+                                # Ensure session popup data is ready (in case game ended before delayed prep)
+                                prepare_session_popup(previous_app_id)
                                 # Show detailed popup window
                                 show_detailed_summary(session_data)
                             else:
