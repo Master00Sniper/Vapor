@@ -475,10 +475,10 @@ def set_startup(enabled):
 # Process Management
 # =============================================================================
 
-def graceful_close_process(proc, timeout=3):
+def send_close_signal(proc):
     """
-    Attempt to gracefully close a process by sending WM_CLOSE to its windows.
-    Returns True if process exited gracefully, False if still running.
+    Send WM_CLOSE to all windows belonging to a process.
+    Returns the number of windows that received the close signal.
     """
     pid = proc.pid
 
@@ -497,29 +497,22 @@ def graceful_close_process(proc, timeout=3):
     try:
         win32gui.EnumWindows(enum_windows_callback, windows)
     except Exception:
-        return False
-
-    if not windows:
-        # No windows found, can't close gracefully
-        return False
+        return 0
 
     # Send WM_CLOSE to all windows
     WM_CLOSE = 0x0010
+    closed_count = 0
     for hwnd in windows:
         try:
             win32gui.PostMessage(hwnd, WM_CLOSE, 0, 0)
+            closed_count += 1
         except Exception:
             pass
 
-    # Wait for process to exit
-    try:
-        proc.wait(timeout=timeout)
-        return True  # Process exited gracefully
-    except psutil.TimeoutExpired:
-        return False  # Still running
+    return closed_count
 
 
-def kill_processes(process_names, killed_processes, purpose=""):
+def kill_processes(process_names, killed_processes, purpose="", graceful_timeout=3):
     """
     Terminate processes from the given list.
     Attempts graceful close first (WM_CLOSE), then force terminates if needed.
@@ -527,47 +520,72 @@ def kill_processes(process_names, killed_processes, purpose=""):
     """
     purpose_str = f" ({purpose})" if purpose else ""
     log(f"Attempting to close {len(process_names)} {purpose} process type(s)...", "PROCESS")
+
+    # Phase 1: Collect all target processes and send close signals
+    target_processes = []  # List of (proc, name, path) tuples
+    paths_by_name = {}  # Store first path found for each process name
+
     for name in process_names:
         # Skip protected system processes
         if name.lower() in PROTECTED_PROCESSES:
             log(f"Skipping protected process: {name}", "PROCESS")
             continue
 
-        killed_count = 0
-        path_to_store = None
-        for proc in psutil.process_iter(['name', 'exe']):
-            if proc.info['name'].lower() == name.lower():
-                try:
+        for proc in psutil.process_iter(['name', 'exe', 'pid']):
+            try:
+                if proc.info['name'].lower() == name.lower():
                     path = proc.info['exe']
                     if path and os.path.exists(path):
-                        log(f"Closing{purpose_str}: {name} (PID: {proc.pid})", "PROCESS")
-                        if path_to_store is None:
-                            path_to_store = path
-
-                        # Try graceful close first (send WM_CLOSE to windows)
-                        if graceful_close_process(proc, timeout=3):
-                            log(f"Gracefully closed: {name} (PID: {proc.pid})", "PROCESS")
-                            killed_count += 1
+                        target_processes.append((proc, name, path))
+                        if name not in paths_by_name:
+                            paths_by_name[name] = path
+                        # Send WM_CLOSE to any windows this process has
+                        window_count = send_close_signal(proc)
+                        if window_count > 0:
+                            log(f"Sent close signal to {name} (PID: {proc.pid}, {window_count} windows)", "PROCESS")
                         else:
-                            # Graceful close failed, force terminate
-                            log(f"Graceful close failed for {name} - force terminating", "PROCESS")
-                            proc.terminate()
-                            try:
-                                proc.wait(timeout=3)
-                                killed_count += 1
-                            except psutil.TimeoutExpired:
-                                log(f"Terminate timeout for {name} - force killing", "PROCESS")
-                                proc.kill()
-                                killed_count += 1
-                except psutil.NoSuchProcess:
-                    # Process already exited
-                    killed_count += 1
-                except Exception as e:
-                    log(f"Error closing {name}: {e}", "ERROR")
+                            log(f"Closing{purpose_str}: {name} (PID: {proc.pid}, no windows)", "PROCESS")
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                pass
+            except Exception as e:
+                log(f"Error finding {name}: {e}", "ERROR")
 
-        if killed_count > 0:
-            killed_processes[name] = path_to_store
-            log(f"Closed {killed_count} instance(s) of {name}{purpose_str}", "PROCESS")
+    if not target_processes:
+        return
+
+    # Phase 2: Wait for graceful exit
+    log(f"Waiting {graceful_timeout}s for {len(target_processes)} process(es) to close gracefully...", "PROCESS")
+    time.sleep(graceful_timeout)
+
+    # Phase 3: Check which processes exited and force-terminate the rest
+    closed_counts = {}  # Count closed processes per name
+
+    for proc, name, path in target_processes:
+        try:
+            if not proc.is_running():
+                # Process exited gracefully
+                log(f"Gracefully closed: {name} (PID: {proc.pid})", "PROCESS")
+                closed_counts[name] = closed_counts.get(name, 0) + 1
+            else:
+                # Still running, force terminate
+                log(f"Force terminating: {name} (PID: {proc.pid})", "PROCESS")
+                proc.terminate()
+                try:
+                    proc.wait(timeout=2)
+                except psutil.TimeoutExpired:
+                    proc.kill()
+                closed_counts[name] = closed_counts.get(name, 0) + 1
+        except psutil.NoSuchProcess:
+            # Already exited
+            closed_counts[name] = closed_counts.get(name, 0) + 1
+        except Exception as e:
+            log(f"Error closing {name}: {e}", "ERROR")
+
+    # Record results
+    for name, count in closed_counts.items():
+        if count > 0:
+            killed_processes[name] = paths_by_name.get(name)
+            log(f"Closed {count} instance(s) of {name}{purpose_str}", "PROCESS")
 
 
 def kill_processes_async(process_names, killed_processes, purpose=""):
