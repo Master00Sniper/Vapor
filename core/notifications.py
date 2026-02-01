@@ -414,15 +414,16 @@ def show_detailed_summary(session_data):
 
         popup.protocol("WM_DELETE_WINDOW", on_close)
 
-        # Window dimensions - similar to settings window, use screen-based height
+        # Window dimensions - match settings window behavior
         window_width = 550
         screen_height = popup.winfo_screenheight()
-        # Use 70% of screen height, clamped between 600 and 850
-        window_height = int(screen_height * 0.70)
-        window_height = max(600, min(window_height, 850))
+        # Use 85% of screen height, clamped between 600 and 1000
+        window_height = int(screen_height * 0.85)
+        window_height = max(600, min(window_height, 1000))
 
         popup.geometry(f"{window_width}x{window_height}")
-        popup.resizable(False, False)
+        popup.resizable(False, True)  # Allow vertical resizing
+        popup.minsize(window_width, 500)  # Minimum height
 
         # Center on screen
         screen_width = popup.winfo_screenwidth()
@@ -455,8 +456,8 @@ def show_detailed_summary(session_data):
         )
         ok_button.pack()
 
-        # Content frame (fills remaining space above bottom bar)
-        content_frame = ctk.CTkFrame(master=popup, fg_color="transparent")
+        # Scrollable content frame (fills remaining space above bottom bar)
+        content_frame = ctk.CTkScrollableFrame(master=popup, fg_color="transparent")
         content_frame.pack(fill="both", expand=True, padx=15, pady=(20, 10))
 
         # Title
