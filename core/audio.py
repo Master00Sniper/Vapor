@@ -20,10 +20,12 @@ from utils import log
 
 def set_system_volume(level):
     """Set system master volume (0-100)."""
+    # Round to nearest integer to avoid fractional percentages
+    level = round(max(0, min(100, level)))
     log(f"Setting system volume to {level}%...", "AUDIO")
     comtypes.CoInitializeEx(comtypes.COINIT_MULTITHREADED)
     try:
-        level = max(0, min(100, level)) / 100.0
+        target_level = level / 100.0
 
         device_enumerator = comtypes.CoCreateInstance(
             CLSID_MMDeviceEnumerator,
@@ -39,8 +41,8 @@ def set_system_volume(level):
         interface = default_device.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
         volume = interface.QueryInterface(IAudioEndpointVolume)
 
-        volume.SetMasterVolumeLevelScalar(level, None)
-        log(f"System volume set to {int(level * 100)}%", "AUDIO")
+        volume.SetMasterVolumeLevelScalar(target_level, None)
+        log(f"System volume set to {level}%", "AUDIO")
     except Exception as e:
         log(f"Failed to set system volume: {e}", "ERROR")
     finally:
@@ -155,12 +157,14 @@ def set_game_volume(game_pids, level, game_folder=None, game_name=None, is_game_
     """
     if not game_pids and not game_folder:
         return
+    # Round to nearest integer to avoid fractional percentages
+    level = round(max(0, min(100, level)))
     log(f"Setting game volume to {level}% for {len(game_pids)} PID(s)...", "AUDIO")
     if game_name:
         log(f"Also matching audio sessions by name: {game_name}", "AUDIO")
     comtypes.CoInitializeEx(comtypes.COINIT_MULTITHREADED)
     try:
-        target_level = max(0, min(100, level)) / 100.0
+        target_level = level / 100.0
         max_attempts = 480  # 480 attempts x 0.25s = 120 seconds (2 min) max wait
         retry_delay = 0.25
 
