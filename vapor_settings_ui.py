@@ -87,11 +87,17 @@ def restart_vapor(main_pid, require_admin=False, delay_seconds=3):
                       Use longer delays after driver installations.
 
     Uses a delayed start via PowerShell to avoid MEI folder cleanup errors.
+    The caller is responsible for cleanly exiting after this function returns.
     """
     debug_log(f"Restarting Vapor (main_pid={main_pid}, require_admin={require_admin}, delay={delay_seconds}s)", "Restart")
 
-    # Terminate current main process if running
-    if main_pid:
+    # Check if main_pid is our own process - if so, don't terminate it
+    # We'll exit cleanly after launching the new process, which allows
+    # PyInstaller to properly clean up the MEI folder
+    current_pid = os.getpid()
+    should_terminate_main = main_pid and main_pid != current_pid
+
+    if should_terminate_main:
         try:
             debug_log(f"Terminating main process {main_pid}", "Restart")
             main_process = psutil.Process(main_pid)
@@ -100,6 +106,8 @@ def restart_vapor(main_pid, require_admin=False, delay_seconds=3):
             debug_log("Main process terminated", "Restart")
         except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.TimeoutExpired) as e:
             debug_log(f"Could not terminate main process: {e}", "Restart")
+    else:
+        debug_log(f"main_pid {main_pid} is current process {current_pid} - will exit cleanly after launch", "Restart")
 
     # Determine the executable path
     # Use VAPOR_EXE_PATH if available (passed from main process)
