@@ -1037,9 +1037,13 @@ enable_gpu_thermal_switch = ctk.CTkSwitch(master=thermal_frame, text="Capture GP
 enable_gpu_thermal_switch.pack(pady=5, anchor='w')
 
 enable_cpu_thermal_var = tk.BooleanVar(value=enable_cpu_thermal)
-enable_cpu_thermal_switch = ctk.CTkSwitch(master=thermal_frame, text="Capture CPU Temperature (requires admin, will auto-install driver)",
+enable_cpu_thermal_switch = ctk.CTkSwitch(master=thermal_frame, text="Capture CPU Temperature",
                                           variable=enable_cpu_thermal_var, font=("Calibri", 14))
-enable_cpu_thermal_switch.pack(pady=5, anchor='w')
+enable_cpu_thermal_switch.pack(pady=(5, 0), anchor='w')
+
+cpu_thermal_note = ctk.CTkLabel(master=thermal_frame, text="(requires admin, will auto-install driver)",
+                                font=("Calibri", 12), text_color="gray60")
+cpu_thermal_note.pack(pady=(0, 5), anchor='w', padx=(67, 0))  # Indent to align with switch text
 
 # Temperature Alerts Section
 thermal_sep2 = ctk.CTkFrame(master=thermal_scroll_frame, height=2, fg_color="gray50")
