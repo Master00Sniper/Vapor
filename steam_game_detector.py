@@ -234,12 +234,25 @@ def _cleanup_console():
 # Global shutdown flag for graceful termination
 _shutdown_requested = threading.Event()
 _tray_icon = None  # Will hold reference to tray icon for shutdown
+_child_processes = []  # Track child processes (e.g., settings window)
+
+
+def _terminate_child_processes():
+    """Terminate any child processes we spawned."""
+    for proc in _child_processes:
+        try:
+            if proc.poll() is None:  # Still running
+                proc.terminate()
+        except Exception:
+            pass
+    _child_processes.clear()
 
 
 def _signal_handler(signum, frame):
     """Handle termination signals by requesting graceful shutdown."""
     _shutdown_requested.set()
     _cleanup_console()
+    _terminate_child_processes()
     # Stop the tray icon if it exists (this will unblock icon.run())
     if _tray_icon is not None:
         try:
@@ -249,6 +262,7 @@ def _signal_handler(signum, frame):
 
 
 atexit.register(_cleanup_console)
+atexit.register(_terminate_child_processes)
 
 # Register signal handlers for graceful shutdown
 try:
@@ -887,9 +901,10 @@ def open_settings(icon, query):
     log("Opening settings UI...", "UI")
     try:
         if getattr(sys, 'frozen', False):
-            subprocess.Popen([sys.executable, '--ui', str(os.getpid())])
+            proc = subprocess.Popen([sys.executable, '--ui', str(os.getpid())])
         else:
-            subprocess.Popen([sys.executable, __file__, '--ui', str(os.getpid())])
+            proc = subprocess.Popen([sys.executable, __file__, '--ui', str(os.getpid())])
+        _child_processes.append(proc)
         log("Settings UI launched", "UI")
     except Exception as e:
         log(f"Could not open settings: {e}", "ERROR")
