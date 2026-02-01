@@ -236,6 +236,7 @@ def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=N
 
     # Create popup window
     dialog = ctk.CTkToplevel(parent) if parent else ctk.CTk()
+    dialog.withdraw()  # Hide while setting up
     dialog.title(f"Vapor - {title}")
     dialog.resizable(False, False)
 
@@ -346,9 +347,10 @@ def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=N
     # Handle window close button (X)
     dialog.protocol("WM_DELETE_WINDOW", lambda: (result.__setitem__(0, None), dialog.destroy()))
 
-    # Update the dialog and set icon after all widgets are added
-    dialog.update()
+    # Set icon before showing the dialog to avoid flash of default icon
     set_vapor_icon(dialog)
+    dialog.update()
+    dialog.deiconify()  # Now show the dialog with icon already set
 
     # Wait for dialog to close
     if parent:
