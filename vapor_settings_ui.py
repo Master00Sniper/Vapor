@@ -169,9 +169,12 @@ def restart_vapor(main_pid, require_admin=False, delay_seconds=3):
             # Already admin or no elevation needed - use a batch file for clean restart
             # This avoids inheriting any problematic state from the current process
             import tempfile
+
+            # Use 'start /I' to start with a clean environment (not inherited from current process)
+            # This prevents PyInstaller's _MEIPASS environment variables from being inherited
             batch_content = f'''@echo off
 timeout /t {delay_seconds} /nobreak >nul
-start "" /D "{working_dir}" "{executable}"{args_part.replace(chr(92)+'"', '"')}
+start "" /I /D "{working_dir}" "{executable}"{args_part.replace(chr(92)+'"', '"')}
 del "%~f0"
 '''
             # Create batch file in temp directory
@@ -181,19 +184,31 @@ del "%~f0"
 
             debug_log(f"Created restart batch: {batch_path}", "Restart")
 
-            # Run batch file completely detached
+            # Run batch file completely detached with a minimal clean environment
+            # This prevents PyInstaller MEI folder references from being passed to the new process
             DETACHED_PROCESS = 0x00000008
             CREATE_NEW_PROCESS_GROUP = 0x00000200
             CREATE_NO_WINDOW = 0x08000000
+
+            # Create minimal environment - only essential Windows variables
+            clean_env = {
+                'SystemRoot': os.environ.get('SystemRoot', r'C:\Windows'),
+                'SystemDrive': os.environ.get('SystemDrive', 'C:'),
+                'TEMP': os.environ.get('TEMP', tempfile.gettempdir()),
+                'TMP': os.environ.get('TMP', tempfile.gettempdir()),
+                'PATH': os.environ.get('PATH', ''),
+                'COMSPEC': os.environ.get('COMSPEC', r'C:\Windows\System32\cmd.exe'),
+            }
 
             import subprocess
             subprocess.Popen(
                 ['cmd.exe', '/c', batch_path],
                 cwd=working_dir,
+                env=clean_env,
                 creationflags=DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW,
                 close_fds=True
             )
-            debug_log("Launched detached restart batch", "Restart")
+            debug_log("Launched detached restart batch with clean environment", "Restart")
             return True
     except Exception as e:
         debug_log(f"Restart failed: {e}", "Restart")
