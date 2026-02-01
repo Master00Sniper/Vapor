@@ -195,7 +195,7 @@ if not errorlevel 1 (
 )
 
 :: Additional delay to ensure _MEI folder cleanup is complete
-timeout /t 2 /nobreak >nul
+timeout /t 3 /nobreak >nul
 
 :: Launch Vapor with a clean environment
 start "" /D "{working_dir}" "{executable}"
