@@ -1067,6 +1067,18 @@ if __name__ == '__main__':
             stop_event = threading.Event()
             _stop_event = stop_event  # Make accessible to signal handler (module-level var)
 
+            # Log PyInstaller details for debugging restart issues
+            log(f"=== Vapor Startup ===", "INIT")
+            log(f"PID: {os.getpid()}", "INIT")
+            log(f"sys.executable: {sys.executable}", "INIT")
+            log(f"sys.frozen: {getattr(sys, 'frozen', False)}", "INIT")
+            log(f"sys._MEIPASS: {getattr(sys, '_MEIPASS', 'N/A')}", "INIT")
+            log(f"ENV _MEIPASS: {os.environ.get('_MEIPASS', 'N/A')}", "INIT")
+            log(f"ENV _MEIPASS2: {os.environ.get('_MEIPASS2', 'N/A')}", "INIT")
+            log(f"ENV VAPOR_EXE_PATH: {os.environ.get('VAPOR_EXE_PATH', 'N/A')}", "INIT")
+            log(f"TEMP: {os.environ.get('TEMP', 'N/A')}", "INIT")
+            log(f"Working dir: {os.getcwd()}", "INIT")
+
             # Check if this is the first run (no settings file exists)
             is_first_run = not os.path.exists(SETTINGS_FILE)
             if is_first_run:

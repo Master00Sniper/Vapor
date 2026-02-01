@@ -154,11 +154,22 @@ def restart_vapor(main_pid, require_admin=False, delay_seconds=3):
     debug_log(f"Working dir: {working_dir}", "Restart")
     debug_log(f"Already admin: {is_admin()}", "Restart")
 
+    # Log PyInstaller-related environment and paths for debugging
+    debug_log(f"sys.executable: {sys.executable}", "Restart")
+    debug_log(f"sys.frozen: {getattr(sys, 'frozen', False)}", "Restart")
+    debug_log(f"sys._MEIPASS: {getattr(sys, '_MEIPASS', 'N/A')}", "Restart")
+    debug_log(f"ENV _MEIPASS: {os.environ.get('_MEIPASS', 'N/A')}", "Restart")
+    debug_log(f"ENV _MEIPASS2: {os.environ.get('_MEIPASS2', 'N/A')}", "Restart")
+    debug_log(f"ENV VAPOR_EXE_PATH: {os.environ.get('VAPOR_EXE_PATH', 'N/A')}", "Restart")
+    debug_log(f"TEMP dir: {os.environ.get('TEMP', 'N/A')}", "Restart")
+    debug_log(f"Current PID: {os.getpid()}", "Restart")
+
     try:
         # Always use "runas" verb - this creates a cleaner process even when already admin
         # When already elevated, it typically won't show a UAC prompt but still uses
         # the UAC subsystem's process creation which is more isolated
         ps_command = f'Start-Sleep -Seconds {delay_seconds}; Start-Process -FilePath \\"{executable}\\"{args_part}'
+        debug_log(f"PowerShell command: {ps_command}", "Restart")
         debug_log(f"Using runas with PowerShell (require_admin={require_admin}, is_admin={is_admin()})", "Restart")
         result = ctypes.windll.shell32.ShellExecuteW(
             None,
@@ -168,7 +179,7 @@ def restart_vapor(main_pid, require_admin=False, delay_seconds=3):
             working_dir,
             0  # SW_HIDE
         )
-        debug_log(f"ShellExecuteW result: {result}", "Restart")
+        debug_log(f"ShellExecuteW result: {result} (success if > 32)", "Restart")
         return result > 32
     except Exception as e:
         debug_log(f"Restart failed: {e}", "Restart")
