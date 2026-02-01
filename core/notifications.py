@@ -460,22 +460,22 @@ def show_detailed_summary(session_data):
         content_frame = ctk.CTkScrollableFrame(master=popup, fg_color="transparent")
         content_frame.pack(fill="both", expand=True, padx=15, pady=(20, 10))
 
-        # Title
-        title_label = ctk.CTkLabel(
-            master=content_frame,
-            text="Game Session Details",
-            font=("Calibri", 22, "bold")
-        )
-        title_label.pack(pady=(0, 5))
-
-        # Game name
+        # Game name (main title)
         game_label = ctk.CTkLabel(
             master=content_frame,
             text=game_name,
-            font=("Calibri", 17),
+            font=("Calibri", 22, "bold")
+        )
+        game_label.pack(pady=(0, 5))
+
+        # Subtitle
+        title_label = ctk.CTkLabel(
+            master=content_frame,
+            text="Game Session Details",
+            font=("Calibri", 15),
             text_color="gray70"
         )
-        game_label.pack(pady=(0, 10))
+        title_label.pack(pady=(0, 10))
 
         # Game header image (try pre-loaded first, fall back to cache)
         pil_image = get_preloaded_header_image()
