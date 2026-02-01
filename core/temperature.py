@@ -402,19 +402,15 @@ def show_temperature_alert(message, is_critical=False):
 
     Args:
         message: The alert message to display
-        is_critical: If True, uses alarm sound; if False, uses reminder sound
+        is_critical: If True, treated as critical alert (text differs); sound is the same
     """
     import win11toast
 
     log(f"Showing temperature alert (critical={is_critical}): {message}", "ALERT")
     icon_path = os.path.abspath(TRAY_ICON_PATH)
 
-    if is_critical:
-        # Critical alerts use Windows alarm sound (non-looping)
-        audio = {'src': 'ms-winsoundevent:Notification.Looping.Alarm', 'loop': 'false'}
-    else:
-        # Warning alerts use Windows reminder sound (gentler)
-        audio = {'src': 'ms-winsoundevent:Notification.Reminder'}
+    # Both warning and critical use the same reminder sound
+    audio = {'src': 'ms-winsoundevent:Notification.Reminder'}
 
     win11toast.notify(body=message, app_id='Vapor - Streamline Gaming', scenario='urgent', icon=icon_path,
                       audio=audio)
