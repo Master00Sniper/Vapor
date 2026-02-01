@@ -9,8 +9,7 @@ import win11toast
 
 from utils import appdata_dir, base_dir, TRAY_ICON_PATH, log
 from core.steam_api import (
-    get_preloaded_game_details, get_preloaded_header_image, get_cached_header_image_path,
-    get_preloaded_background_image, get_cached_background_image_path
+    get_preloaded_game_details, get_preloaded_header_image, get_cached_header_image_path
 )
 
 
@@ -438,51 +437,6 @@ def show_detailed_summary(session_data):
         y = max(20, (usable_height - window_height) // 2)
         popup.geometry(f"{window_width}x{window_height}+{x}+{y}")
 
-        # Add background image if available
-        bg_image = get_preloaded_background_image()
-        if bg_image is None and app_id:
-            # Fallback: try loading from cache
-            cached_bg_path = get_cached_background_image_path(app_id)
-            if cached_bg_path and os.path.exists(cached_bg_path):
-                try:
-                    bg_image = Image.open(cached_bg_path)
-                except Exception:
-                    bg_image = None
-
-        bg_label = None
-        if bg_image is not None:
-            try:
-                from PIL import ImageEnhance
-                # Resize to fit window, maintaining aspect ratio to cover
-                img_ratio = bg_image.width / bg_image.height
-                win_ratio = window_width / window_height
-                if img_ratio > win_ratio:
-                    # Image is wider, scale by height
-                    new_height = window_height
-                    new_width = int(new_height * img_ratio)
-                else:
-                    # Image is taller, scale by width
-                    new_width = window_width
-                    new_height = int(new_width / img_ratio)
-                bg_resized = bg_image.resize((new_width, new_height), Image.LANCZOS)
-
-                # Crop to center to fit window
-                left = (new_width - window_width) // 2
-                top = (new_height - window_height) // 2
-                bg_resized = bg_resized.crop((left, top, left + window_width, top + window_height))
-
-                # Darken the image for better text readability
-                enhancer = ImageEnhance.Brightness(bg_resized)
-                bg_darkened = enhancer.enhance(0.3)  # 30% brightness
-
-                ctk_bg = ctk.CTkImage(light_image=bg_darkened, dark_image=bg_darkened,
-                                      size=(window_width, window_height))
-                bg_label = ctk.CTkLabel(master=popup, image=ctk_bg, text="")
-                bg_label.image = ctk_bg  # Keep reference
-                bg_label.place(x=0, y=0, relwidth=1, relheight=1)
-            except Exception as e:
-                log(f"Failed to set background image: {e}", "NOTIFY")
-
         # IMPORTANT: Pack bottom bar FIRST so it reserves space at the bottom
         bottom_bar = ctk.CTkFrame(master=popup, fg_color="transparent")
         bottom_bar.pack(side="bottom", fill="x")
@@ -666,11 +620,11 @@ def show_detailed_summary(session_data):
                              anchor="e").grid(row=left_row, column=1, sticky="e", pady=2)
                 left_row += 1
 
-            # Metacritic Score
+            # Metacritic Score (always show, with red N/A if not available)
             metacritic_score = game_details.get('metacritic_score')
+            ctk.CTkLabel(master=left_frame, text="Metacritic:", font=("Calibri", 14, "bold"),
+                         anchor="w").grid(row=left_row, column=0, sticky="w", pady=2)
             if metacritic_score:
-                ctk.CTkLabel(master=left_frame, text="Metacritic:", font=("Calibri", 14, "bold"),
-                             anchor="w").grid(row=left_row, column=0, sticky="w", pady=2)
                 # Color code the score
                 if metacritic_score >= 75:
                     score_color = "#66CC33"  # Green
@@ -680,7 +634,10 @@ def show_detailed_summary(session_data):
                     score_color = "#FF0000"  # Red
                 ctk.CTkLabel(master=left_frame, text=str(metacritic_score), font=("Calibri", 14, "bold"),
                              text_color=score_color, anchor="e").grid(row=left_row, column=1, sticky="e", pady=2)
-                left_row += 1
+            else:
+                ctk.CTkLabel(master=left_frame, text="N/A", font=("Calibri", 14, "bold"),
+                             text_color="#FF0000", anchor="e").grid(row=left_row, column=1, sticky="e", pady=2)
+            left_row += 1
 
             left_frame.grid_columnconfigure(1, weight=1)
 
@@ -690,16 +647,16 @@ def show_detailed_summary(session_data):
             # Estimated Owners (SteamSpy)
             steamspy_owners = game_details.get('steamspy_owners')
             if steamspy_owners:
-                ctk.CTkLabel(master=right_frame, text="Owners:", font=("Calibri", 14, "bold"),
+                ctk.CTkLabel(master=right_frame, text="Estimated Owners:", font=("Calibri", 14, "bold"),
                              anchor="w").grid(row=right_row, column=0, sticky="w", pady=2)
                 ctk.CTkLabel(master=right_frame, text=steamspy_owners, font=("Calibri", 14),
                              anchor="e").grid(row=right_row, column=1, sticky="e", pady=2)
                 right_row += 1
 
-            # Peak CCU Yesterday (SteamSpy)
+            # Concurrent Players (SteamSpy)
             steamspy_ccu = game_details.get('steamspy_ccu')
             if steamspy_ccu:
-                ctk.CTkLabel(master=right_frame, text="Peak CCU (24h):", font=("Calibri", 14, "bold"),
+                ctk.CTkLabel(master=right_frame, text="Concurrent Players:", font=("Calibri", 14, "bold"),
                              anchor="w").grid(row=right_row, column=0, sticky="w", pady=2)
                 ctk.CTkLabel(master=right_frame, text=f"{steamspy_ccu:,}", font=("Calibri", 14),
                              anchor="e").grid(row=right_row, column=1, sticky="e", pady=2)
@@ -744,80 +701,34 @@ def show_detailed_summary(session_data):
         # Temperature section
         temp_title = ctk.CTkLabel(
             master=content_frame,
-            text="Temperatures",
+            text="Temperatures (Session Max)",
             font=("Calibri", 15, "bold")
         )
-        temp_title.pack(pady=(5, 3))
-
-        # Subtitle explaining lifetime max
-        temp_subtitle = ctk.CTkLabel(
-            master=content_frame,
-            text=f"Lifetime Max = highest recorded temperature for {game_name}",
-            font=("Calibri", 12),
-            text_color="gray50"
-        )
-        temp_subtitle.pack(pady=(0, 8))
+        temp_title.pack(pady=(5, 5))
 
         temp_frame = ctk.CTkFrame(master=content_frame, fg_color="transparent")
         temp_frame.pack(pady=5, padx=20, fill="x")
+        temp_frame.grid_columnconfigure(0, weight=1)
+        temp_frame.grid_columnconfigure(1, weight=1)
 
-        has_temps = False
+        # CPU temperature (left side) - always show, red N/A if not available
+        cpu_frame = ctk.CTkFrame(master=temp_frame, fg_color="transparent")
+        cpu_frame.grid(row=0, column=0, sticky="w")
 
-        # Column headers - changed "Lifetime" to "Lifetime Max"
-        ctk.CTkLabel(master=temp_frame, text="", font=("Calibri", 12),
-                     anchor="w").grid(row=0, column=0, sticky="w", pady=3)
-        ctk.CTkLabel(master=temp_frame, text="Start", font=("Calibri", 12, "bold"),
-                     text_color="gray60").grid(row=0, column=1, sticky="e", pady=3, padx=(15, 0))
-        ctk.CTkLabel(master=temp_frame, text="Session Max", font=("Calibri", 12, "bold"),
-                     text_color="gray60").grid(row=0, column=2, sticky="e", pady=3, padx=(15, 0))
-        ctk.CTkLabel(master=temp_frame, text="Lifetime Max", font=("Calibri", 12, "bold"),
-                     text_color="#FFD700").grid(row=0, column=3, sticky="e", pady=3, padx=(15, 0))
+        ctk.CTkLabel(master=cpu_frame, text="CPU:", font=("Calibri", 14, "bold")).pack(side="left")
+        if max_cpu_temp is not None:
+            ctk.CTkLabel(master=cpu_frame, text=f" {max_cpu_temp}°C", font=("Calibri", 14)).pack(side="left")
+        else:
+            ctk.CTkLabel(master=cpu_frame, text=" N/A", font=("Calibri", 14, "bold"),
+                         text_color="#FF0000").pack(side="left")
 
-        # CPU temps
-        if start_cpu_temp is not None or max_cpu_temp is not None or lifetime_max_cpu is not None:
-            has_temps = True
-            ctk.CTkLabel(master=temp_frame, text="CPU:", font=("Calibri", 14, "bold"),
-                         anchor="w").grid(row=1, column=0, sticky="w", pady=3)
+        # GPU temperature (right side) - only show if available
+        gpu_frame = ctk.CTkFrame(master=temp_frame, fg_color="transparent")
+        gpu_frame.grid(row=0, column=1, sticky="e")
 
-            start_text = f"{start_cpu_temp}°C" if start_cpu_temp is not None else "N/A"
-            max_text = f"{max_cpu_temp}°C" if max_cpu_temp is not None else "N/A"
-            lifetime_text = f"{lifetime_max_cpu}°C" if lifetime_max_cpu is not None else "N/A"
-
-            ctk.CTkLabel(master=temp_frame, text=start_text,
-                         font=("Calibri", 13)).grid(row=1, column=1, sticky="e", pady=3, padx=(15, 0))
-            ctk.CTkLabel(master=temp_frame, text=max_text,
-                         font=("Calibri", 13)).grid(row=1, column=2, sticky="e", pady=3, padx=(15, 0))
-            ctk.CTkLabel(master=temp_frame, text=lifetime_text,
-                         font=("Calibri", 13), text_color="#FFD700").grid(row=1, column=3, sticky="e", pady=3, padx=(15, 0))
-
-        # GPU temps
-        if start_gpu_temp is not None or max_gpu_temp is not None or lifetime_max_gpu is not None:
-            has_temps = True
-            row = 2 if (start_cpu_temp is not None or max_cpu_temp is not None or lifetime_max_cpu is not None) else 1
-            ctk.CTkLabel(master=temp_frame, text="GPU:", font=("Calibri", 14, "bold"),
-                         anchor="w").grid(row=row, column=0, sticky="w", pady=3)
-
-            start_text = f"{start_gpu_temp}°C" if start_gpu_temp is not None else "N/A"
-            max_text = f"{max_gpu_temp}°C" if max_gpu_temp is not None else "N/A"
-            lifetime_text = f"{lifetime_max_gpu}°C" if lifetime_max_gpu is not None else "N/A"
-
-            ctk.CTkLabel(master=temp_frame, text=start_text,
-                         font=("Calibri", 13)).grid(row=row, column=1, sticky="e", pady=3, padx=(15, 0))
-            ctk.CTkLabel(master=temp_frame, text=max_text,
-                         font=("Calibri", 13)).grid(row=row, column=2, sticky="e", pady=3, padx=(15, 0))
-            ctk.CTkLabel(master=temp_frame, text=lifetime_text,
-                         font=("Calibri", 13), text_color="#FFD700").grid(row=row, column=3, sticky="e", pady=3, padx=(15, 0))
-
-        # No temps available message
-        if not has_temps:
-            ctk.CTkLabel(
-                master=temp_frame,
-                text="Temperature monitoring not enabled",
-                font=("Calibri", 13),
-                text_color="gray60"
-            ).grid(row=0, column=0, columnspan=4, pady=10)
-
-        temp_frame.grid_columnconfigure(3, weight=1)
+        if max_gpu_temp is not None:
+            ctk.CTkLabel(master=gpu_frame, text="GPU:", font=("Calibri", 14, "bold")).pack(side="left")
+            ctk.CTkLabel(master=gpu_frame, text=f" {max_gpu_temp}°C", font=("Calibri", 14)).pack(side="left")
 
         # Bring window to front
         popup.lift()
