@@ -475,9 +475,54 @@ def set_startup(enabled):
 # Process Management
 # =============================================================================
 
+def graceful_close_process(proc, timeout=3):
+    """
+    Attempt to gracefully close a process by sending WM_CLOSE to its windows.
+    Returns True if process exited gracefully, False if still running.
+    """
+    pid = proc.pid
+
+    def enum_windows_callback(hwnd, windows):
+        """Callback to collect windows belonging to the process."""
+        try:
+            _, window_pid = win32gui.GetWindowThreadProcessId(hwnd)
+            if window_pid == pid:
+                windows.append(hwnd)
+        except Exception:
+            pass
+        return True
+
+    # Find all windows belonging to this process
+    windows = []
+    try:
+        win32gui.EnumWindows(enum_windows_callback, windows)
+    except Exception:
+        return False
+
+    if not windows:
+        # No windows found, can't close gracefully
+        return False
+
+    # Send WM_CLOSE to all windows
+    WM_CLOSE = 0x0010
+    for hwnd in windows:
+        try:
+            win32gui.PostMessage(hwnd, WM_CLOSE, 0, 0)
+        except Exception:
+            pass
+
+    # Wait for process to exit
+    try:
+        proc.wait(timeout=timeout)
+        return True  # Process exited gracefully
+    except psutil.TimeoutExpired:
+        return False  # Still running
+
+
 def kill_processes(process_names, killed_processes, purpose=""):
     """
     Terminate processes from the given list.
+    Attempts graceful close first (WM_CLOSE), then force terminates if needed.
     Stores process info in killed_processes dict for potential relaunch.
     """
     purpose_str = f" ({purpose})" if purpose else ""
@@ -495,15 +540,28 @@ def kill_processes(process_names, killed_processes, purpose=""):
                 try:
                     path = proc.info['exe']
                     if path and os.path.exists(path):
-                        log(f"Terminating{purpose_str}: {name} (PID: {proc.pid})", "PROCESS")
-                        proc.terminate()
-                        proc.wait(timeout=5)
-                        killed_count += 1
+                        log(f"Closing{purpose_str}: {name} (PID: {proc.pid})", "PROCESS")
                         if path_to_store is None:
                             path_to_store = path
-                except psutil.TimeoutExpired:
-                    log(f"Timeout waiting for {name} - force killing", "PROCESS")
-                    proc.kill()
+
+                        # Try graceful close first (send WM_CLOSE to windows)
+                        if graceful_close_process(proc, timeout=3):
+                            log(f"Gracefully closed: {name} (PID: {proc.pid})", "PROCESS")
+                            killed_count += 1
+                        else:
+                            # Graceful close failed, force terminate
+                            log(f"Graceful close failed for {name} - force terminating", "PROCESS")
+                            proc.terminate()
+                            try:
+                                proc.wait(timeout=3)
+                                killed_count += 1
+                            except psutil.TimeoutExpired:
+                                log(f"Terminate timeout for {name} - force killing", "PROCESS")
+                                proc.kill()
+                                killed_count += 1
+                except psutil.NoSuchProcess:
+                    # Process already exited
+                    killed_count += 1
                 except Exception as e:
                     log(f"Error closing {name}: {e}", "ERROR")
 
