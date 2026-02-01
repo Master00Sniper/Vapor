@@ -256,8 +256,10 @@ def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=N
         dialog.transient(parent)
     dialog.grab_set()
 
-    # Lift dialog to top and focus
+    # Bring window to front and give it focus
     dialog.lift()
+    dialog.attributes('-topmost', True)
+    dialog.after(100, lambda: dialog.attributes('-topmost', False))
     dialog.focus_force()
 
     # Main content frame (expandable)
@@ -528,6 +530,12 @@ if os.path.exists(icon_path):
 
 root.deiconify()  # Show window
 root.update()  # Process pending events to fully initialize window
+
+# Bring window to front and give it focus
+root.lift()
+root.attributes('-topmost', True)
+root.after(100, lambda: root.attributes('-topmost', False))
+root.focus_force()
 
 # =============================================================================
 # Load Current Settings
@@ -1786,6 +1794,12 @@ def on_save():
             # Set icon after all widgets added and window updated
             set_vapor_icon(installing_dialog)
 
+            # Bring window to front and give it focus
+            installing_dialog.lift()
+            installing_dialog.attributes('-topmost', True)
+            installing_dialog.after(100, lambda: installing_dialog.attributes('-topmost', False))
+            installing_dialog.focus_force()
+
             # Progress callback to update the dialog
             def update_progress(message, pct):
                 try:
@@ -2014,6 +2028,12 @@ def check_pending_pawnio_install():
 
         installing_dialog.update()
         set_vapor_icon(installing_dialog)
+
+        # Bring window to front and give it focus
+        installing_dialog.lift()
+        installing_dialog.attributes('-topmost', True)
+        installing_dialog.after(100, lambda: installing_dialog.attributes('-topmost', False))
+        installing_dialog.focus_force()
 
         # Progress callback
         def update_progress(message, pct):
