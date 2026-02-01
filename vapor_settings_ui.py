@@ -1324,7 +1324,7 @@ help_sep1.pack(fill="x", padx=40, pady=10)
 how_title = ctk.CTkLabel(master=help_scroll_frame, text="How Vapor Works", font=("Calibri", 17, "bold"))
 how_title.pack(pady=(10, 10), anchor='center')
 
-how_text = """Vapor runs quietly in your system tray and monitors Steam for game launches. When you start 
+how_text = """Vapor runs quietly in your system tray and monitors Steam for game launches. When you start
 a Steam game, Vapor automatically:
 
   *  Closes notification apps (like Discord, Slack, Teams) to prevent interruptions
@@ -1332,8 +1332,10 @@ a Steam game, Vapor automatically:
   *  Adjusts your audio levels (if enabled)
   *  Switches your power plan (if enabled)
   *  Enables Windows Game Mode (if enabled)
+  *  Monitors GPU and CPU temperatures with customizable alerts (if enabled)
 
-When you exit your game, Vapor reverses these changes and relaunches your closed apps."""
+When you exit your game, Vapor reverses these changes, relaunches your closed apps, and
+displays a detailed session summary showing your playtime and performance stats."""
 
 how_label = ctk.CTkLabel(master=help_scroll_frame, text=how_text, font=("Calibri", 13),
                          wraplength=580, justify="left")
@@ -1358,6 +1360,28 @@ shortcuts_label.pack(pady=10, anchor='center')
 
 help_sep3 = ctk.CTkFrame(master=help_scroll_frame, height=2, fg_color="gray50")
 help_sep3.pack(fill="x", padx=40, pady=15)
+
+thermal_help_title = ctk.CTkLabel(master=help_scroll_frame, text="Temperature Monitoring", font=("Calibri", 17, "bold"))
+thermal_help_title.pack(pady=(10, 10), anchor='center')
+
+thermal_help_text = """Vapor can monitor your GPU and CPU temperatures while gaming and alert you if
+they reach dangerous levels:
+
+  *  GPU Monitoring: Works out of the box - no additional setup required
+  *  CPU Monitoring: Requires administrator privileges and the PawnIO driver
+     (Vapor will automatically install this when you enable CPU monitoring)
+  *  Temperature Alerts: Set custom warning and critical thresholds in the Thermal tab
+     to receive notifications when your hardware gets too hot
+
+Temperature data is also included in your post-game session summary, showing peak
+temperatures reached during your gaming session."""
+
+thermal_help_label = ctk.CTkLabel(master=help_scroll_frame, text=thermal_help_text, font=("Calibri", 13),
+                                   wraplength=580, justify="left")
+thermal_help_label.pack(pady=10, anchor='center')
+
+help_sep3b = ctk.CTkFrame(master=help_scroll_frame, height=2, fg_color="gray50")
+help_sep3b.pack(fill="x", padx=40, pady=15)
 
 trouble_title = ctk.CTkLabel(master=help_scroll_frame, text="Troubleshooting", font=("Calibri", 17, "bold"))
 trouble_title.pack(pady=(10, 10), anchor='center')
@@ -1499,13 +1523,14 @@ about_title.pack(pady=(10, 5), anchor='center')
 version_label = ctk.CTkLabel(master=about_scroll_frame, text=f"Version {CURRENT_VERSION}", font=("Calibri", 15))
 version_label.pack(pady=(0, 15), anchor='center')
 
-description_text = """Vapor is a lightweight utility designed to enhance your gaming experience on Windows. 
-It automatically detects when you launch a Steam game and optimizes your system by closing 
-distracting notification apps and resource-heavy applications. When you're done gaming, 
+description_text = """Vapor is a lightweight utility designed to enhance your gaming experience on Windows.
+It automatically detects when you launch a Steam game and optimizes your system by closing
+distracting notification apps and resource-heavy applications. When you're done gaming,
 Vapor seamlessly relaunches your closed apps, so you can pick up right where you left off.
 
-Features include customizable app management, audio controls, power plan switching, 
-Windows Game Mode integration, and playtime tracking with session summaries."""
+Features include customizable app management, audio controls, power plan switching,
+Windows Game Mode integration, GPU/CPU temperature monitoring with customizable alerts,
+and detailed session summaries showing playtime and peak temperatures."""
 
 description_label = ctk.CTkLabel(master=about_scroll_frame, text=description_text, font=("Calibri", 14),
                                  wraplength=620, justify="center")
