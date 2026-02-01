@@ -1879,8 +1879,36 @@ def on_save():
                 pass
 
             if install_success:
-                # Ask user to manually restart Vapor
-                # Automatic restart after driver install causes PyInstaller _MEI folder conflicts
+                # Reset temperature monitor so it re-initializes with the new driver
+                try:
+                    from core import temperature
+                    temperature.HWMON_COMPUTER = None
+                    temperature.LHM_COMPUTER = None
+                    debug_log("Reset temperature monitor globals after driver install", "Settings")
+
+                    # Try to read CPU temperature to verify driver works
+                    test_temp = temperature.get_cpu_temperature()
+                    if test_temp is not None:
+                        debug_log(f"CPU temperature read successful: {test_temp}°C", "Settings")
+                        show_vapor_dialog(
+                            title="Driver Installed",
+                            message=f"PawnIO driver installed successfully!\n\n"
+                                    f"CPU temperature monitoring is now active.\n"
+                                    f"Current CPU temperature: {test_temp}°C",
+                            dialog_type="info",
+                            buttons=[
+                                {"text": "OK", "value": True, "color": "green"}
+                            ],
+                            parent=root
+                        )
+                        # No restart needed - driver is working!
+                        return True
+                    else:
+                        debug_log("CPU temperature read returned None after driver install", "Settings")
+                except Exception as e:
+                    debug_log(f"Error testing temperature after driver install: {e}", "Settings")
+
+                # If we get here, temperature reading didn't work - ask for manual restart
                 show_vapor_dialog(
                     title="Driver Installed - Please Restart",
                     message="PawnIO driver installed successfully!\n\n"
@@ -2117,8 +2145,36 @@ def check_pending_pawnio_install():
             pass
 
         if install_success:
-            # Ask user to manually restart Vapor
-            # Automatic restart after driver install causes PyInstaller _MEI folder conflicts
+            # Reset temperature monitor so it re-initializes with the new driver
+            try:
+                from core import temperature
+                temperature.HWMON_COMPUTER = None
+                temperature.LHM_COMPUTER = None
+                debug_log("Reset temperature monitor globals after driver install", "Settings")
+
+                # Try to read CPU temperature to verify driver works
+                test_temp = temperature.get_cpu_temperature()
+                if test_temp is not None:
+                    debug_log(f"CPU temperature read successful: {test_temp}°C", "Settings")
+                    show_vapor_dialog(
+                        title="Driver Installed",
+                        message=f"PawnIO driver installed successfully!\n\n"
+                                f"CPU temperature monitoring is now active.\n"
+                                f"Current CPU temperature: {test_temp}°C",
+                        dialog_type="info",
+                        buttons=[
+                            {"text": "OK", "value": True, "color": "green"}
+                        ],
+                        parent=root
+                    )
+                    # No restart needed - driver is working!
+                    return
+                else:
+                    debug_log("CPU temperature read returned None after driver install", "Settings")
+            except Exception as e:
+                debug_log(f"Error testing temperature after driver install: {e}", "Settings")
+
+            # If we get here, temperature reading didn't work - ask for manual restart
             show_vapor_dialog(
                 title="Driver Installed - Please Restart",
                 message="PawnIO driver installed successfully!\n\n"
