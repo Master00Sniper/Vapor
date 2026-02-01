@@ -1814,8 +1814,8 @@ def on_save():
             )
             status_label.pack(padx=20, pady=(5, 15))
 
-            # Now that window is set up, grab focus
-            installing_dialog.grab_set()
+            # Force the window to fully render before starting installation
+            installing_dialog.update()
 
             # Bring window to front and give it focus
             installing_dialog.lift()
@@ -2055,8 +2055,8 @@ def check_pending_pawnio_install():
         )
         status_label.pack(padx=20, pady=(5, 15))
 
-        # Now that window is set up, grab focus
-        installing_dialog.grab_set()
+        # Force the window to fully render before starting installation
+        installing_dialog.update()
 
         # Bring window to front and give it focus
         installing_dialog.lift()
