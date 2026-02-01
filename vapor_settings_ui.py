@@ -1770,13 +1770,6 @@ def on_save():
         if response == "install":
             # Show installing message with progress bar
             installing_dialog = ctk.CTkToplevel(root)
-            # Set icon immediately to minimize flash of default icon
-            icon_path = os.path.join(base_dir, 'Images', 'exe_icon.ico')
-            if os.path.exists(icon_path):
-                try:
-                    installing_dialog.iconbitmap(icon_path)
-                except Exception:
-                    pass
             installing_dialog.title("Vapor - Installing Driver")
             installing_dialog.geometry("400x160")
             installing_dialog.resizable(False, False)
@@ -1790,7 +1783,7 @@ def on_save():
 
             msg_label = ctk.CTkLabel(
                 installing_dialog,
-                text="Requesting administrator approval...",
+                text="Installing PawnIO driver...",
                 font=("Calibri", 13),
                 justify="center"
             )
@@ -1802,7 +1795,7 @@ def on_save():
 
             status_label = ctk.CTkLabel(
                 installing_dialog,
-                text="Please approve the administrator prompt when it appears.",
+                text="Please wait while the driver is installed...",
                 font=("Calibri", 11),
                 text_color="gray"
             )
@@ -1810,6 +1803,9 @@ def on_save():
 
             # Force the window to fully render before starting installation
             installing_dialog.update()
+
+            # Set icon after window is rendered
+            set_vapor_icon(installing_dialog)
 
             # Bring window to front and give it focus
             installing_dialog.lift()
@@ -2011,13 +2007,6 @@ def check_pending_pawnio_install():
     if response == "install":
         # Show installing message with progress bar
         installing_dialog = ctk.CTkToplevel(root)
-        # Set icon immediately to minimize flash of default icon
-        icon_path = os.path.join(base_dir, 'Images', 'exe_icon.ico')
-        if os.path.exists(icon_path):
-            try:
-                installing_dialog.iconbitmap(icon_path)
-            except Exception:
-                pass
         installing_dialog.title("Vapor - Installing Driver")
         installing_dialog.geometry("400x160")
         installing_dialog.resizable(False, False)
@@ -2043,7 +2032,7 @@ def check_pending_pawnio_install():
 
         status_label = ctk.CTkLabel(
             installing_dialog,
-            text="This may take a moment...",
+            text="Please wait while the driver is installed...",
             font=("Calibri", 11),
             text_color="gray"
         )
@@ -2051,6 +2040,9 @@ def check_pending_pawnio_install():
 
         # Force the window to fully render before starting installation
         installing_dialog.update()
+
+        # Set icon after window is rendered
+        set_vapor_icon(installing_dialog)
 
         # Bring window to front and give it focus
         installing_dialog.lift()
