@@ -512,7 +512,7 @@ def send_close_signal(proc):
     return closed_count
 
 
-def kill_processes(process_names, killed_processes, purpose="", graceful_timeout=3):
+def kill_processes(process_names, killed_processes, purpose="", graceful_timeout=5):
     """
     Terminate processes from the given list.
     Attempts graceful close first (WM_CLOSE), then force terminates if needed.
