@@ -139,6 +139,18 @@ def set_game_volume(game_pids, level, game_folder=None, game_name=None):
             sessions = AudioUtilities.GetAllSessions()
             new_set_count = 0
 
+            # Log all audio sessions on first attempt for debugging
+            if attempt == 0:
+                log(f"All audio sessions found:", "AUDIO")
+                for s in sessions:
+                    if s.ProcessId == 0:
+                        continue
+                    try:
+                        pname = s.Process.name() if s.Process else "?"
+                    except:
+                        pname = "?"
+                    log(f"  - PID {s.ProcessId}: {pname} (DisplayName: {s.DisplayName})", "AUDIO")
+
             for session in sessions:
                 # Skip system sounds (ProcessId 0)
                 if session.ProcessId == 0:
