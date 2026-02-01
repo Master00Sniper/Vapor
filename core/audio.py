@@ -253,11 +253,12 @@ def set_game_volume(game_pids, level, game_folder=None, game_name=None):
                                 new_set_count += 1
                                 total_set_count += 1
                                 display_info = f" [{process_name}]" if process_name else ""
+                                display_name_info = f" DisplayName='{session.DisplayName}'" if session.DisplayName else ""
                                 actual_percent = int(actual_level * 100)
                                 if abs(actual_level - target_level) < 0.01:
-                                    log(f"Set volume for PID {session.ProcessId}{display_info} to {level}%", "AUDIO")
+                                    log(f"Set volume for PID {session.ProcessId}{display_info}{display_name_info} to {level}%", "AUDIO")
                                 else:
-                                    log(f"Set volume for PID {session.ProcessId}{display_info} to {level}% (verified: {actual_percent}%)", "AUDIO")
+                                    log(f"Set volume for PID {session.ProcessId}{display_info}{display_name_info} to {level}% (verified: {actual_percent}%)", "AUDIO")
 
                                 # Expand known_pids to include siblings of matched process
                                 # This helps catch Electron helper processes with separate audio
