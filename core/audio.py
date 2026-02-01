@@ -48,67 +48,6 @@ def set_system_volume(level):
 
 
 # =============================================================================
-# Multi-Device Audio Session Enumeration
-# =============================================================================
-
-def _get_all_sessions_all_devices():
-    """Get audio sessions from ALL render devices, not just the default.
-
-    Returns a list of tuples: (session, device_id) for each session found.
-    This helps catch games that output to non-default audio devices.
-    """
-    from pycaw.pycaw import IAudioSessionManager2, AudioSession
-    from comtypes import CLSCTX_ALL
-
-    all_sessions = []
-
-    try:
-        # Get device enumerator
-        device_enumerator = comtypes.CoCreateInstance(
-            CLSID_MMDeviceEnumerator,
-            IMMDeviceEnumerator,
-            CLSCTX_ALL
-        )
-
-        # Enumerate all active render devices
-        # EDataFlow.eRender = 0, DEVICE_STATE_ACTIVE = 1
-        collection = device_enumerator.EnumAudioEndpoints(0, 1)
-        device_count = collection.GetCount()
-
-        # log(f"Found {device_count} active audio render device(s)", "AUDIO")  # Only log if actually used
-
-        for i in range(device_count):
-            try:
-                device = collection.Item(i)
-                device_id = device.GetId()
-
-                # Get session manager for this device
-                iface = device.Activate(
-                    IAudioSessionManager2._iid_,
-                    CLSCTX_ALL,
-                    None
-                )
-                mgr = iface.QueryInterface(IAudioSessionManager2)
-                sessionEnumerator = mgr.GetSessionEnumerator()
-                count = sessionEnumerator.GetCount()
-
-                for j in range(count):
-                    try:
-                        audio_session_control = sessionEnumerator.GetSession(j)
-                        session = AudioSession(audio_session_control)
-                        all_sessions.append((session, device_id))
-                    except Exception:
-                        pass
-            except Exception as e:
-                log(f"Error enumerating device {i}: {e}", "AUDIO")
-
-    except Exception as e:
-        log(f"Error enumerating audio devices: {e}", "AUDIO")
-
-    return all_sessions
-
-
-# =============================================================================
 # Game Audio Control
 # =============================================================================
 
@@ -234,9 +173,6 @@ def set_game_volume(game_pids, level, game_folder=None, game_name=None, is_game_
         first_session_attempt = None  # Track when first session was found
         min_monitor_duration = 120  # Minimum polls after first session (30 seconds at 0.25s/poll)
 
-        # Store configured sessions for periodic re-verification
-        configured_sessions = {}
-
         # Keep track of all known PIDs (will be updated if game_folder provided)
         known_pids = set(game_pids)
 
@@ -312,9 +248,8 @@ def set_game_volume(game_pids, level, game_folder=None, game_name=None, is_game_
                         log(f"Matched session by display name: {session.DisplayName} (PID {session.ProcessId})", "AUDIO")
 
                 if is_match:
-                    # Use session Identifier for tracking (a process can have multiple sessions)
-                    # Fall back to ProcessId if Identifier is not available
-                    session_id = session.Identifier if session.Identifier else f"pid_{session.ProcessId}"
+                    # Use ProcessId for tracking to ensure uniqueness
+                    session_id = f"pid_{session.ProcessId}"
 
                     if session_id not in set_session_ids:
                         if hasattr(session, 'SimpleAudioVolume') and session.SimpleAudioVolume:
@@ -328,12 +263,6 @@ def set_game_volume(game_pids, level, game_folder=None, game_name=None, is_game_
                                 # Verify the volume was actually set
                                 actual_level = vol_interface.GetMasterVolume()
                                 set_session_ids.add(session_id)
-                                # Store session info for periodic re-verification
-                                configured_sessions[session_id] = {
-                                    'vol_interface': vol_interface,
-                                    'pid': session.ProcessId,
-                                    'name': process_name
-                                }
                                 new_set_count += 1
                                 total_set_count += 1
                                 display_info = f" [{process_name}]" if process_name else ""
@@ -373,24 +302,6 @@ def set_game_volume(game_pids, level, game_folder=None, game_name=None, is_game_
                         log(f"No audio sessions found yet (attempt {attempt + 1}/{max_attempts})...", "AUDIO")
                 else:
                     log("No audio sessions found after all attempts", "AUDIO")
-
-            # Periodically re-verify configured sessions (every 2 seconds = every 8 attempts)
-            # Some games reset their volume after startup
-            if configured_sessions and attempt % 8 == 0 and attempt > 0:
-                for sid, sinfo in configured_sessions.items():
-                    try:
-                        current_level = sinfo['vol_interface'].GetMasterVolume()
-                        current_percent = int(current_level * 100)
-                        # If volume drifted more than 5%, re-set it
-                        if abs(current_level - target_level) > 0.05:
-                            sinfo['vol_interface'].SetMasterVolume(target_level, None)
-                            new_level = sinfo['vol_interface'].GetMasterVolume()
-                            new_percent = int(new_level * 100)
-                            name_info = f" [{sinfo['name']}]" if sinfo['name'] else ""
-                            log(f"Re-set drifted volume for PID {sinfo['pid']}{name_info}: {current_percent}% -> {new_percent}% (target: {level}%)", "AUDIO")
-                    except Exception:
-                        # Session may have been invalidated
-                        pass
 
             # Check if game is still running (every 4 attempts = every second)
             if is_game_running_func and attempt % 4 == 0:
