@@ -990,7 +990,6 @@ if __name__ == '__main__':
     else:
         # === NORMAL TRAY MODE ===
         try:
-            global _tray_icon  # Declare global at start of block
             killed_notification = {}
             killed_resource = {}
             stop_event = threading.Event()
