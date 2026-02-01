@@ -22,3 +22,9 @@ from core.temperature import (
     save_temp_history,
     get_lifetime_max_temps,
 )
+
+from core.audio import (
+    set_system_volume,
+    find_game_pids,
+    set_game_volume,
+)
