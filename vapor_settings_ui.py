@@ -1551,6 +1551,154 @@ reset_all_button = ctk.CTkButton(master=reset_buttons_frame, text="Reset All Dat
 reset_all_button.pack(side='left', padx=5)
 
 # =============================================================================
+# Bug Report Section
+# =============================================================================
+
+help_sep5 = ctk.CTkFrame(master=help_scroll_frame, height=2, fg_color="gray50")
+help_sep5.pack(fill="x", padx=40, pady=15)
+
+bug_report_title = ctk.CTkLabel(master=help_scroll_frame, text="Report a Bug", font=("Calibri", 17, "bold"))
+bug_report_title.pack(pady=(10, 5), anchor='center')
+
+bug_report_hint = ctk.CTkLabel(master=help_scroll_frame,
+                               text="Found a bug? Let us know! Your report will be submitted to GitHub Issues.",
+                               font=("Calibri", 12), text_color="gray60")
+bug_report_hint.pack(pady=(0, 10), anchor='center')
+
+# Bug title entry
+bug_title_label = ctk.CTkLabel(master=help_scroll_frame, text="Title (brief summary)", font=("Calibri", 13))
+bug_title_label.pack(pady=(5, 2), anchor='center')
+
+bug_title_entry = ctk.CTkEntry(master=help_scroll_frame, width=400, height=32, font=("Calibri", 13),
+                               placeholder_text="e.g., App crashes when starting a game")
+bug_title_entry.pack(pady=(0, 10), anchor='center')
+
+# Bug description textbox
+bug_desc_label = ctk.CTkLabel(master=help_scroll_frame, text="Description (steps to reproduce, expected vs actual behavior)",
+                              font=("Calibri", 13))
+bug_desc_label.pack(pady=(5, 2), anchor='center')
+
+bug_desc_textbox = ctk.CTkTextbox(master=help_scroll_frame, width=400, height=120, font=("Calibri", 13),
+                                  wrap="word")
+bug_desc_textbox.pack(pady=(0, 10), anchor='center')
+
+# System info checkbox
+include_system_info_var = ctk.BooleanVar(value=True)
+system_info_checkbox = ctk.CTkCheckBox(master=help_scroll_frame,
+                                        text="Include system information (OS, Vapor version, Python version)",
+                                        variable=include_system_info_var,
+                                        font=("Calibri", 12))
+system_info_checkbox.pack(pady=(0, 10), anchor='center')
+
+# Status label for feedback
+bug_status_label = ctk.CTkLabel(master=help_scroll_frame, text="", font=("Calibri", 12))
+bug_status_label.pack(pady=(0, 5), anchor='center')
+
+
+def get_system_info():
+    """Collect system information for bug reports."""
+    import platform
+    info_lines = [
+        f"- **Vapor Version**: {CURRENT_VERSION}",
+        f"- **OS**: {platform.system()} {platform.release()} ({platform.version()})",
+        f"- **Python**: {platform.python_version()}",
+        f"- **Architecture**: {platform.machine()}",
+    ]
+
+    # Try to get GPU info
+    try:
+        import subprocess
+        result = subprocess.run(
+            ['wmic', 'path', 'win32_VideoController', 'get', 'name'],
+            capture_output=True, text=True, timeout=5
+        )
+        gpu_lines = [line.strip() for line in result.stdout.strip().split('\n') if line.strip() and line.strip() != 'Name']
+        if gpu_lines:
+            info_lines.append(f"- **GPU**: {', '.join(gpu_lines)}")
+    except:
+        pass
+
+    return '\n'.join(info_lines)
+
+
+def submit_bug_report():
+    """Submit bug report to GitHub Issues via proxy."""
+    import requests
+
+    title = bug_title_entry.get().strip()
+    description = bug_desc_textbox.get("1.0", "end-1c").strip()
+
+    if not title:
+        bug_status_label.configure(text="Please enter a title for your bug report.", text_color="#ff6b6b")
+        return
+
+    if not description:
+        bug_status_label.configure(text="Please describe the bug.", text_color="#ff6b6b")
+        return
+
+    # Build the issue body
+    body_parts = ["## Description", description]
+
+    if include_system_info_var.get():
+        body_parts.append("\n## System Information")
+        body_parts.append(get_system_info())
+
+    body_parts.append("\n---")
+    body_parts.append("*Submitted via Vapor Settings UI*")
+
+    issue_body = '\n'.join(body_parts)
+
+    # Submit to GitHub via proxy
+    bug_status_label.configure(text="Submitting...", text_color="gray60")
+    root.update()
+
+    try:
+        proxy_url = "https://vapor-proxy.mortonapps.com/repos/Master00Sniper/Vapor/issues"
+        headers = {
+            "Accept": "application/vnd.github.v3+json",
+            "User-Agent": "Vapor-BugReport/1.0",
+            "X-Vapor-Auth": "ombxslvdyyqvlkiiogwmjlkpocwqufaa",
+            "Content-Type": "application/json"
+        }
+
+        payload = {
+            "title": f"[Bug Report] {title}",
+            "body": issue_body,
+            "labels": ["bug", "user-reported"]
+        }
+
+        response = requests.post(proxy_url, headers=headers, json=payload, timeout=15)
+
+        if response.status_code == 201:
+            issue_data = response.json()
+            issue_number = issue_data.get('number', 'N/A')
+            bug_status_label.configure(text=f"Bug report submitted successfully! (Issue #{issue_number})", text_color="#4ade80")
+            # Clear the form
+            bug_title_entry.delete(0, 'end')
+            bug_desc_textbox.delete("1.0", "end")
+            debug_log(f"Bug report submitted: Issue #{issue_number}", "BugReport")
+        else:
+            error_msg = f"Failed to submit (HTTP {response.status_code})"
+            bug_status_label.configure(text=error_msg, text_color="#ff6b6b")
+            debug_log(f"Bug report failed: {error_msg} - {response.text}", "BugReport")
+    except requests.exceptions.Timeout:
+        bug_status_label.configure(text="Request timed out. Please try again.", text_color="#ff6b6b")
+        debug_log("Bug report failed: Timeout", "BugReport")
+    except requests.exceptions.RequestException as e:
+        bug_status_label.configure(text="Network error. Please check your connection.", text_color="#ff6b6b")
+        debug_log(f"Bug report failed: {e}", "BugReport")
+    except Exception as e:
+        bug_status_label.configure(text="An error occurred. Please try again.", text_color="#ff6b6b")
+        debug_log(f"Bug report failed: {e}", "BugReport")
+
+
+submit_bug_button = ctk.CTkButton(master=help_scroll_frame, text="Submit Bug Report", command=submit_bug_report,
+                                  corner_radius=10,
+                                  fg_color="#2563eb", hover_color="#1d4ed8", text_color="white", width=180,
+                                  font=("Calibri", 14))
+submit_bug_button.pack(pady=(5, 20), anchor='center')
+
+# =============================================================================
 # About Tab
 # =============================================================================
 

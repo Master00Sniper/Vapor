@@ -369,14 +369,15 @@ def periodic_update_check(stop_event, get_current_app_id_func, show_notification
         show_notification_func: Callback to display user notifications
         check_interval: Seconds between checks (default: 1 hour)
     """
-    log("Update checker starting (first check in 30 seconds)...")
-
-    # Initial delay before first check
-    if stop_event.wait(30):
-        return
+    log(f"Update checker starting (first check in {check_interval // 60} minutes)...")
 
     check_count = 0
     while not stop_event.is_set():
+        # Wait before checking (first check waits full interval, no immediate check on startup)
+        log(f"Next check in {check_interval // 60} minutes")
+        if stop_event.wait(check_interval):
+            break
+
         try:
             check_count += 1
             log(f"Periodic check #{check_count}")
@@ -384,9 +385,5 @@ def periodic_update_check(stop_event, get_current_app_id_func, show_notification
             check_for_updates(current_app_id, show_notification_func)
         except Exception as e:
             log(f"Error in periodic check: {e}", "ERROR")
-
-        log(f"Next check in {check_interval // 60} minutes")
-        if stop_event.wait(check_interval):
-            break
 
     log("Update checker stopped")
