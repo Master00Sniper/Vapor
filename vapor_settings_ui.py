@@ -1035,7 +1035,7 @@ enable_gpu_thermal_switch = ctk.CTkSwitch(master=thermal_frame, text="Capture GP
 enable_gpu_thermal_switch.pack(pady=5, anchor='w')
 
 enable_cpu_thermal_var = tk.BooleanVar(value=enable_cpu_thermal)
-enable_cpu_thermal_switch = ctk.CTkSwitch(master=thermal_frame, text="Capture CPU Temperature (requires admin + driver)",
+enable_cpu_thermal_switch = ctk.CTkSwitch(master=thermal_frame, text="Capture CPU Temperature (requires admin, will auto-install driver)",
                                           variable=enable_cpu_thermal_var, font=("Calibri", 14))
 enable_cpu_thermal_switch.pack(pady=5, anchor='w')
 
