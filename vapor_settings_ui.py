@@ -1760,6 +1760,7 @@ def on_save():
         if response == "install":
             # Show installing message with progress bar
             installing_dialog = ctk.CTkToplevel(root)
+            installing_dialog.withdraw()  # Hide while setting up to avoid icon flash
             installing_dialog.title("Vapor - Installing Driver")
             installing_dialog.geometry("400x160")
             installing_dialog.resizable(False, False)
@@ -1797,6 +1798,7 @@ def on_save():
             set_vapor_icon(installing_dialog)
 
             # Bring window to front and give it focus
+            installing_dialog.deiconify()  # Show window now that icon is set
             installing_dialog.lift()
             installing_dialog.attributes('-topmost', True)
             installing_dialog.after(100, lambda: installing_dialog.attributes('-topmost', False))
@@ -1996,6 +1998,7 @@ def check_pending_pawnio_install():
     if response == "install":
         # Show installing message with progress bar
         installing_dialog = ctk.CTkToplevel(root)
+        installing_dialog.withdraw()  # Hide while setting up to avoid icon flash
         installing_dialog.title("Vapor - Installing Driver")
         installing_dialog.geometry("400x160")
         installing_dialog.resizable(False, False)
@@ -2032,6 +2035,7 @@ def check_pending_pawnio_install():
         set_vapor_icon(installing_dialog)
 
         # Bring window to front and give it focus
+        installing_dialog.deiconify()  # Show window now that icon is set
         installing_dialog.lift()
         installing_dialog.attributes('-topmost', True)
         installing_dialog.after(100, lambda: installing_dialog.attributes('-topmost', False))

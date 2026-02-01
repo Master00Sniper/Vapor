@@ -178,6 +178,7 @@ def show_notification_warning_popup(reason="notifications_disabled"):
 
     # Create popup window
     popup = ctk.CTk()
+    popup.withdraw()  # Hide while setting up to avoid icon flash
 
     # Register popup for cleanup on quit
     register_popup(popup)
@@ -299,6 +300,7 @@ Windows Settings > System > Notifications"""
     )
     dont_show_button.pack(side="left", padx=10)
 
+    popup.deiconify()  # Show window now that icon is set
     popup.mainloop()
 
 
@@ -394,6 +396,7 @@ def show_detailed_summary(session_data):
         game_details = get_preloaded_game_details()
 
         popup = ctk.CTk()
+        popup.withdraw()  # Hide while setting up to avoid icon flash
         popup.title("Vapor - Game Session Details")
 
         # Register popup for cleanup on quit
@@ -690,6 +693,7 @@ def show_detailed_summary(session_data):
 
         temp_frame.grid_columnconfigure(3, weight=1)
 
+        popup.deiconify()  # Show window now that icon is set
         popup.mainloop()
 
     # Run in a thread to avoid blocking the main monitoring loop
