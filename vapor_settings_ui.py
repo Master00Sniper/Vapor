@@ -155,82 +155,21 @@ def restart_vapor(main_pid, require_admin=False, delay_seconds=3):
     debug_log(f"Already admin: {is_admin()}", "Restart")
 
     try:
-        # Only use "runas" if elevation is required AND we're not already admin
-        need_elevation = require_admin and not is_admin()
-        debug_log(f"Need elevation: {need_elevation}", "Restart")
-
-        if need_elevation:
-            # Need UAC elevation - use ShellExecuteW with runas
-            # UAC creates a completely fresh process with new environment
-            ps_command = f'Start-Sleep -Seconds {delay_seconds}; Start-Process -FilePath \\"{executable}\\"{args_part}'
-            debug_log(f"Using runas with PowerShell", "Restart")
-            result = ctypes.windll.shell32.ShellExecuteW(
-                None,
-                "runas",
-                "powershell.exe",
-                f'-WindowStyle Hidden -Command "{ps_command}"',
-                working_dir,
-                0  # SW_HIDE
-            )
-            debug_log(f"ShellExecuteW result: {result}", "Restart")
-            return result > 32
-        else:
-            # Already admin or no elevation needed
-            # Use a launcher batch file that waits for the old process to fully exit
-            # before starting the new one. This avoids PyInstaller _MEI folder conflicts.
-            current_pid = os.getpid()
-
-            # Create batch file in AppData folder (hidden from user, stable location)
-            batch_path = os.path.join(appdata_dir, '_vapor_restart.bat')
-            batch_content = f'''@echo off
-:: Vapor restart helper - waits for old process to exit before launching new one
-:: This avoids PyInstaller _MEI folder conflicts
-
-:: Wait for the old Vapor process to fully exit
-:waitloop
-tasklist /FI "PID eq {current_pid}" 2>NUL | find /I "{current_pid}" >NUL
-if not errorlevel 1 (
-    timeout /t 1 /nobreak >nul
-    goto waitloop
-)
-
-:: Additional delay to ensure _MEI folder cleanup is complete
-timeout /t 3 /nobreak >nul
-
-:: Launch Vapor with a clean environment
-start "" /D "{working_dir}" "{executable}"
-
-:: Clean up this batch file
-del "%~f0"
-'''
-            with open(batch_path, 'w') as f:
-                f.write(batch_content)
-
-            # Create a VBScript to launch the batch file completely hidden
-            # VBScript is more reliable than SW_HIDE for hiding cmd windows
-            vbs_path = os.path.join(appdata_dir, '_vapor_restart.vbs')
-            vbs_content = f'''Set WshShell = CreateObject("WScript.Shell")
-WshShell.Run chr(34) & "{batch_path}" & chr(34), 0, False
-Set fso = CreateObject("Scripting.FileSystemObject")
-fso.DeleteFile WScript.ScriptFullName
-'''
-            with open(vbs_path, 'w') as f:
-                f.write(vbs_content)
-
-            debug_log(f"Created restart launcher: {batch_path}", "Restart")
-            debug_log(f"Created VBS wrapper: {vbs_path}", "Restart")
-
-            # Launch the VBS which runs the batch file completely hidden
-            result = ctypes.windll.shell32.ShellExecuteW(
-                None,
-                "open",
-                "wscript.exe",
-                f'"{vbs_path}"',
-                working_dir,
-                0  # SW_HIDE
-            )
-            debug_log(f"ShellExecuteW result: {result}", "Restart")
-            return result > 32
+        # Always use "runas" verb - this creates a cleaner process even when already admin
+        # When already elevated, it typically won't show a UAC prompt but still uses
+        # the UAC subsystem's process creation which is more isolated
+        ps_command = f'Start-Sleep -Seconds {delay_seconds}; Start-Process -FilePath \\"{executable}\\"{args_part}'
+        debug_log(f"Using runas with PowerShell (require_admin={require_admin}, is_admin={is_admin()})", "Restart")
+        result = ctypes.windll.shell32.ShellExecuteW(
+            None,
+            "runas",
+            "powershell.exe",
+            f'-WindowStyle Hidden -Command "{ps_command}"',
+            working_dir,
+            0  # SW_HIDE
+        )
+        debug_log(f"ShellExecuteW result: {result}", "Restart")
+        return result > 32
     except Exception as e:
         debug_log(f"Restart failed: {e}", "Restart")
         return False
