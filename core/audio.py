@@ -133,15 +133,15 @@ def set_game_volume(game_pids, level, game_folder=None, game_name=None):
     comtypes.CoInitializeEx(comtypes.COINIT_MULTITHREADED)
     try:
         target_level = max(0, min(100, level)) / 100.0
-        max_attempts = 240  # 240 attempts x 0.5s = 120 seconds (2 min) max wait
-        retry_delay = 0.5
+        max_attempts = 480  # 480 attempts x 0.25s = 120 seconds (2 min) max wait
+        retry_delay = 0.25
 
         # Track sessions we've already set using their stable Identifier
         set_session_ids = set()
         total_set_count = 0
         # After finding first session, continue checking for additional sessions
         stable_count = 0  # Count of consecutive polls with no new sessions
-        stable_threshold = 6  # Stop after 6 consecutive polls (3 seconds) with no new sessions
+        stable_threshold = 4  # Stop after 4 consecutive polls (1 second) with no new sessions
 
         # Keep track of all known PIDs (will be updated if game_folder provided)
         known_pids = set(game_pids)
@@ -158,7 +158,7 @@ def set_game_volume(game_pids, level, game_folder=None, game_name=None):
 
         for attempt in range(max_attempts):
             # Refresh PIDs to catch newly spawned child processes
-            if game_folder and attempt % 2 == 0:  # Refresh every second (every 2 attempts)
+            if game_folder and attempt % 4 == 0:  # Refresh every second (every 4 attempts)
                 new_pids = _get_game_pids_from_folder(game_folder)
                 if new_pids - known_pids:
                     log(f"Discovered {len(new_pids - known_pids)} new game process(es)", "AUDIO")
@@ -247,7 +247,7 @@ def set_game_volume(game_pids, level, game_folder=None, game_name=None):
             else:
                 # No sessions found yet
                 if attempt < max_attempts - 1:
-                    if attempt % 10 == 0:  # Log every 5 seconds instead of every attempt
+                    if attempt % 20 == 0:  # Log every 5 seconds instead of every attempt
                         log(f"No audio sessions found yet (attempt {attempt + 1}/{max_attempts})...", "AUDIO")
                 else:
                     log("No audio sessions found after all attempts", "AUDIO")
