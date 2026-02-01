@@ -422,9 +422,9 @@ def show_detailed_summary(session_data):
         # Reserve space for taskbar (~50px) and some margin
         usable_height = screen_height - 80
 
-        # Use 85% of usable height, clamped between 500 and 900
+        # Use 85% of usable height, clamped between 500 and 950
         window_height = int(usable_height * 0.85)
-        window_height = max(500, min(window_height, 900))
+        window_height = max(500, min(window_height, 950))
 
         popup.geometry(f"{window_width}x{window_height}")
         popup.resizable(False, True)  # Allow vertical resizing
