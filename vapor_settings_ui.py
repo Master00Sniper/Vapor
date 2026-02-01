@@ -1707,15 +1707,31 @@ def submit_bug_report():
     """Submit bug report to GitHub Issues via proxy."""
     import requests
 
+    # Disable button to prevent multiple submissions
+    submit_bug_button.configure(state="disabled", fg_color="gray50")
+    submit_start_time = time.time()
+
+    def re_enable_button():
+        """Re-enable the submit button after minimum delay."""
+        submit_bug_button.configure(state="normal", fg_color="#2563eb")
+
+    def schedule_re_enable():
+        """Schedule button re-enable with minimum 5 second delay."""
+        elapsed = time.time() - submit_start_time
+        remaining = max(0, 5.0 - elapsed)
+        root.after(int(remaining * 1000), re_enable_button)
+
     title = bug_title_entry.get().strip()
     description = bug_desc_textbox.get("1.0", "end-1c").strip()
 
     if not title:
         bug_status_label.configure(text="Please enter a title for your bug report.", text_color="#ff6b6b")
+        schedule_re_enable()
         return
 
     if not description:
         bug_status_label.configure(text="Please describe the bug.", text_color="#ff6b6b")
+        schedule_re_enable()
         return
 
     # Build the issue body
@@ -1783,6 +1799,9 @@ def submit_bug_report():
     except Exception as e:
         bug_status_label.configure(text="An error occurred. Please try again.", text_color="#ff6b6b")
         debug_log(f"Bug report failed: {e}", "BugReport")
+
+    # Re-enable button after minimum 5 second delay
+    schedule_re_enable()
 
 
 submit_bug_button = ctk.CTkButton(master=help_scroll_frame, text="Submit Bug Report", command=submit_bug_report,
