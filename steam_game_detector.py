@@ -1073,6 +1073,10 @@ if __name__ == '__main__':
                 log("First run detected - creating default settings file", "INIT")
                 create_default_settings()
 
+            # Ensure the restart helper VBS exists (used for hidden restarts)
+            from vapor_settings_ui import ensure_restart_helper_exists
+            ensure_restart_helper_exists()
+
             # Check if CPU thermal monitoring is enabled and we need admin privileges
             if os.path.exists(SETTINGS_FILE):
                 try:

@@ -75,6 +75,34 @@ except ImportError:
 # Vapor Restart Functions
 # =============================================================================
 
+def ensure_restart_helper_exists():
+    """
+    Create the VBS hidden launcher script if it doesn't exist.
+    This script is used to run batch files completely invisibly.
+    Should be called at program startup.
+    """
+    vbs_path = os.path.join(appdata_dir, '_vapor_hidden_launcher.vbs')
+
+    # Only create if it doesn't exist
+    if os.path.exists(vbs_path):
+        return vbs_path
+
+    # Generic VBS that takes a batch file path as argument and runs it hidden
+    vbs_content = '''Set WshShell = CreateObject("WScript.Shell")
+If WScript.Arguments.Count > 0 Then
+    WshShell.Run chr(34) & WScript.Arguments(0) & chr(34), 0, False
+End If
+'''
+    try:
+        with open(vbs_path, 'w') as f:
+            f.write(vbs_content)
+        debug_log(f"Created hidden launcher VBS: {vbs_path}", "Restart")
+    except Exception as e:
+        debug_log(f"Failed to create VBS launcher: {e}", "Restart")
+
+    return vbs_path
+
+
 def restart_vapor(main_pid, require_admin=False, delay_seconds=3):
     """
     Restart the main Vapor process.
@@ -180,7 +208,7 @@ def restart_vapor(main_pid, require_admin=False, delay_seconds=3):
             # before starting the new one. This avoids PyInstaller _MEI folder conflicts.
             current_pid = os.getpid()
 
-            # Create batch file in AppData folder (hidden from user, stable location)
+            # Create batch file in AppData folder with current restart parameters
             batch_path = os.path.join(appdata_dir, '_vapor_restart.bat')
             batch_content = f'''@echo off
 :: Vapor restart helper - waits for old process to exit before launching new one
@@ -206,26 +234,21 @@ del "%~f0"
             with open(batch_path, 'w') as f:
                 f.write(batch_content)
 
-            # Create a VBScript to launch the batch file completely hidden
-            # VBScript is more reliable than SW_HIDE for hiding cmd windows
-            vbs_path = os.path.join(appdata_dir, '_vapor_restart.vbs')
-            vbs_content = f'''Set WshShell = CreateObject("WScript.Shell")
-WshShell.Run chr(34) & "{batch_path}" & chr(34), 0, False
-Set fso = CreateObject("Scripting.FileSystemObject")
-fso.DeleteFile WScript.ScriptFullName
-'''
-            with open(vbs_path, 'w') as f:
-                f.write(vbs_content)
+            debug_log(f"Created restart batch: {batch_path}", "Restart")
 
-            debug_log(f"Created restart launcher: {batch_path}", "Restart")
-            debug_log(f"Created VBS wrapper: {vbs_path}", "Restart")
+            # Use the persistent VBS launcher (created at startup) to run the batch file hidden
+            vbs_path = os.path.join(appdata_dir, '_vapor_hidden_launcher.vbs')
 
-            # Launch the VBS which runs the batch file completely hidden
+            # Ensure VBS launcher exists (should be created at startup, but create if missing)
+            if not os.path.exists(vbs_path):
+                ensure_restart_helper_exists()
+
+            # Launch the VBS with batch file path as argument
             result = ctypes.windll.shell32.ShellExecuteW(
                 None,
                 "open",
                 "wscript.exe",
-                f'"{vbs_path}"',
+                f'"{vbs_path}" "{batch_path}"',
                 working_dir,
                 0  # SW_HIDE
             )
