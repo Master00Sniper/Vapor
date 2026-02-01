@@ -165,15 +165,15 @@ def restart_vapor(main_pid, require_admin=False, delay_seconds=3):
     debug_log(f"Current PID: {os.getpid()}", "Restart")
 
     try:
-        # Always use "runas" verb - this creates a cleaner process even when already admin
-        # When already elevated, it typically won't show a UAC prompt but still uses
-        # the UAC subsystem's process creation which is more isolated
-        ps_command = f'Start-Sleep -Seconds {delay_seconds}; Start-Process -FilePath \\"{executable}\\"{args_part}'
+        # Use PowerShell's Start-Process with -Verb RunAs to force UAC elevation
+        # This creates a clean process through the Windows security subsystem
+        # even when already running as admin (will show UAC prompt)
+        ps_command = f'Start-Sleep -Seconds {delay_seconds}; Start-Process -FilePath \\"{executable}\\" -Verb RunAs{args_part}'
         debug_log(f"PowerShell command: {ps_command}", "Restart")
-        debug_log(f"Using runas with PowerShell (require_admin={require_admin}, is_admin={is_admin()})", "Restart")
+        debug_log(f"Using PowerShell Start-Process with -Verb RunAs (require_admin={require_admin}, is_admin={is_admin()})", "Restart")
         result = ctypes.windll.shell32.ShellExecuteW(
             None,
-            "runas",
+            "open",  # Use "open" here since PowerShell's -Verb RunAs handles elevation
             "powershell.exe",
             f'-WindowStyle Hidden -Command "{ps_command}"',
             working_dir,
