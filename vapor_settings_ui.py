@@ -29,6 +29,23 @@ else:
 os.chdir(application_path)
 sys.path.append(application_path)
 
+# Import shared utilities (logging, constants, paths, settings)
+from utils import (
+    base_dir, appdata_dir, SETTINGS_FILE,
+    TRAY_ICON_PATH, PROTECTED_PROCESSES, log,
+    load_settings as load_settings_dict, save_settings as save_settings_dict,
+    DEFAULT_SETTINGS, set_setting
+)
+
+# Import platform utilities (admin checks, PawnIO driver)
+from platform_utils import (
+    is_admin, is_winget_available, is_pawnio_installed,
+    clear_pawnio_cache, install_pawnio_silent, install_pawnio_with_elevation
+)
+
+# Alias for backward compatibility with existing code
+debug_log = log
+
 # =============================================================================
 # Imports
 # =============================================================================
@@ -53,63 +70,12 @@ try:
 except ImportError:
     CURRENT_VERSION = "Unknown"
 
-base_dir = getattr(sys, '_MEIPASS', os.path.abspath(os.path.dirname(__file__)))
-
-# Settings stored in %APPDATA%/Vapor for persistence
-appdata_dir = os.path.join(os.getenv('APPDATA'), 'Vapor')
-os.makedirs(appdata_dir, exist_ok=True)
-SETTINGS_FILE = os.path.join(appdata_dir, 'vapor_settings.json')
-
-TRAY_ICON_PATH = os.path.join(base_dir, 'Images', 'tray_icon.png')
-
-# Log file for debugging (shared with main Vapor process)
-DEBUG_LOG_FILE = os.path.join(appdata_dir, 'vapor_logs.log')
-
-# Maximum log file size (2 MB) - will be truncated when exceeded
-MAX_LOG_SIZE = 2 * 1024 * 1024
-
-
-def debug_log(message, category="General"):
-    """Write a debug message to the console and log file."""
-    timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
-    formatted = f"[{timestamp}] [{category}] {message}"
-
-    # Print to console (visible if debug mode enabled)
-    try:
-        print(formatted)
-    except Exception:
-        pass
-
-    # Also write to file as backup
-    try:
-        # Check if log file is too large and truncate if needed
-        if os.path.exists(DEBUG_LOG_FILE):
-            if os.path.getsize(DEBUG_LOG_FILE) > MAX_LOG_SIZE:
-                # Keep last 500 lines
-                with open(DEBUG_LOG_FILE, 'r', encoding='utf-8', errors='ignore') as f:
-                    lines = f.readlines()[-500:]
-                with open(DEBUG_LOG_FILE, 'w', encoding='utf-8') as f:
-                    f.writelines(lines)
-
-        with open(DEBUG_LOG_FILE, 'a', encoding='utf-8') as f:
-            f.write(f"{formatted}\n")
-    except Exception:
-        pass
-
 
 # =============================================================================
-# Admin Privilege Functions
+# Vapor Restart Functions
 # =============================================================================
 
-def is_admin():
-    """Check if the current process has admin privileges."""
-    try:
-        return ctypes.windll.shell32.IsUserAnAdmin() != 0
-    except Exception:
-        return False
-
-
-def restart_vapor(main_pid, require_admin=False):
+def restart_vapor(main_pid, require_admin=False, delay_seconds=3):
     """
     Restart the main Vapor process.
 
@@ -117,13 +83,21 @@ def restart_vapor(main_pid, require_admin=False):
         main_pid: PID of the main Vapor process to terminate before restart
         require_admin: If True and not already admin, will request elevation.
                       If False, restarts without elevation prompt.
+        delay_seconds: Seconds to wait before starting new process (default 3).
+                      Use longer delays after driver installations.
 
     Uses a delayed start via PowerShell to avoid MEI folder cleanup errors.
+    The caller is responsible for cleanly exiting after this function returns.
     """
-    debug_log(f"Restarting Vapor (main_pid={main_pid}, require_admin={require_admin})", "Restart")
+    debug_log(f"Restarting Vapor (main_pid={main_pid}, require_admin={require_admin}, delay={delay_seconds}s)", "Restart")
 
-    # Terminate current main process if running
-    if main_pid:
+    # Check if main_pid is our own process - if so, don't terminate it
+    # We'll exit cleanly after launching the new process, which allows
+    # PyInstaller to properly clean up the MEI folder
+    current_pid = os.getpid()
+    should_terminate_main = main_pid and main_pid != current_pid
+
+    if should_terminate_main:
         try:
             debug_log(f"Terminating main process {main_pid}", "Restart")
             main_process = psutil.Process(main_pid)
@@ -132,6 +106,8 @@ def restart_vapor(main_pid, require_admin=False):
             debug_log("Main process terminated", "Restart")
         except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.TimeoutExpired) as e:
             debug_log(f"Could not terminate main process: {e}", "Restart")
+    else:
+        debug_log(f"main_pid {main_pid} is current process {current_pid} - will exit cleanly after launch", "Restart")
 
     # Determine the executable path
     # Use VAPOR_EXE_PATH if available (passed from main process)
@@ -178,29 +154,33 @@ def restart_vapor(main_pid, require_admin=False):
     debug_log(f"Working dir: {working_dir}", "Restart")
     debug_log(f"Already admin: {is_admin()}", "Restart")
 
-    # Use PowerShell with a delay to start the new process
-    # This ensures the old process (settings UI) has fully exited before new Vapor starts
-    # The delay prevents "Failed to remove temporary directory" MEI folder errors
-    ps_command = f'Start-Sleep -Seconds 2; Start-Process -FilePath \\"{executable}\\"{args_part}'
+    # Log PyInstaller-related environment and paths for debugging
+    debug_log(f"sys.executable: {sys.executable}", "Restart")
+    debug_log(f"sys.frozen: {getattr(sys, 'frozen', False)}", "Restart")
+    debug_log(f"sys._MEIPASS: {getattr(sys, '_MEIPASS', 'N/A')}", "Restart")
+    debug_log(f"ENV _MEIPASS: {os.environ.get('_MEIPASS', 'N/A')}", "Restart")
+    debug_log(f"ENV _MEIPASS2: {os.environ.get('_MEIPASS2', 'N/A')}", "Restart")
+    debug_log(f"ENV VAPOR_EXE_PATH: {os.environ.get('VAPOR_EXE_PATH', 'N/A')}", "Restart")
+    debug_log(f"TEMP dir: {os.environ.get('TEMP', 'N/A')}", "Restart")
+    debug_log(f"Current PID: {os.getpid()}", "Restart")
 
     try:
-        # Only use "runas" if elevation is required AND we're not already admin
-        # This avoids unnecessary UAC prompts
-        need_elevation = require_admin and not is_admin()
-        verb = "runas" if need_elevation else "open"
-        debug_log(f"Using verb: {verb} (need_elevation={need_elevation})", "Restart")
-
-        # Launch PowerShell hidden - it will wait 2 seconds then start Vapor
+        # Use PowerShell's Start-Process with -Verb RunAs to force UAC elevation
+        # This creates a clean process through the Windows security subsystem
+        # even when already running as admin (will show UAC prompt)
+        ps_command = f'Start-Sleep -Seconds {delay_seconds}; Start-Process -FilePath \\"{executable}\\" -Verb RunAs{args_part}'
+        debug_log(f"PowerShell command: {ps_command}", "Restart")
+        debug_log(f"Using PowerShell Start-Process with -Verb RunAs (require_admin={require_admin}, is_admin={is_admin()})", "Restart")
         result = ctypes.windll.shell32.ShellExecuteW(
             None,
-            verb,
+            "open",  # Use "open" here since PowerShell's -Verb RunAs handles elevation
             "powershell.exe",
             f'-WindowStyle Hidden -Command "{ps_command}"',
             working_dir,
             0  # SW_HIDE
         )
-        debug_log(f"ShellExecuteW result: {result}", "Restart")
-        return result > 32  # ShellExecuteW returns > 32 on success
+        debug_log(f"ShellExecuteW result: {result} (success if > 32)", "Restart")
+        return result > 32
     except Exception as e:
         debug_log(f"Restart failed: {e}", "Restart")
         return False
@@ -213,238 +193,8 @@ def restart_vapor_as_admin(main_pid):
 
 
 # =============================================================================
-# PawnIO Driver Functions (for CPU temperature monitoring)
+# Icon Handling
 # =============================================================================
-
-# Cache for PawnIO installation status (to avoid repeated slow winget calls)
-_pawnio_installed_cache = None
-_pawnio_cache_time = 0
-PAWNIO_CACHE_DURATION = 60  # Cache for 60 seconds
-
-
-def is_winget_available():
-    """Check if winget is available on this system."""
-    try:
-        result = subprocess.run(
-            ['winget', '--version'],
-            capture_output=True, text=True, timeout=10,
-            creationflags=subprocess.CREATE_NO_WINDOW
-        )
-        available = result.returncode == 0
-        debug_log(f"Available: {available}, Version: {result.stdout.strip() if available else 'N/A'}", "Winget")
-        return available
-    except Exception as e:
-        debug_log(f"Error: {e}", "Winget")
-        return False
-
-
-def is_pawnio_installed(use_cache=True):
-    """Check if PawnIO driver is installed. Uses cache to avoid slow winget calls."""
-    global _pawnio_installed_cache, _pawnio_cache_time
-
-    # Return cached result if still valid
-    if use_cache and _pawnio_installed_cache is not None:
-        if time.time() - _pawnio_cache_time < PAWNIO_CACHE_DURATION:
-            debug_log(f"Using cached PawnIO status: {_pawnio_installed_cache}", "PawnIO")
-            return _pawnio_installed_cache
-
-    debug_log("Checking PawnIO installation (winget list)...", "PawnIO")
-    try:
-        result = subprocess.run(
-            ['winget', 'list', '--id', 'namazso.PawnIO'],
-            capture_output=True, text=True, timeout=15,
-            creationflags=subprocess.CREATE_NO_WINDOW
-        )
-        installed = 'PawnIO' in result.stdout
-        debug_log(f"Installed: {installed}", "PawnIO")
-
-        # Update cache
-        _pawnio_installed_cache = installed
-        _pawnio_cache_time = time.time()
-
-        return installed
-    except Exception as e:
-        debug_log(f"Check error: {e}", "PawnIO")
-        return False
-
-
-def clear_pawnio_cache():
-    """Clear the PawnIO installation cache (call after installation)."""
-    global _pawnio_installed_cache, _pawnio_cache_time
-    _pawnio_installed_cache = None
-    _pawnio_cache_time = 0
-
-
-def get_pawnio_installer_path():
-    """Get the path to the PawnIO installer script."""
-    return os.path.join(base_dir, 'install_pawnio.ps1')
-
-
-def install_pawnio_silent():
-    """
-    Install PawnIO driver silently with admin elevation.
-    Returns True if installation succeeded, False otherwise.
-    """
-    script_path = get_pawnio_installer_path()
-
-    if not os.path.exists(script_path):
-        return False
-
-    try:
-        # Run PowerShell elevated and hidden, wait for completion
-        # Using -WindowStyle Hidden to hide the PowerShell window
-        result = subprocess.run(
-            [
-                'powershell.exe',
-                '-ExecutionPolicy', 'Bypass',
-                '-WindowStyle', 'Hidden',
-                '-File', script_path,
-                '-Silent'
-            ],
-            capture_output=True,
-            timeout=120,  # 2 minute timeout for winget install
-            creationflags=subprocess.CREATE_NO_WINDOW
-        )
-        return result.returncode == 0
-    except subprocess.TimeoutExpired:
-        return False
-    except Exception:
-        return False
-
-
-def install_pawnio_with_elevation(progress_callback=None):
-    """
-    Install PawnIO driver with UAC elevation prompt (or directly if already admin).
-
-    Args:
-        progress_callback: Optional function(message, progress_pct) to update UI during install
-
-    Returns True if installation succeeded.
-    """
-    debug_log("Starting installation process...", "PawnIO")
-    debug_log(f"Running as admin: {is_admin()}", "PawnIO")
-
-    # Check if winget is available
-    if not is_winget_available():
-        debug_log("ERROR: winget not available!", "PawnIO")
-        if progress_callback:
-            progress_callback("Error: Windows Package Manager (winget) not found", 0)
-        return False
-
-    # First check if already installed
-    if is_pawnio_installed():
-        debug_log("Already installed, skipping.", "PawnIO")
-        return True
-
-    script_path = get_pawnio_installer_path()
-    debug_log(f"Script path: {script_path}", "PawnIO")
-    debug_log(f"Script exists: {os.path.exists(script_path)}", "PawnIO")
-
-    if not os.path.exists(script_path):
-        debug_log("ERROR: Script not found!", "PawnIO")
-        if progress_callback:
-            progress_callback("Error: Installation script not found", 0)
-        return False
-
-    process = None
-    try:
-        if progress_callback:
-            progress_callback("Starting installation...", 5)
-
-        # If already running as admin, run directly and capture output
-        if is_admin():
-            debug_log("Running as admin, executing PowerShell directly...", "PawnIO")
-            # Run PowerShell directly and capture output for debugging
-            process = subprocess.Popen(
-                [
-                    'powershell.exe',
-                    '-ExecutionPolicy', 'Bypass',
-                    '-File', script_path
-                    # Note: removed -Silent so we get output for debugging
-                ],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                creationflags=subprocess.CREATE_NO_WINDOW
-            )
-            debug_log(f"Started process PID: {process.pid}", "PawnIO")
-        else:
-            # Need elevation - use ShellExecuteW with 'runas'
-            debug_log("Not admin, requesting elevation via ShellExecuteW...", "PawnIO")
-            if progress_callback:
-                progress_callback("Requesting administrator approval...", 5)
-
-            result = ctypes.windll.shell32.ShellExecuteW(
-                None,
-                "runas",
-                "powershell.exe",
-                f'-ExecutionPolicy Bypass -File "{script_path}"',
-                os.path.dirname(script_path),
-                0  # SW_HIDE
-            )
-
-            debug_log(f"ShellExecuteW result: {result}", "PawnIO")
-            if result <= 32:
-                debug_log("ERROR: ShellExecuteW failed!", "PawnIO")
-                return False
-
-        if progress_callback:
-            progress_callback("Installing PawnIO driver...", 15)
-
-        # Check periodically if PawnIO is installed (up to 90 seconds)
-        for i in range(45):
-            time.sleep(2)
-
-            # Check if process completed (when running as admin)
-            if process is not None:
-                poll_result = process.poll()
-                if poll_result is not None:
-                    # Process finished, get output
-                    stdout, stderr = process.communicate()
-                    debug_log(f"Process exited with code: {poll_result}", "PawnIO")
-                    if stdout:
-                        debug_log(f"stdout: {stdout}", "PawnIO")
-                    if stderr:
-                        debug_log(f"stderr: {stderr}", "PawnIO")
-
-                    if poll_result == 0:
-                        if progress_callback:
-                            progress_callback("Installation complete!", 100)
-                        debug_log("Installation succeeded (exit code 0)", "PawnIO")
-                        return True
-                    else:
-                        debug_log(f"Process failed with exit code {poll_result}", "PawnIO")
-                        if progress_callback:
-                            progress_callback(f"Installation failed (code {poll_result})", 0)
-                        return False
-
-            # Update progress
-            if progress_callback:
-                pct = 15 + int((i / 45) * 80)  # Progress from 15% to 95%
-                progress_callback(f"Installing PawnIO driver... ({(i+1)*2}s)", pct)
-
-            # Log every 10 seconds
-            if i % 5 == 4:
-                debug_log(f"Still waiting... ({(i+1)*2}s elapsed)", "PawnIO")
-
-            if is_pawnio_installed():
-                if progress_callback:
-                    progress_callback("Installation complete!", 100)
-                debug_log("Verified installed!", "PawnIO")
-                return True
-
-        # Final check
-        debug_log("Timeout reached (90s), doing final check...", "PawnIO")
-        result = is_pawnio_installed()
-        debug_log(f"Final result: {result}", "PawnIO")
-        return result
-
-    except Exception as e:
-        debug_log(f"ERROR: {e}", "PawnIO")
-        import traceback
-        debug_log(f"Traceback: {traceback.format_exc()}", "PawnIO")
-        return False
-
 
 def set_vapor_icon(window):
     """Set the Vapor icon on a window. Call this after window is created."""
@@ -500,6 +250,15 @@ def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=N
 
     # Create popup window
     dialog = ctk.CTkToplevel(parent) if parent else ctk.CTk()
+
+    # Set icon immediately to minimize flash of default icon
+    icon_path = os.path.join(base_dir, 'Images', 'exe_icon.ico')
+    if os.path.exists(icon_path):
+        try:
+            dialog.iconbitmap(icon_path)
+        except Exception:
+            pass
+
     dialog.title(f"Vapor - {title}")
     dialog.resizable(False, False)
 
@@ -519,10 +278,6 @@ def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=N
     if parent:
         dialog.transient(parent)
     dialog.grab_set()
-
-    # Lift dialog to top and focus
-    dialog.lift()
-    dialog.focus_force()
 
     # Main content frame (expandable)
     content_frame = ctk.CTkFrame(master=dialog, fg_color="transparent")
@@ -608,9 +363,12 @@ def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=N
     # Handle window close button (X)
     dialog.protocol("WM_DELETE_WINDOW", lambda: (result.__setitem__(0, None), dialog.destroy()))
 
-    # Update the dialog and set icon after all widgets are added
-    dialog.update()
+    # Set icon and bring to front
     set_vapor_icon(dialog)
+    dialog.lift()
+    dialog.attributes('-topmost', True)
+    dialog.after(100, lambda: dialog.attributes('-topmost', False))
+    dialog.focus_force()
 
     # Wait for dialog to close
     if parent:
@@ -620,25 +378,6 @@ def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=N
 
     return result[0]
 
-
-# System processes that cannot be added as custom processes (safety protection)
-PROTECTED_PROCESSES = {
-    # Windows core
-    'explorer.exe', 'svchost.exe', 'csrss.exe', 'wininit.exe', 'winlogon.exe',
-    'services.exe', 'lsass.exe', 'smss.exe', 'dwm.exe', 'taskhostw.exe',
-    'sihost.exe', 'fontdrvhost.exe', 'ctfmon.exe', 'conhost.exe', 'dllhost.exe',
-    'runtimebroker.exe', 'searchhost.exe', 'startmenuexperiencehost.exe',
-    'shellexperiencehost.exe', 'textinputhost.exe', 'applicationframehost.exe',
-    'systemsettings.exe', 'securityhealthservice.exe', 'securityhealthsystray.exe',
-    # System utilities
-    'taskmgr.exe', 'cmd.exe', 'powershell.exe', 'regedit.exe', 'mmc.exe',
-    # Windows Defender / Security
-    'msmpeng.exe', 'mssense.exe', 'nissrv.exe', 'securityhealthhost.exe',
-    # Critical services
-    'spoolsv.exe', 'wuauserv.exe', 'audiodg.exe',
-    # Vapor itself
-    'vapor.exe',
-}
 
 # =============================================================================
 # Built-in App Definitions
@@ -701,34 +440,8 @@ BUILT_IN_RESOURCE_APPS = [
 # =============================================================================
 
 def load_settings():
-    """Load settings from file or return defaults."""
-    if os.path.exists(SETTINGS_FILE):
-        debug_log(f"Loading settings from {SETTINGS_FILE}", "Settings")
-        with open(SETTINGS_FILE, 'r') as f:
-            return json.load(f)
-    else:
-        debug_log("Settings file not found, using defaults", "Settings")
-        default_selected = ["WhatsApp", "Telegram", "Microsoft Teams", "Facebook Messenger", "Slack", "Signal",
-                            "WeChat"]
-        default_resource_selected = ["Spotify", "OneDrive", "Google Drive", "Dropbox", "Wallpaper Engine",
-                                     "iCUE", "Razer Synapse", "NZXT CAM"]
-        return {'selected_notification_apps': default_selected, 'custom_processes': [],
-                'selected_resource_apps': default_resource_selected, 'custom_resource_processes': [],
-                'launch_at_startup': False, 'launch_settings_on_start': True,
-                'close_on_startup': True, 'close_on_hotkey': True, 'relaunch_on_exit': True,
-                'resource_close_on_startup': True, 'resource_close_on_hotkey': True, 'resource_relaunch_on_exit': False,
-                'enable_playtime_summary': True, 'playtime_summary_mode': 'brief',
-                'enable_debug_mode': False, 'system_audio_level': 33,
-                'enable_system_audio': False,
-                'game_audio_level': 100, 'enable_game_audio': False,
-                'enable_during_power': False, 'during_power_plan': 'High Performance',
-                'enable_after_power': False, 'after_power_plan': 'Balanced',
-                'enable_game_mode_start': True, 'enable_game_mode_end': False,
-                'enable_cpu_thermal': False, 'enable_gpu_thermal': True,
-                'enable_cpu_temp_alert': False, 'cpu_temp_warning_threshold': 85,
-                'cpu_temp_critical_threshold': 95,
-                'enable_gpu_temp_alert': False, 'gpu_temp_warning_threshold': 80,
-                'gpu_temp_critical_threshold': 90}
+    """Load settings from file or return defaults. Uses shared settings module."""
+    return load_settings_dict()
 
 
 def save_settings(selected_notification_apps, customs, selected_resource_apps, resource_customs, launch_startup,
@@ -741,7 +454,7 @@ def save_settings(selected_notification_apps, customs, selected_resource_apps, r
                   cpu_temp_critical_threshold, enable_gpu_temp_alert, gpu_temp_warning_threshold,
                   gpu_temp_critical_threshold):
     """Save all settings to the JSON configuration file."""
-    # Build process lists from selected apps
+    # Build process lists from selected apps (UI-specific logic)
     notification_processes = []
     for app in BUILT_IN_APPS:
         if app['display_name'] in selected_notification_apps:
@@ -754,6 +467,7 @@ def save_settings(selected_notification_apps, customs, selected_resource_apps, r
             resource_processes.extend(app['processes'])
     resource_processes.extend(resource_customs)
 
+    # Build settings dict and save using shared module
     settings = {
         'notification_processes': notification_processes,
         'selected_notification_apps': selected_notification_apps,
@@ -791,25 +505,22 @@ def save_settings(selected_notification_apps, customs, selected_resource_apps, r
         'gpu_temp_warning_threshold': gpu_temp_warning_threshold,
         'gpu_temp_critical_threshold': gpu_temp_critical_threshold
     }
-    with open(SETTINGS_FILE, 'w') as f:
-        json.dump(settings, f)
-    debug_log(f"Settings saved to {SETTINGS_FILE}", "Settings")
+    save_settings_dict(settings)
 
 
 def set_pending_pawnio_check(value=True):
     """Set or clear the pending PawnIO check flag in settings.
     This flag triggers automatic PawnIO installation prompt after admin restart."""
     debug_log(f"Setting pending_pawnio_check to {value}", "Settings")
-    try:
-        settings = {}
-        if os.path.exists(SETTINGS_FILE):
-            with open(SETTINGS_FILE, 'r') as f:
-                settings = json.load(f)
-        settings['pending_pawnio_check'] = value
-        with open(SETTINGS_FILE, 'w') as f:
-            json.dump(settings, f)
-    except Exception as e:
-        debug_log(f"Error setting pending_pawnio_check: {e}", "Settings")
+    set_setting('pending_pawnio_check', value)
+
+
+def set_pending_settings_reopen(value=True):
+    """Set or clear the pending settings reopen flag.
+    This flag forces the settings window to open on next launch,
+    regardless of the user's 'open settings on startup' preference."""
+    debug_log(f"Setting pending_settings_reopen to {value}", "Settings")
+    set_setting('pending_settings_reopen', value)
 
 
 # =============================================================================
@@ -847,6 +558,12 @@ if os.path.exists(icon_path):
 
 root.deiconify()  # Show window
 root.update()  # Process pending events to fully initialize window
+
+# Bring window to front and give it focus
+root.lift()
+root.attributes('-topmost', True)
+root.after(100, lambda: root.attributes('-topmost', False))
+root.focus_force()
 
 # =============================================================================
 # Load Current Settings
@@ -1334,13 +1051,11 @@ enable_gpu_thermal_switch.pack(pady=5, anchor='w')
 enable_cpu_thermal_var = tk.BooleanVar(value=enable_cpu_thermal)
 enable_cpu_thermal_switch = ctk.CTkSwitch(master=thermal_frame, text="Capture CPU Temperature",
                                           variable=enable_cpu_thermal_var, font=("Calibri", 14))
-enable_cpu_thermal_switch.pack(pady=5, anchor='w')
+enable_cpu_thermal_switch.pack(pady=(5, 0), anchor='w')
 
-cpu_thermal_disclaimer = ctk.CTkLabel(master=thermal_frame,
-                                      text="Note: CPU temperature monitoring requires administrator privileges.\n"
-                                           "Vapor will prompt for admin access when this option is enabled.",
-                                      font=("Calibri", 11), text_color="orange", justify="left")
-cpu_thermal_disclaimer.pack(pady=(5, 0), anchor='w')
+cpu_thermal_note = ctk.CTkLabel(master=thermal_frame, text="(requires admin, will auto-install driver)",
+                                font=("Calibri", 12), text_color="gray60")
+cpu_thermal_note.pack(pady=(0, 5), anchor='w', padx=(67, 0))  # Indent to align with switch text
 
 # Temperature Alerts Section
 thermal_sep2 = ctk.CTkFrame(master=thermal_scroll_frame, height=2, fg_color="gray50")
@@ -1359,7 +1074,7 @@ thermal_alerts_frame = ctk.CTkFrame(master=thermal_scroll_frame, fg_color="trans
 thermal_alerts_frame.pack(pady=10, anchor='center')
 
 # GPU Temperature Alerts
-gpu_alert_header = ctk.CTkLabel(master=thermal_alerts_frame, text="GPU Alerts", font=("Calibri", 14, "bold"))
+gpu_alert_header = ctk.CTkLabel(master=thermal_alerts_frame, text="GPU Alerts", font=("Calibri", 15, "bold"))
 gpu_alert_header.pack(pady=(5, 5), anchor='w')
 
 gpu_alert_row = ctk.CTkFrame(master=thermal_alerts_frame, fg_color="transparent")
@@ -1367,33 +1082,33 @@ gpu_alert_row.pack(pady=5, fill='x')
 
 enable_gpu_temp_alert_var = tk.BooleanVar(value=enable_gpu_temp_alert)
 enable_gpu_temp_alert_switch = ctk.CTkSwitch(master=gpu_alert_row, text="Enable",
-                                              variable=enable_gpu_temp_alert_var, font=("Calibri", 13))
+                                              variable=enable_gpu_temp_alert_var, font=("Calibri", 14))
 enable_gpu_temp_alert_switch.pack(side='left', padx=(0, 20))
 
-gpu_warning_label = ctk.CTkLabel(master=gpu_alert_row, text="Warning:", font=("Calibri", 13))
+gpu_warning_label = ctk.CTkLabel(master=gpu_alert_row, text="Warning:", font=("Calibri", 14))
 gpu_warning_label.pack(side='left', padx=(0, 5))
 
 gpu_temp_warning_threshold_var = tk.StringVar(value=str(gpu_temp_warning_threshold))
 gpu_warning_entry = ctk.CTkEntry(master=gpu_alert_row, textvariable=gpu_temp_warning_threshold_var,
-                                  width=45, font=("Calibri", 13))
+                                  width=50, font=("Calibri", 14))
 gpu_warning_entry.pack(side='left', padx=(0, 3))
 
-gpu_warning_unit = ctk.CTkLabel(master=gpu_alert_row, text="°C", font=("Calibri", 13))
+gpu_warning_unit = ctk.CTkLabel(master=gpu_alert_row, text="°C", font=("Calibri", 14))
 gpu_warning_unit.pack(side='left', padx=(0, 15))
 
-gpu_critical_label = ctk.CTkLabel(master=gpu_alert_row, text="Critical:", font=("Calibri", 13), text_color="#ff6b6b")
+gpu_critical_label = ctk.CTkLabel(master=gpu_alert_row, text="Critical:", font=("Calibri", 14), text_color="#ff6b6b")
 gpu_critical_label.pack(side='left', padx=(0, 5))
 
 gpu_temp_critical_threshold_var = tk.StringVar(value=str(gpu_temp_critical_threshold))
 gpu_critical_entry = ctk.CTkEntry(master=gpu_alert_row, textvariable=gpu_temp_critical_threshold_var,
-                                   width=45, font=("Calibri", 13))
+                                   width=50, font=("Calibri", 14))
 gpu_critical_entry.pack(side='left', padx=(0, 3))
 
-gpu_critical_unit = ctk.CTkLabel(master=gpu_alert_row, text="°C", font=("Calibri", 13))
+gpu_critical_unit = ctk.CTkLabel(master=gpu_alert_row, text="°C", font=("Calibri", 14))
 gpu_critical_unit.pack(side='left')
 
 # CPU Temperature Alerts
-cpu_alert_header = ctk.CTkLabel(master=thermal_alerts_frame, text="CPU Alerts", font=("Calibri", 14, "bold"))
+cpu_alert_header = ctk.CTkLabel(master=thermal_alerts_frame, text="CPU Alerts", font=("Calibri", 15, "bold"))
 cpu_alert_header.pack(pady=(15, 5), anchor='w')
 
 cpu_alert_row = ctk.CTkFrame(master=thermal_alerts_frame, fg_color="transparent")
@@ -1401,29 +1116,29 @@ cpu_alert_row.pack(pady=5, fill='x')
 
 enable_cpu_temp_alert_var = tk.BooleanVar(value=enable_cpu_temp_alert)
 enable_cpu_temp_alert_switch = ctk.CTkSwitch(master=cpu_alert_row, text="Enable",
-                                              variable=enable_cpu_temp_alert_var, font=("Calibri", 13))
+                                              variable=enable_cpu_temp_alert_var, font=("Calibri", 14))
 enable_cpu_temp_alert_switch.pack(side='left', padx=(0, 20))
 
-cpu_warning_label = ctk.CTkLabel(master=cpu_alert_row, text="Warning:", font=("Calibri", 13))
+cpu_warning_label = ctk.CTkLabel(master=cpu_alert_row, text="Warning:", font=("Calibri", 14))
 cpu_warning_label.pack(side='left', padx=(0, 5))
 
 cpu_temp_warning_threshold_var = tk.StringVar(value=str(cpu_temp_warning_threshold))
 cpu_warning_entry = ctk.CTkEntry(master=cpu_alert_row, textvariable=cpu_temp_warning_threshold_var,
-                                  width=45, font=("Calibri", 13))
+                                  width=50, font=("Calibri", 14))
 cpu_warning_entry.pack(side='left', padx=(0, 3))
 
-cpu_warning_unit = ctk.CTkLabel(master=cpu_alert_row, text="°C", font=("Calibri", 13))
+cpu_warning_unit = ctk.CTkLabel(master=cpu_alert_row, text="°C", font=("Calibri", 14))
 cpu_warning_unit.pack(side='left', padx=(0, 15))
 
-cpu_critical_label = ctk.CTkLabel(master=cpu_alert_row, text="Critical:", font=("Calibri", 13), text_color="#ff6b6b")
+cpu_critical_label = ctk.CTkLabel(master=cpu_alert_row, text="Critical:", font=("Calibri", 14), text_color="#ff6b6b")
 cpu_critical_label.pack(side='left', padx=(0, 5))
 
 cpu_temp_critical_threshold_var = tk.StringVar(value=str(cpu_temp_critical_threshold))
 cpu_critical_entry = ctk.CTkEntry(master=cpu_alert_row, textvariable=cpu_temp_critical_threshold_var,
-                                   width=45, font=("Calibri", 13))
+                                   width=50, font=("Calibri", 14))
 cpu_critical_entry.pack(side='left', padx=(0, 3))
 
-cpu_critical_unit = ctk.CTkLabel(master=cpu_alert_row, text="°C", font=("Calibri", 13))
+cpu_critical_unit = ctk.CTkLabel(master=cpu_alert_row, text="°C", font=("Calibri", 14))
 cpu_critical_unit.pack(side='left')
 
 thermal_alerts_note = ctk.CTkLabel(master=thermal_alerts_frame,
@@ -1627,7 +1342,7 @@ help_sep1.pack(fill="x", padx=40, pady=10)
 how_title = ctk.CTkLabel(master=help_scroll_frame, text="How Vapor Works", font=("Calibri", 17, "bold"))
 how_title.pack(pady=(10, 10), anchor='center')
 
-how_text = """Vapor runs quietly in your system tray and monitors Steam for game launches. When you start 
+how_text = """Vapor runs quietly in your system tray and monitors Steam for game launches. When you start
 a Steam game, Vapor automatically:
 
   *  Closes notification apps (like Discord, Slack, Teams) to prevent interruptions
@@ -1635,8 +1350,10 @@ a Steam game, Vapor automatically:
   *  Adjusts your audio levels (if enabled)
   *  Switches your power plan (if enabled)
   *  Enables Windows Game Mode (if enabled)
+  *  Monitors GPU and CPU temperatures with customizable alerts (if enabled)
 
-When you exit your game, Vapor reverses these changes and relaunches your closed apps."""
+When you exit your game, Vapor reverses these changes, relaunches your closed apps, and
+displays a detailed session summary showing your playtime and performance stats."""
 
 how_label = ctk.CTkLabel(master=help_scroll_frame, text=how_text, font=("Calibri", 13),
                          wraplength=580, justify="left")
@@ -1661,6 +1378,28 @@ shortcuts_label.pack(pady=10, anchor='center')
 
 help_sep3 = ctk.CTkFrame(master=help_scroll_frame, height=2, fg_color="gray50")
 help_sep3.pack(fill="x", padx=40, pady=15)
+
+thermal_help_title = ctk.CTkLabel(master=help_scroll_frame, text="Temperature Monitoring", font=("Calibri", 17, "bold"))
+thermal_help_title.pack(pady=(10, 10), anchor='center')
+
+thermal_help_text = """Vapor can monitor your GPU and CPU temperatures while gaming and alert you if
+they reach dangerous levels:
+
+  *  GPU Monitoring: Works out of the box - no additional setup required
+  *  CPU Monitoring: Requires administrator privileges and the PawnIO driver
+     (Vapor will automatically install this when you enable CPU monitoring)
+  *  Temperature Alerts: Set custom warning and critical thresholds in the Thermal tab
+     to receive notifications when your hardware gets too hot
+
+Temperature data is also included in your post-game session summary, showing peak
+temperatures reached during your gaming session."""
+
+thermal_help_label = ctk.CTkLabel(master=help_scroll_frame, text=thermal_help_text, font=("Calibri", 13),
+                                   wraplength=580, justify="left")
+thermal_help_label.pack(pady=10, anchor='center')
+
+help_sep3b = ctk.CTkFrame(master=help_scroll_frame, height=2, fg_color="gray50")
+help_sep3b.pack(fill="x", padx=40, pady=15)
 
 trouble_title = ctk.CTkLabel(master=help_scroll_frame, text="Troubleshooting", font=("Calibri", 17, "bold"))
 trouble_title.pack(pady=(10, 10), anchor='center')
@@ -1802,13 +1541,14 @@ about_title.pack(pady=(10, 5), anchor='center')
 version_label = ctk.CTkLabel(master=about_scroll_frame, text=f"Version {CURRENT_VERSION}", font=("Calibri", 15))
 version_label.pack(pady=(0, 15), anchor='center')
 
-description_text = """Vapor is a lightweight utility designed to enhance your gaming experience on Windows. 
-It automatically detects when you launch a Steam game and optimizes your system by closing 
-distracting notification apps and resource-heavy applications. When you're done gaming, 
+description_text = """Vapor is a lightweight utility designed to enhance your gaming experience on Windows.
+It automatically detects when you launch a Steam game and optimizes your system by closing
+distracting notification apps and resource-heavy applications. When you're done gaming,
 Vapor seamlessly relaunches your closed apps, so you can pick up right where you left off.
 
-Features include customizable app management, audio controls, power plan switching, 
-Windows Game Mode integration, and playtime tracking with session summaries."""
+Features include customizable app management, audio controls, power plan switching,
+Windows Game Mode integration, GPU/CPU temperature monitoring with customizable alerts,
+and detailed session summaries showing playtime and peak temperatures."""
 
 description_label = ctk.CTkLabel(master=about_scroll_frame, text=description_text, font=("Calibri", 14),
                                  wraplength=620, justify="center")
@@ -1825,12 +1565,12 @@ developer_name = ctk.CTkLabel(master=about_scroll_frame, text="Greg Morton (@Mas
 developer_name.pack(pady=(0, 10), anchor='center')
 
 bio_text = """I'm a passionate gamer, Sr. Systems Administrator by profession, wine enthusiast, and proud 
-small winery owner. Vapor was born from my own frustration with notifications interrupting epic gaming 
-moments, and constantly having to adjust audio levels for games. I hope it enhances your gaming sessions 
-as much as it has mine."""
+small winery owner. Vapor was born from my own frustration with notifications interrupting
+epic gaming moments, and constantly having to adjust audio levels for games. I hope it
+enhances your gaming sessions as much as it has mine."""
 
 bio_label = ctk.CTkLabel(master=about_scroll_frame, text=bio_text, font=("Calibri", 13),
-                         wraplength=620, justify="center")
+                         wraplength=520, justify="center")
 bio_label.pack(pady=10, anchor='center')
 
 separator2 = ctk.CTkFrame(master=about_scroll_frame, height=2, fg_color="gray50")
@@ -2010,7 +1750,9 @@ def on_save():
             message="CPU temperature monitoring requires administrator privileges.\n\n"
                     "Would you like to restart Vapor with admin privileges now?\n\n"
                     "If you click 'Restart as Admin', Vapor will close and relaunch\n"
-                    "with elevated permissions to enable CPU temperature monitoring.",
+                    "with elevated permissions to enable CPU temperature monitoring.\n\n"
+                    "Note: Vapor will continue to request admin privileges at startup\n"
+                    "while Capture CPU Temperature is enabled.",
             dialog_type="warning",
             buttons=[
                 {"text": "Restart as Admin", "value": True, "color": "green"},
@@ -2020,15 +1762,17 @@ def on_save():
         )
         if response is True:
             # User agreed to restart with admin
-            # Set flag to trigger PawnIO check after restart
+            # Set flags to trigger PawnIO check and reopen settings after restart
             set_pending_pawnio_check(True)
+            set_pending_settings_reopen(True)
             if restart_vapor(main_pid, require_admin=True):
                 # Successfully requested elevation, close settings window
                 root.destroy()
                 return True
             else:
-                # Restart failed, clear the pending flag
+                # Restart failed, clear the pending flags
                 set_pending_pawnio_check(False)
+                set_pending_settings_reopen(False)
                 show_vapor_dialog(
                     title="Elevation Failed",
                     message="Failed to restart Vapor with admin privileges.\n\n"
@@ -2073,7 +1817,6 @@ def on_save():
             installing_dialog.geometry("400x160")
             installing_dialog.resizable(False, False)
             installing_dialog.transient(root)
-            installing_dialog.grab_set()
 
             # Center on parent
             installing_dialog.update_idletasks()
@@ -2083,7 +1826,7 @@ def on_save():
 
             msg_label = ctk.CTkLabel(
                 installing_dialog,
-                text="Requesting administrator approval...",
+                text="Installing PawnIO driver...",
                 font=("Calibri", 13),
                 justify="center"
             )
@@ -2095,15 +1838,23 @@ def on_save():
 
             status_label = ctk.CTkLabel(
                 installing_dialog,
-                text="Please approve the administrator prompt when it appears.",
+                text="Please wait while the driver is installed...",
                 font=("Calibri", 11),
                 text_color="gray"
             )
             status_label.pack(padx=20, pady=(5, 15))
 
+            # Force the window to fully render before starting installation
             installing_dialog.update()
-            # Set icon after all widgets added and window updated
+
+            # Set icon after window is rendered
             set_vapor_icon(installing_dialog)
+
+            # Bring window to front and give it focus
+            installing_dialog.lift()
+            installing_dialog.attributes('-topmost', True)
+            installing_dialog.after(100, lambda: installing_dialog.attributes('-topmost', False))
+            installing_dialog.focus_force()
 
             # Progress callback to update the dialog
             def update_progress(message, pct):
@@ -2128,24 +1879,58 @@ def on_save():
                 pass
 
             if install_success:
-                # Ask user to restart Vapor
-                restart_response = show_vapor_dialog(
-                    title="Driver Installed",
+                # Reset temperature monitor so it re-initializes with the new driver
+                try:
+                    from core import temperature
+                    temperature.HWMON_COMPUTER = None
+                    temperature.LHM_COMPUTER = None
+                    debug_log("Reset temperature monitor globals after driver install", "Settings")
+
+                    # Try to read CPU temperature to verify driver works
+                    test_temp = temperature.get_cpu_temperature()
+                    if test_temp is not None:
+                        debug_log(f"CPU temperature read successful: {test_temp}°C", "Settings")
+                        # Enable the CPU thermal toggle since driver is working
+                        enable_cpu_thermal_var.set(True)
+                        show_vapor_dialog(
+                            title="Driver Installed",
+                            message=f"PawnIO driver installed successfully!\n\n"
+                                    f"CPU temperature monitoring is now active.\n"
+                                    f"Current CPU temperature: {test_temp}°C",
+                            dialog_type="info",
+                            buttons=[
+                                {"text": "OK", "value": True, "color": "green"}
+                            ],
+                            parent=root
+                        )
+                        # No restart needed - driver is working!
+                        return True
+                    else:
+                        debug_log("CPU temperature read returned None after driver install", "Settings")
+                except Exception as e:
+                    debug_log(f"Error testing temperature after driver install: {e}", "Settings")
+
+                # If we get here, temperature reading didn't work - ask for manual restart
+                show_vapor_dialog(
+                    title="Driver Installed - Please Restart",
                     message="PawnIO driver installed successfully!\n\n"
-                            "Vapor needs to restart to enable CPU temperature monitoring.\n"
-                            "Restart now?",
+                            "Please close and restart Vapor manually to enable\n"
+                            "CPU temperature monitoring.\n\n"
+                            "Vapor will now close.",
                     dialog_type="info",
                     buttons=[
-                        {"text": "Restart Vapor", "value": True, "color": "green"},
-                        {"text": "Later", "value": False, "color": "gray"}
+                        {"text": "Close Vapor", "value": True, "color": "green"}
                     ],
                     parent=root
                 )
-                if restart_response:
-                    # Restart Vapor (already running as admin if we got here)
-                    if restart_vapor(main_pid, require_admin=False):
-                        root.destroy()
-                        return True
+                # Terminate main process and exit
+                if main_pid:
+                    try:
+                        psutil.Process(main_pid).terminate()
+                    except Exception:
+                        pass
+                root.destroy()
+                return True
             else:
                 show_vapor_dialog(
                     title="Installation Failed",
@@ -2303,7 +2088,6 @@ def check_pending_pawnio_install():
         installing_dialog.geometry("400x160")
         installing_dialog.resizable(False, False)
         installing_dialog.transient(root)
-        installing_dialog.grab_set()
 
         # Center on parent
         installing_dialog.update_idletasks()
@@ -2325,14 +2109,23 @@ def check_pending_pawnio_install():
 
         status_label = ctk.CTkLabel(
             installing_dialog,
-            text="This may take a moment...",
+            text="Please wait while the driver is installed...",
             font=("Calibri", 11),
             text_color="gray"
         )
         status_label.pack(padx=20, pady=(5, 15))
 
+        # Force the window to fully render before starting installation
         installing_dialog.update()
+
+        # Set icon after window is rendered
         set_vapor_icon(installing_dialog)
+
+        # Bring window to front and give it focus
+        installing_dialog.lift()
+        installing_dialog.attributes('-topmost', True)
+        installing_dialog.after(100, lambda: installing_dialog.attributes('-topmost', False))
+        installing_dialog.focus_force()
 
         # Progress callback
         def update_progress(message, pct):
@@ -2354,23 +2147,58 @@ def check_pending_pawnio_install():
             pass
 
         if install_success:
-            # Ask user to restart Vapor to use the driver
-            restart_response = show_vapor_dialog(
-                title="Driver Installed",
+            # Reset temperature monitor so it re-initializes with the new driver
+            try:
+                from core import temperature
+                temperature.HWMON_COMPUTER = None
+                temperature.LHM_COMPUTER = None
+                debug_log("Reset temperature monitor globals after driver install", "Settings")
+
+                # Try to read CPU temperature to verify driver works
+                test_temp = temperature.get_cpu_temperature()
+                if test_temp is not None:
+                    debug_log(f"CPU temperature read successful: {test_temp}°C", "Settings")
+                    # Enable the CPU thermal toggle since driver is working
+                    enable_cpu_thermal_var.set(True)
+                    show_vapor_dialog(
+                        title="Driver Installed",
+                        message=f"PawnIO driver installed successfully!\n\n"
+                                f"CPU temperature monitoring is now active.\n"
+                                f"Current CPU temperature: {test_temp}°C",
+                        dialog_type="info",
+                        buttons=[
+                            {"text": "OK", "value": True, "color": "green"}
+                        ],
+                        parent=root
+                    )
+                    # No restart needed - driver is working!
+                    return
+                else:
+                    debug_log("CPU temperature read returned None after driver install", "Settings")
+            except Exception as e:
+                debug_log(f"Error testing temperature after driver install: {e}", "Settings")
+
+            # If we get here, temperature reading didn't work - ask for manual restart
+            show_vapor_dialog(
+                title="Driver Installed - Please Restart",
                 message="PawnIO driver installed successfully!\n\n"
-                        "Vapor needs to restart to enable CPU temperature monitoring.\n"
-                        "Restart now?",
+                        "Please close and restart Vapor manually to enable\n"
+                        "CPU temperature monitoring.\n\n"
+                        "Vapor will now close.",
                 dialog_type="info",
                 buttons=[
-                    {"text": "Restart Vapor", "value": True, "color": "green"},
-                    {"text": "Later", "value": False, "color": "gray"}
+                    {"text": "Close Vapor", "value": True, "color": "green"}
                 ],
                 parent=root
             )
-            if restart_response:
-                if restart_vapor(main_pid, require_admin=False):
-                    root.destroy()
-                    return
+            # Terminate main process and exit
+            if main_pid:
+                try:
+                    psutil.Process(main_pid).terminate()
+                except Exception:
+                    pass
+            root.destroy()
+            return
         else:
             show_vapor_dialog(
                 title="Installation Failed",

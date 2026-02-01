@@ -75,6 +75,7 @@ def show_splash_screen():
         # Create splash window
         splash = tk.Tk()
         splash.overrideredirect(True)  # Remove window decorations
+        splash.attributes('-topmost', True)  # Keep on top of other windows
 
         # Load image
         img = Image.open(splash_path)
@@ -144,111 +145,28 @@ from watchdog.events import FileSystemEventHandler
 # Windows toast notifications
 import win11toast
 
-# =============================================================================
-# Temperature Monitoring (Optional - graceful fallback if unavailable)
-# =============================================================================
-
-# NVIDIA GPU temperature via nvidia-ml-py
-try:
-    import pynvml
-    NVML_AVAILABLE = True
-except ImportError:
-    NVML_AVAILABLE = False
-
-# AMD GPU temperature via pyadl
-try:
-    from pyadl import ADLManager
-    PYADL_AVAILABLE = True
-except Exception:
-    # pyadl raises ADLError if no AMD GPU/driver found, not just ImportError
-    PYADL_AVAILABLE = False
-
-# CPU temperature via WMI (requires LibreHardwareMonitor or OpenHardwareMonitor running)
-try:
-    import wmi
-    WMI_AVAILABLE = True
-except ImportError:
-    WMI_AVAILABLE = False
-
-# HardwareMonitor package (PyPI) - handles LibreHardwareMonitor + PawnIO driver
-# Note: This may fail in PyInstaller builds if DLLs aren't bundled, falls back to manual DLL loading
-HWMON_AVAILABLE = False
-HWMON_COMPUTER = None
-CPU_TEMP_ERRORS_LOGGED = False  # Only log WMI/fallback errors once
-try:
-    from HardwareMonitor.Hardware import Computer, IVisitor, IComputer, IHardware, IParameter, ISensor
-    from HardwareMonitor.Hardware import HardwareType, SensorType
-    HWMON_AVAILABLE = True
-except Exception:
-    # Catches ImportError, FileNotFoundException, and any .NET exceptions
-    pass
-
-# Fallback: LibreHardwareMonitorLib via pythonnet (bundled DLL approach)
-LHM_AVAILABLE = False
-LHM_COMPUTER = None
-if not HWMON_AVAILABLE:
-    try:
-        import clr
-        import System
-        from System.Reflection import Assembly
-
-        # Determine lib folder path
-        if getattr(sys, 'frozen', False):
-            lib_dir = os.path.join(sys._MEIPASS, 'lib')
-        else:
-            lib_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'lib')
-
-        lhm_dll_path = os.path.join(lib_dir, 'LibreHardwareMonitorLib.dll')
-
-        # Fallback to root directory for backwards compatibility
-        if not os.path.exists(lhm_dll_path):
-            if getattr(sys, 'frozen', False):
-                lhm_dll_path = os.path.join(sys._MEIPASS, 'LibreHardwareMonitorLib.dll')
-                lib_dir = sys._MEIPASS
-            else:
-                lhm_dll_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'LibreHardwareMonitorLib.dll')
-                lib_dir = os.path.dirname(os.path.abspath(__file__))
-
-        if os.path.exists(lhm_dll_path):
-            # Add lib directory to assembly search path for dependencies
-            System.AppDomain.CurrentDomain.AppendPrivatePath(lib_dir)
-
-            # Pre-load dependencies that LibreHardwareMonitorLib needs
-            for dep_dll in ['System.Memory.dll', 'System.Buffers.dll', 'HidSharp.dll']:
-                dep_path = os.path.join(lib_dir, dep_dll)
-                if os.path.exists(dep_path):
-                    try:
-                        Assembly.LoadFrom(dep_path)
-                    except:
-                        pass
-
-            clr.AddReference(lhm_dll_path)
-            from LibreHardwareMonitor.Hardware import Computer, HardwareType, SensorType
-            LHM_AVAILABLE = True
-    except Exception:
-        pass
-
-
-# Visitor class for HardwareMonitor package (only defined if package available)
-HardwareUpdateVisitor = None
-if HWMON_AVAILABLE:
-    class HardwareUpdateVisitor(IVisitor):
-        """Visitor to update all hardware sensors."""
-        __namespace__ = "VaporMonitor"
-
-        def VisitComputer(self, computer: IComputer):
-            computer.Traverse(self)
-
-        def VisitHardware(self, hardware: IHardware):
-            hardware.Update()
-            for subHardware in hardware.SubHardware:
-                subHardware.Update()
-
-        def VisitParameter(self, parameter: IParameter):
-            pass
-
-        def VisitSensor(self, sensor: ISensor):
-            pass
+# Core modules
+from core import (
+    # Temperature monitoring
+    NVML_AVAILABLE, PYADL_AVAILABLE, WMI_AVAILABLE, HWMON_AVAILABLE, LHM_AVAILABLE,
+    get_gpu_temperature, get_cpu_temperature, show_temperature_alert,
+    TemperatureTracker, temperature_tracker,
+    TEMP_HISTORY_DIR, get_temp_history_path, load_temp_history, save_temp_history, get_lifetime_max_temps,
+    # Audio control
+    set_system_volume, find_game_pids, set_game_volume,
+    # Steam API
+    get_running_steam_app_id, get_game_name, get_game_header_image, get_game_store_details,
+    preload_game_details, get_preloaded_game_details,
+    HEADER_IMAGE_CACHE_DIR, get_cached_header_image_path, cache_game_header_image,
+    preload_header_image, get_preloaded_header_image,
+    warmup_customtkinter, prepare_session_popup,
+    # Steam filesystem
+    DEFAULT_STEAM_PATH, get_steam_path, get_library_folders, get_game_folder,
+    # Notifications
+    register_popup, unregister_popup, close_all_popups,
+    check_and_warn_notifications,
+    show_notification, show_brief_summary, show_detailed_summary,
+)
 
 import atexit
 import signal
@@ -257,14 +175,6 @@ import signal
 # =============================================================================
 # Admin Privilege Functions
 # =============================================================================
-
-def is_admin():
-    """Check if the current process has admin privileges."""
-    try:
-        return ctypes.windll.shell32.IsUserAnAdmin() != 0
-    except Exception:
-        return False
-
 
 def request_admin_restart():
     """
@@ -309,80 +219,6 @@ def request_admin_restart():
 
 
 # =============================================================================
-# PawnIO Driver Functions (for CPU temperature monitoring)
-# =============================================================================
-
-PAWNIO_CHECKED = False
-PAWNIO_INSTALLED = None
-
-def is_pawnio_installed():
-    """Check if PawnIO driver is installed."""
-    global PAWNIO_CHECKED, PAWNIO_INSTALLED
-
-    if PAWNIO_CHECKED:
-        return PAWNIO_INSTALLED
-
-    PAWNIO_CHECKED = True
-    try:
-        # Check via winget list
-        result = subprocess.run(
-            ['winget', 'list', '--id', 'PawnIO.PawnIO'],
-            capture_output=True, text=True, timeout=10,
-            creationflags=subprocess.CREATE_NO_WINDOW
-        )
-        PAWNIO_INSTALLED = 'PawnIO' in result.stdout
-        return PAWNIO_INSTALLED
-    except Exception:
-        # If winget check fails, assume not installed
-        PAWNIO_INSTALLED = False
-        return False
-
-
-def get_pawnio_installer_path():
-    """Get the path to the PawnIO installer script."""
-    if getattr(sys, 'frozen', False):
-        # Running as compiled executable
-        return os.path.join(sys._MEIPASS, 'install_pawnio.ps1')
-    else:
-        # Running as script
-        return os.path.join(os.path.dirname(os.path.abspath(__file__)), 'install_pawnio.ps1')
-
-
-def run_pawnio_installer():
-    """Run the PawnIO installer script with admin privileges."""
-    script_path = get_pawnio_installer_path()
-
-    if not os.path.exists(script_path):
-        log(f"PawnIO installer not found: {script_path}", "TEMP")
-        return False
-
-    try:
-        # Run PowerShell script elevated
-        result = ctypes.windll.shell32.ShellExecuteW(
-            None,
-            "runas",
-            "powershell.exe",
-            f'-ExecutionPolicy Bypass -File "{script_path}"',
-            os.path.dirname(script_path),
-            1  # SW_SHOWNORMAL
-        )
-
-        # ShellExecuteW returns > 32 on success
-        if result > 32:
-            log("PawnIO installer launched successfully", "TEMP")
-            # Reset the check so next temp read will re-check
-            global PAWNIO_CHECKED
-            PAWNIO_CHECKED = False
-            return True
-        else:
-            log(f"Failed to launch PawnIO installer: {result}", "TEMP")
-            return False
-    except Exception as e:
-        log(f"Error launching PawnIO installer: {e}", "TEMP")
-        return False
-
-
-# =============================================================================
 # Console Cleanup (ensures no orphan console windows)
 # =============================================================================
 
@@ -396,13 +232,66 @@ def _cleanup_console():
         pass
 
 
+# Global shutdown flag for graceful termination
+_shutdown_requested = threading.Event()
+_tray_icon = None  # Will hold reference to tray icon for shutdown
+_child_processes = []  # Track child processes (e.g., settings window)
+_stop_event = None  # Will hold reference to stop_event for signal handler
+
+
+def _terminate_child_processes():
+    """Terminate any child processes we spawned."""
+    for proc in _child_processes:
+        try:
+            if proc.poll() is None:  # Still running
+                proc.terminate()
+        except Exception:
+            pass
+    _child_processes.clear()
+
+
 def _signal_handler(signum, frame):
-    """Handle termination signals by cleaning up console."""
+    """Handle termination signals with proper cleanup before exit."""
+    _shutdown_requested.set()
+
+    # Signal monitoring thread to stop
+    if _stop_event is not None:
+        _stop_event.set()
+
+    # Close any open popup windows
+    try:
+        close_all_popups()
+    except Exception:
+        pass
+
+    # Unhook keyboard hotkeys
+    try:
+        keyboard.unhook_all()
+    except Exception:
+        pass
+
+    # Terminate child processes (settings window, etc.)
+    _terminate_child_processes()
+
+    # Clean up console
     _cleanup_console()
-    sys.exit(0)
+
+    # Stop the tray icon if it exists
+    if _tray_icon is not None:
+        try:
+            _tray_icon.stop()
+        except Exception:
+            pass
+
+    # Brief delay to allow cleanup to complete (matches tray Quit)
+    time.sleep(0.5)
+
+    # Force immediate exit - pystray's event loop doesn't always respond to stop()
+    os._exit(0)
 
 
 atexit.register(_cleanup_console)
+atexit.register(_terminate_child_processes)
 
 # Register signal handlers for graceful shutdown
 try:
@@ -424,334 +313,24 @@ else:
 os.chdir(application_path)
 sys.path.append(application_path)
 
-base_dir = getattr(sys, '_MEIPASS', os.path.abspath(os.path.dirname(__file__)))
+# Import shared utilities (logging, constants, paths, settings)
+from utils import (
+    base_dir, appdata_dir, SETTINGS_FILE, DEBUG_LOG_FILE,
+    MAX_LOG_SIZE, TRAY_ICON_PATH, PROTECTED_PROCESSES, log,
+    load_settings as load_settings_dict, save_settings as save_settings_dict,
+    create_default_settings as create_default_settings_shared, DEFAULT_SETTINGS
+)
 
-# Settings stored in %APPDATA%/Vapor for persistence across updates
-appdata_dir = os.path.join(os.getenv('APPDATA'), 'Vapor')
-os.makedirs(appdata_dir, exist_ok=True)
-SETTINGS_FILE = os.path.join(appdata_dir, 'vapor_settings.json')
-NOTIFICATION_WARNING_DISMISSED_FILE = os.path.join(appdata_dir, 'notification_warning_dismissed')
+# Import platform utilities (admin checks, PawnIO driver)
+from platform_utils import (
+    is_admin, is_pawnio_installed, run_pawnio_installer,
+    clear_pawnio_cache
+)
 
-TRAY_ICON_PATH = os.path.join(base_dir, 'Images', 'tray_icon.png')
+# Additional paths specific to main application
 UI_SCRIPT_PATH = os.path.join(base_dir, 'vapor_settings_ui.py')
-STEAM_PATH = r"C:\Program Files (x86)\Steam\steamapps"
-
-# System processes that should never be terminated (safety protection)
-PROTECTED_PROCESSES = {
-    # Windows core
-    'explorer.exe', 'svchost.exe', 'csrss.exe', 'wininit.exe', 'winlogon.exe',
-    'services.exe', 'lsass.exe', 'smss.exe', 'dwm.exe', 'taskhostw.exe',
-    'sihost.exe', 'fontdrvhost.exe', 'ctfmon.exe', 'conhost.exe', 'dllhost.exe',
-    'runtimebroker.exe', 'searchhost.exe', 'startmenuexperiencehost.exe',
-    'shellexperiencehost.exe', 'textinputhost.exe', 'applicationframehost.exe',
-    'systemsettings.exe', 'securityhealthservice.exe', 'securityhealthsystray.exe',
-    # System utilities
-    'taskmgr.exe', 'cmd.exe', 'powershell.exe', 'regedit.exe', 'mmc.exe',
-    # Windows Defender / Security
-    'msmpeng.exe', 'mssense.exe', 'nissrv.exe', 'securityhealthhost.exe',
-    # Critical services
-    'spoolsv.exe', 'wuauserv.exe', 'audiodg.exe',
-    # Vapor itself
-    'vapor.exe',
-}
 
 from updater import check_for_updates, CURRENT_VERSION
-
-
-# =============================================================================
-# Logging
-# =============================================================================
-
-# Log file for debugging (stored in %APPDATA%/Vapor)
-DEBUG_LOG_FILE = os.path.join(appdata_dir, 'vapor_logs.log')
-
-# Maximum log file size (5 MB) - will be truncated when exceeded
-MAX_LOG_SIZE = 5 * 1024 * 1024
-
-
-def log(message, category="INFO"):
-    """Print timestamped log message with category and write to log file."""
-    timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
-    formatted = f"[{timestamp}] [{category}] {message}"
-
-    # Print to console (if available)
-    try:
-        print(formatted)
-    except (OSError, ValueError):
-        # Handle case where console has been freed
-        pass
-
-    # Also write to log file
-    try:
-        # Check if log file is too large and truncate if needed
-        if os.path.exists(DEBUG_LOG_FILE):
-            if os.path.getsize(DEBUG_LOG_FILE) > MAX_LOG_SIZE:
-                # Keep last 1000 lines
-                with open(DEBUG_LOG_FILE, 'r', encoding='utf-8', errors='ignore') as f:
-                    lines = f.readlines()[-1000:]
-                with open(DEBUG_LOG_FILE, 'w', encoding='utf-8') as f:
-                    f.writelines(lines)
-
-        with open(DEBUG_LOG_FILE, 'a', encoding='utf-8') as f:
-            f.write(f"{formatted}\n")
-    except Exception:
-        pass
-
-
-# =============================================================================
-# Windows Notification Check
-# =============================================================================
-
-def are_windows_notifications_enabled():
-    """
-    Check if Windows notifications are enabled and not blocked by Do Not Disturb.
-    Returns tuple: (notifications_enabled, reason_string)
-    """
-    try:
-        # Check 1: Main notification toggle
-        try:
-            key_path = r"Software\Microsoft\Windows\CurrentVersion\PushNotifications"
-            key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path)
-            value, _ = winreg.QueryValueEx(key, "ToastEnabled")
-            winreg.CloseKey(key)
-            if value == 0:
-                return False, "notifications_disabled"
-        except FileNotFoundError:
-            pass
-        except Exception:
-            pass
-
-        # Check 2: Newer notification settings path
-        try:
-            key_path2 = r"Software\Microsoft\Windows\CurrentVersion\Notifications\Settings"
-            key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path2)
-            try:
-                value, _ = winreg.QueryValueEx(key, "NOC_GLOBAL_SETTING_TOASTS_ENABLED")
-                if value == 0:
-                    winreg.CloseKey(key)
-                    return False, "notifications_disabled"
-            except FileNotFoundError:
-                pass
-            winreg.CloseKey(key)
-        except FileNotFoundError:
-            pass
-        except Exception:
-            pass
-
-        # Check 3: Windows 11 Do Not Disturb via CloudStore
-        # The data contains the profile name as UTF-16LE after a binary header
-        # We search for the byte patterns directly:
-        # - b'U\x00n\x00r\x00e\x00s\x00t\x00r\x00i\x00c\x00t\x00e\x00d' = Unrestricted (DND OFF)
-        # - b'P\x00r\x00i\x00o\x00r\x00i\x00t\x00y\x00O\x00n\x00l\x00y' = PriorityOnly (DND ON)
-        # - b'A\x00l\x00a\x00r\x00m\x00s\x00O\x00n\x00l\x00y' = AlarmsOnly (DND ON)
-        try:
-            base_path = r"Software\Microsoft\Windows\CurrentVersion\CloudStore\Store\DefaultAccount\Current"
-            key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, base_path)
-
-            # Find the quiethourssettings key (has GUID prefix)
-            i = 0
-            settings_key_name = None
-            while True:
-                try:
-                    subkey_name = winreg.EnumKey(key, i)
-                    if 'quiethourssettings' in subkey_name.lower() and 'profile' not in subkey_name.lower():
-                        settings_key_name = subkey_name
-                        break
-                    i += 1
-                except OSError:
-                    break
-            winreg.CloseKey(key)
-
-            if settings_key_name:
-                # Read the nested subkey with the actual Data
-                full_path = f"{base_path}\\{settings_key_name}\\windows.data.donotdisturb.quiethourssettings"
-                try:
-                    dnd_key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, full_path)
-                    data, _ = winreg.QueryValueEx(dnd_key, "Data")
-                    winreg.CloseKey(dnd_key)
-
-                    # Search for profile name patterns in the raw bytes
-                    # UTF-16LE encoding means each ASCII char is followed by \x00
-                    if b'U\x00n\x00r\x00e\x00s\x00t\x00r\x00i\x00c\x00t\x00e\x00d' in data:
-                        # DND is OFF - notifications are enabled
-                        pass
-                    elif b'P\x00r\x00i\x00o\x00r\x00i\x00t\x00y\x00O\x00n\x00l\x00y' in data:
-                        return False, "do_not_disturb"
-                    elif b'A\x00l\x00a\x00r\x00m\x00s\x00O\x00n\x00l\x00y' in data:
-                        return False, "do_not_disturb"
-                except FileNotFoundError:
-                    pass
-                except Exception:
-                    pass
-        except FileNotFoundError:
-            pass
-        except Exception:
-            pass
-
-        return True, "enabled"
-    except Exception:
-        return True, "enabled"
-
-
-def was_notification_warning_dismissed():
-    """Check if user has previously dismissed the notification warning."""
-    return os.path.exists(NOTIFICATION_WARNING_DISMISSED_FILE)
-
-
-def mark_notification_warning_dismissed():
-    """Mark that user has dismissed the notification warning."""
-    try:
-        with open(NOTIFICATION_WARNING_DISMISSED_FILE, 'w') as f:
-            f.write('dismissed')
-    except Exception:
-        pass
-
-
-def show_notification_warning_popup(reason="notifications_disabled"):
-    """
-    Show a styled popup warning about Windows notifications being disabled.
-    Uses CustomTkinter to match the settings UI style.
-
-    Args:
-        reason: Either "notifications_disabled" or "do_not_disturb"
-    """
-    import customtkinter as ctk
-
-    # Create popup window
-    popup = ctk.CTk()
-
-    # Register popup for cleanup on quit
-    register_popup(popup)
-
-    def on_close():
-        unregister_popup(popup)
-        popup.destroy()
-
-    popup.protocol("WM_DELETE_WINDOW", on_close)
-
-    if reason == "do_not_disturb":
-        popup.title("Vapor - Do Not Disturb Enabled")
-        title_text = "Do Not Disturb is Enabled"
-        message_text = """Vapor uses Windows notifications to keep you informed about:
-
-  *  When Vapor starts monitoring your games
-  *  Playtime summaries after gaming sessions
-  *  App updates and other important messages
-
-Windows "Do Not Disturb" (Focus) mode is currently on, so you 
-won't see these messages. Vapor will still function normally.
-
-To see Vapor notifications, either:
-  *  Turn off Do Not Disturb in the system tray
-  *  Add Vapor to your priority notifications list"""
-    else:
-        popup.title("Vapor - Notifications Disabled")
-        title_text = "Windows Notifications Disabled"
-        message_text = """Vapor uses Windows notifications to keep you informed about:
-
-  *  When Vapor starts monitoring your games
-  *  Playtime summaries after gaming sessions
-  *  App updates and other important messages
-
-Your Windows notifications appear to be turned off, so you 
-won't see these messages. Vapor will still function normally.
-
-To enable notifications, go to:
-Windows Settings > System > Notifications"""
-
-    popup.geometry("500x340")
-    popup.resizable(False, False)
-
-    # Center on screen
-    screen_width = popup.winfo_screenwidth()
-    screen_height = popup.winfo_screenheight()
-    x = (screen_width - 500) // 2
-    y = (screen_height - 340) // 2
-    popup.geometry(f"500x340+{x}+{y}")
-
-    # Set window icon
-    icon_path = os.path.join(base_dir, 'Images', 'exe_icon.ico')
-    if os.path.exists(icon_path):
-        try:
-            popup.iconbitmap(icon_path)
-        except Exception:
-            pass
-
-    # Title
-    title_label = ctk.CTkLabel(
-        master=popup,
-        text=title_text,
-        font=("Calibri", 20, "bold")
-    )
-    title_label.pack(pady=(25, 15))
-
-    # Message
-    message_label = ctk.CTkLabel(
-        master=popup,
-        text=message_text,
-        font=("Calibri", 12),
-        justify="left",
-        wraplength=450
-    )
-    message_label.pack(pady=(0, 20), padx=25)
-
-    # Button frame
-    button_frame = ctk.CTkFrame(master=popup, fg_color="transparent")
-    button_frame.pack(pady=(0, 25))
-
-    def on_ok():
-        unregister_popup(popup)
-        popup.destroy()
-
-    def on_dont_show_again():
-        mark_notification_warning_dismissed()
-        unregister_popup(popup)
-        popup.destroy()
-
-    ok_button = ctk.CTkButton(
-        master=button_frame,
-        text="OK",
-        command=on_ok,
-        width=120,
-        height=35,
-        corner_radius=10,
-        fg_color="green",
-        hover_color="#228B22",
-        font=("Calibri", 14)
-    )
-    ok_button.pack(side="left", padx=10)
-
-    dont_show_button = ctk.CTkButton(
-        master=button_frame,
-        text="Don't Show Again",
-        command=on_dont_show_again,
-        width=150,
-        height=35,
-        corner_radius=10,
-        fg_color="gray",
-        hover_color="#555555",
-        font=("Calibri", 14)
-    )
-    dont_show_button.pack(side="left", padx=10)
-
-    popup.mainloop()
-
-
-def check_and_warn_notifications():
-    """
-    Check if Windows notifications are disabled and show warning if needed.
-    Only shows warning once unless user clicks OK (vs Don't Show Again).
-    """
-    if was_notification_warning_dismissed():
-        log("Notification warning previously dismissed - skipping check", "INIT")
-        return
-
-    enabled, reason = are_windows_notifications_enabled()
-    if not enabled:
-        log(f"Windows notifications blocked (reason: {reason}) - showing warning", "INIT")
-        show_notification_warning_popup(reason)
-    else:
-        log("Windows notifications are enabled", "INIT")
 
 
 # =============================================================================
@@ -812,103 +391,53 @@ def set_console_visibility(visible):
 # =============================================================================
 
 def create_default_settings():
-    """Create default settings file on first run."""
-    log("Creating default settings file...", "SETTINGS")
-    default_settings = {
-        'notification_processes': ['WhatsApp.Root.exe', 'Telegram.exe', 'ms-teams.exe', 'Messenger.exe', 'slack.exe',
-                                   'Signal.exe', 'WeChat.exe'],
-        'selected_notification_apps': ['WhatsApp', 'Telegram', 'Microsoft Teams', 'Facebook Messenger', 'Slack',
-                                       'Signal', 'WeChat'],
-        'custom_processes': [],
-        'resource_processes': ['spotify.exe', 'OneDrive.exe', 'GoogleDriveFS.exe', 'Dropbox.exe', 'wallpaper64.exe'],
-        'selected_resource_apps': ['Spotify', 'OneDrive', 'Google Drive', 'Dropbox', 'Wallpaper Engine',
-                                   'iCUE', 'Razer Synapse', 'NZXT CAM'],
-        'custom_resource_processes': [],
-        'launch_at_startup': False,
-        'launch_settings_on_start': True,
-        'close_on_startup': True,
-        'close_on_hotkey': True,
-        'relaunch_on_exit': True,
-        'resource_close_on_startup': True,
-        'resource_close_on_hotkey': True,
-        'resource_relaunch_on_exit': False,
-        'enable_playtime_summary': True,
-        'playtime_summary_mode': 'brief',
-        'enable_debug_mode': False,
-        'system_audio_level': 33,
-        'enable_system_audio': False,
-        'game_audio_level': 100,
-        'enable_game_audio': False,
-        'enable_during_power': False,
-        'during_power_plan': 'High Performance',
-        'enable_after_power': False,
-        'after_power_plan': 'Balanced',
-        'enable_game_mode_start': True,
-        'enable_game_mode_end': False,
-        'enable_cpu_thermal': False,
-        'enable_gpu_thermal': True
-    }
-    with open(SETTINGS_FILE, 'w') as f:
-        json.dump(default_settings, f)
-    log("Default settings file created", "SETTINGS")
+    """Create default settings file on first run. Uses shared settings module."""
+    create_default_settings_shared()
 
 
 def load_process_names_and_startup():
-    """Load all settings from JSON file and return as tuple."""
-    log("Loading settings from file...", "SETTINGS")
-    if os.path.exists(SETTINGS_FILE):
-        log(f"Settings file found: {SETTINGS_FILE}", "SETTINGS")
-        with open(SETTINGS_FILE, 'r') as f:
-            settings = json.load(f)
-            notification_processes = settings.get('notification_processes', [])
-            resource_processes = settings.get('resource_processes', [])
-            startup = settings.get('launch_at_startup', False)
-            launch_settings_on_start = settings.get('launch_settings_on_start', True)
-            notification_close_on_startup = settings.get('close_on_startup', True)
-            resource_close_on_startup = settings.get('resource_close_on_startup', True)
-            notification_close_on_hotkey = settings.get('close_on_hotkey', False)
-            resource_close_on_hotkey = settings.get('resource_close_on_hotkey', False)
-            notification_relaunch_on_exit = settings.get('relaunch_on_exit', True)
-            resource_relaunch_on_exit = settings.get('resource_relaunch_on_exit', True)
-            enable_playtime_summary = settings.get('enable_playtime_summary', True)
-            playtime_summary_mode = settings.get('playtime_summary_mode', 'brief')
-            enable_system_audio = settings.get('enable_system_audio', False)
-            system_audio_level = settings.get('system_audio_level', 50)
-            enable_game_audio = settings.get('enable_game_audio', False)
-            game_audio_level = settings.get('game_audio_level', 50)
-            enable_during_power = settings.get('enable_during_power', False)
-            during_power_plan = settings.get('during_power_plan', 'High Performance')
-            enable_after_power = settings.get('enable_after_power', False)
-            after_power_plan = settings.get('after_power_plan', 'Balanced')
-            enable_game_mode_start = settings.get('enable_game_mode_start', False)
-            enable_game_mode_end = settings.get('enable_game_mode_end', False)
-            enable_debug_mode = settings.get('enable_debug_mode', False)
-            enable_cpu_thermal = settings.get('enable_cpu_thermal', False)
-            enable_gpu_thermal = settings.get('enable_gpu_thermal', True)
-            enable_cpu_temp_alert = settings.get('enable_cpu_temp_alert', False)
-            cpu_temp_warning_threshold = settings.get('cpu_temp_warning_threshold', 85)
-            cpu_temp_critical_threshold = settings.get('cpu_temp_critical_threshold', 95)
-            enable_gpu_temp_alert = settings.get('enable_gpu_temp_alert', False)
-            gpu_temp_warning_threshold = settings.get('gpu_temp_warning_threshold', 80)
-            gpu_temp_critical_threshold = settings.get('gpu_temp_critical_threshold', 90)
-            log("Settings loaded successfully", "SETTINGS")
-            return (notification_processes, resource_processes, startup, launch_settings_on_start,
-                    notification_close_on_startup, resource_close_on_startup, notification_close_on_hotkey,
-                    resource_close_on_hotkey, notification_relaunch_on_exit, resource_relaunch_on_exit,
-                    enable_playtime_summary, playtime_summary_mode, enable_system_audio, system_audio_level,
-                    enable_game_audio, game_audio_level, enable_during_power, during_power_plan, enable_after_power,
-                    after_power_plan, enable_game_mode_start, enable_game_mode_end, enable_debug_mode,
-                    enable_cpu_thermal, enable_gpu_thermal, enable_cpu_temp_alert, cpu_temp_warning_threshold,
-                    cpu_temp_critical_threshold, enable_gpu_temp_alert, gpu_temp_warning_threshold,
-                    gpu_temp_critical_threshold)
-    else:
-        log("No settings file found - using defaults", "SETTINGS")
-        default_notification = ['WhatsApp.Root.exe', 'Telegram.exe', 'ms-teams.exe', 'Messenger.exe', 'slack.exe',
-                                'Signal.exe', 'WeChat.exe']
-        default_resource = ['spotify.exe', 'OneDrive.exe', 'GoogleDriveFS.exe', 'Dropbox.exe', 'wallpaper64.exe']
-        return (default_notification, default_resource, False, True, True, True, True, True, True, False,
-                True, 'brief', False, 33, False, 100, False, 'High Performance', False, 'Balanced', True, False,
-                False, False, True, False, 85, 95, False, 80, 90)
+    """
+    Load all settings from JSON file and return as tuple.
+
+    Uses the shared load_settings() function internally but maintains
+    the tuple return format for backward compatibility.
+    """
+    settings = load_settings_dict()
+
+    # Extract all settings with appropriate defaults
+    return (
+        settings.get('notification_processes', DEFAULT_SETTINGS['notification_processes']),
+        settings.get('resource_processes', DEFAULT_SETTINGS['resource_processes']),
+        settings.get('launch_at_startup', DEFAULT_SETTINGS['launch_at_startup']),
+        settings.get('launch_settings_on_start', DEFAULT_SETTINGS['launch_settings_on_start']),
+        settings.get('close_on_startup', DEFAULT_SETTINGS['close_on_startup']),
+        settings.get('resource_close_on_startup', DEFAULT_SETTINGS['resource_close_on_startup']),
+        settings.get('close_on_hotkey', DEFAULT_SETTINGS['close_on_hotkey']),
+        settings.get('resource_close_on_hotkey', DEFAULT_SETTINGS['resource_close_on_hotkey']),
+        settings.get('relaunch_on_exit', DEFAULT_SETTINGS['relaunch_on_exit']),
+        settings.get('resource_relaunch_on_exit', DEFAULT_SETTINGS['resource_relaunch_on_exit']),
+        settings.get('enable_playtime_summary', DEFAULT_SETTINGS['enable_playtime_summary']),
+        settings.get('playtime_summary_mode', DEFAULT_SETTINGS['playtime_summary_mode']),
+        settings.get('enable_system_audio', DEFAULT_SETTINGS['enable_system_audio']),
+        settings.get('system_audio_level', DEFAULT_SETTINGS['system_audio_level']),
+        settings.get('enable_game_audio', DEFAULT_SETTINGS['enable_game_audio']),
+        settings.get('game_audio_level', DEFAULT_SETTINGS['game_audio_level']),
+        settings.get('enable_during_power', DEFAULT_SETTINGS['enable_during_power']),
+        settings.get('during_power_plan', DEFAULT_SETTINGS['during_power_plan']),
+        settings.get('enable_after_power', DEFAULT_SETTINGS['enable_after_power']),
+        settings.get('after_power_plan', DEFAULT_SETTINGS['after_power_plan']),
+        settings.get('enable_game_mode_start', DEFAULT_SETTINGS['enable_game_mode_start']),
+        settings.get('enable_game_mode_end', DEFAULT_SETTINGS['enable_game_mode_end']),
+        settings.get('enable_debug_mode', DEFAULT_SETTINGS['enable_debug_mode']),
+        settings.get('enable_cpu_thermal', DEFAULT_SETTINGS['enable_cpu_thermal']),
+        settings.get('enable_gpu_thermal', DEFAULT_SETTINGS['enable_gpu_thermal']),
+        settings.get('enable_cpu_temp_alert', DEFAULT_SETTINGS['enable_cpu_temp_alert']),
+        settings.get('cpu_temp_warning_threshold', DEFAULT_SETTINGS['cpu_temp_warning_threshold']),
+        settings.get('cpu_temp_critical_threshold', DEFAULT_SETTINGS['cpu_temp_critical_threshold']),
+        settings.get('enable_gpu_temp_alert', DEFAULT_SETTINGS['enable_gpu_temp_alert']),
+        settings.get('gpu_temp_warning_threshold', DEFAULT_SETTINGS['gpu_temp_warning_threshold']),
+        settings.get('gpu_temp_critical_threshold', DEFAULT_SETTINGS['gpu_temp_critical_threshold']),
+    )
 
 
 # =============================================================================
@@ -942,277 +471,133 @@ def set_startup(enabled):
     except Exception as e:
         log(f"Startup registry error: {e}", "ERROR")
 
-
-# =============================================================================
-# Steam Integration
-# =============================================================================
-
-def get_running_steam_app_id():
-    """Get the AppID of currently running Steam game (0 if none)."""
-    try:
-        key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Valve\Steam")
-        app_id, _ = winreg.QueryValueEx(key, "RunningAppID")
-        winreg.CloseKey(key)
-        return int(app_id)
-    except:
-        return 0
-
-
-def get_game_name(app_id):
-    """Fetch game name from Steam API for given AppID."""
-    if app_id == 0:
-        return "No game running"
-    log(f"Fetching game name for AppID {app_id} from Steam API...", "STEAM")
-    try:
-        url = f"http://store.steampowered.com/api/appdetails?appids={app_id}"
-        response = requests.get(url, timeout=5)
-        data = response.json()
-        if response.status_code == 200 and str(app_id) in data and data[str(app_id)]["success"]:
-            name = data[str(app_id)]["data"]["name"]
-            log(f"Game name resolved: {name}", "STEAM")
-            return name
-    except Exception as e:
-        log(f"Failed to fetch game name: {e}", "ERROR")
-    return "Unknown"
-
-
-def get_game_header_image(app_id):
-    """Fetch game header image URL from Steam API for given AppID."""
-    if app_id == 0:
-        return None
-    try:
-        url = f"http://store.steampowered.com/api/appdetails?appids={app_id}"
-        response = requests.get(url, timeout=5)
-        data = response.json()
-        if response.status_code == 200 and str(app_id) in data and data[str(app_id)]["success"]:
-            header_image = data[str(app_id)]["data"].get("header_image")
-            if header_image:
-                log(f"Got header image URL for AppID {app_id}", "STEAM")
-                return header_image
-    except Exception as e:
-        log(f"Failed to fetch game header image: {e}", "ERROR")
-    return None
-
-
-def get_game_store_details(app_id):
-    """Fetch game details from Steam Store API.
-
-    Returns dict with: developers, publishers, release_date, metacritic_score, metacritic_url
-    """
-    if app_id == 0:
-        return None
-    try:
-        url = f"http://store.steampowered.com/api/appdetails?appids={app_id}"
-        response = requests.get(url, timeout=5)
-        data = response.json()
-        if response.status_code == 200 and str(app_id) in data and data[str(app_id)]["success"]:
-            game_data = data[str(app_id)]["data"]
-
-            details = {
-                'developers': game_data.get('developers', []),
-                'publishers': game_data.get('publishers', []),
-                'release_date': game_data.get('release_date', {}).get('date', 'Unknown'),
-                'metacritic_score': None,
-                'metacritic_url': None
-            }
-
-            # Metacritic data (may not exist for all games)
-            metacritic = game_data.get('metacritic')
-            if metacritic:
-                details['metacritic_score'] = metacritic.get('score')
-                details['metacritic_url'] = metacritic.get('url')
-
-            log(f"Got store details for AppID {app_id}", "STEAM")
-            return details
-    except Exception as e:
-        log(f"Failed to fetch game store details: {e}", "ERROR")
-    return None
-
-
-# Pre-loaded game details for instant popup display
-_preloaded_game_details = None
-_preloaded_game_details_lock = threading.Lock()
-
-
-def preload_game_details(app_id):
-    """Pre-load game details from Steam Store API for instant display."""
-    global _preloaded_game_details
-
-    if app_id == 0:
-        return
-
-    details = get_game_store_details(app_id)
-    if details:
-        with _preloaded_game_details_lock:
-            _preloaded_game_details = details
-        log(f"Pre-loaded game details for AppID {app_id}", "CACHE")
-
-
-def get_preloaded_game_details():
-    """Get the pre-loaded game details (or None if not available)."""
-    global _preloaded_game_details
-    with _preloaded_game_details_lock:
-        details = _preloaded_game_details
-        _preloaded_game_details = None  # Clear after use
-        return details
-
-
-# Directory for cached game header images
-HEADER_IMAGE_CACHE_DIR = os.path.join(appdata_dir, 'images')
-os.makedirs(HEADER_IMAGE_CACHE_DIR, exist_ok=True)
-
-
-def get_cached_header_image_path(app_id):
-    """Get the path to the cached header image for a game."""
-    return os.path.join(HEADER_IMAGE_CACHE_DIR, f"{app_id}.jpg")
-
-
-def cache_game_header_image(app_id):
-    """Download and cache the game header image for later use.
-
-    Should be called when a game starts so the image is ready when the game ends.
-    Runs in the background to avoid blocking.
-    """
-    if app_id == 0:
-        return
-
-    cache_path = get_cached_header_image_path(app_id)
-
-    # Skip if already cached
-    if os.path.exists(cache_path):
-        log(f"Header image already cached for AppID {app_id}", "CACHE")
-        return
-
-    try:
-        # Get the image URL from Steam API
-        header_image_url = get_game_header_image(app_id)
-        if not header_image_url:
-            return
-
-        # Download the image
-        response = requests.get(header_image_url, timeout=10)
-        if response.status_code == 200:
-            # Save to cache
-            with open(cache_path, 'wb') as f:
-                f.write(response.content)
-            log(f"Cached header image for AppID {app_id}", "CACHE")
-    except Exception as e:
-        log(f"Failed to cache header image for AppID {app_id}: {e}", "ERROR")
-
-
-# Pre-loaded image for instant popup display
-_preloaded_header_image = None
-_preloaded_header_image_lock = threading.Lock()
-
-
-def preload_header_image(app_id):
-    """Pre-load and resize the header image into memory for instant display.
-
-    Should be called after cache_game_header_image() completes.
-    """
-    global _preloaded_header_image
-    from PIL import Image
-
-    if app_id == 0:
-        return
-
-    cache_path = get_cached_header_image_path(app_id)
-    if not os.path.exists(cache_path):
-        return
-
-    try:
-        pil_image = Image.open(cache_path)
-        # Pre-resize to the exact size needed for the popup
-        aspect_ratio = pil_image.height / pil_image.width
-        new_width = 400
-        new_height = int(new_width * aspect_ratio)
-        pil_image = pil_image.resize((new_width, new_height), Image.LANCZOS)
-
-        with _preloaded_header_image_lock:
-            _preloaded_header_image = pil_image
-        log(f"Pre-loaded header image for AppID {app_id}", "CACHE")
-    except Exception as e:
-        log(f"Failed to pre-load header image: {e}", "ERROR")
-
-
-def get_preloaded_header_image():
-    """Get the pre-loaded header image (or None if not available)."""
-    global _preloaded_header_image
-    with _preloaded_header_image_lock:
-        img = _preloaded_header_image
-        _preloaded_header_image = None  # Clear after use
-        return img
-
-
-def warmup_customtkinter():
-    """Pre-initialize CustomTkinter by creating and destroying a hidden window.
-
-    This loads themes, fonts, etc. so the actual popup appears faster.
-    """
-    try:
-        import customtkinter as ctk
-        # Create a tiny hidden window to trigger CTk initialization
-        root = ctk.CTk()
-        root.withdraw()  # Hide immediately
-        root.update()    # Process initialization
-        root.destroy()   # Clean up
-        log("CustomTkinter pre-initialized", "CACHE")
-    except Exception as e:
-        log(f"Failed to pre-initialize CustomTkinter: {e}", "ERROR")
-
-
-def prepare_session_popup(app_id):
-    """Background task to prepare everything needed for the session popup.
-
-    Called when a game starts. Downloads/caches image, pre-loads it into memory,
-    fetches game details from Steam, and warms up CustomTkinter so the popup
-    appears instantly when the game ends.
-    """
-    cache_game_header_image(app_id)
-    preload_header_image(app_id)
-    preload_game_details(app_id)
-    warmup_customtkinter()
-
-
 # =============================================================================
 # Process Management
 # =============================================================================
 
-def kill_processes(process_names, killed_processes, purpose=""):
+def send_close_signal(proc):
+    """
+    Send WM_CLOSE to all windows belonging to a process.
+    Returns the number of windows that received the close signal.
+    """
+    pid = proc.pid
+
+    def enum_windows_callback(hwnd, windows):
+        """Callback to collect windows belonging to the process."""
+        try:
+            _, window_pid = win32gui.GetWindowThreadProcessId(hwnd)
+            if window_pid == pid:
+                windows.append(hwnd)
+        except Exception:
+            pass
+        return True
+
+    # Find all windows belonging to this process
+    windows = []
+    try:
+        win32gui.EnumWindows(enum_windows_callback, windows)
+    except Exception:
+        return 0
+
+    # Send WM_CLOSE to all windows
+    WM_CLOSE = 0x0010
+    closed_count = 0
+    for hwnd in windows:
+        try:
+            win32gui.PostMessage(hwnd, WM_CLOSE, 0, 0)
+            closed_count += 1
+        except Exception:
+            pass
+
+    return closed_count
+
+
+def kill_processes(process_names, killed_processes, purpose="", graceful_timeout=5):
     """
     Terminate processes from the given list.
+    Attempts graceful close first (WM_CLOSE), then force terminates if needed.
     Stores process info in killed_processes dict for potential relaunch.
     """
     purpose_str = f" ({purpose})" if purpose else ""
     log(f"Attempting to close {len(process_names)} {purpose} process type(s)...", "PROCESS")
+
+    # Phase 1: Collect all target processes and send close signals
+    target_processes = []  # List of (proc, name, path) tuples
+    paths_by_name = {}  # Store first path found for each process name
+
     for name in process_names:
         # Skip protected system processes
         if name.lower() in PROTECTED_PROCESSES:
             log(f"Skipping protected process: {name}", "PROCESS")
             continue
 
-        killed_count = 0
-        path_to_store = None
-        for proc in psutil.process_iter(['name', 'exe']):
-            if proc.info['name'].lower() == name.lower():
-                try:
+        for proc in psutil.process_iter(['name', 'exe', 'pid']):
+            try:
+                if proc.info['name'].lower() == name.lower():
                     path = proc.info['exe']
                     if path and os.path.exists(path):
-                        log(f"Terminating{purpose_str}: {name} (PID: {proc.pid})", "PROCESS")
-                        proc.terminate()
-                        proc.wait(timeout=5)
-                        killed_count += 1
-                        if path_to_store is None:
-                            path_to_store = path
-                except psutil.TimeoutExpired:
-                    log(f"Timeout waiting for {name} - force killing", "PROCESS")
-                    proc.kill()
-                except Exception as e:
-                    log(f"Error closing {name}: {e}", "ERROR")
+                        target_processes.append((proc, name, path))
+                        if name not in paths_by_name:
+                            paths_by_name[name] = path
+                        # Send WM_CLOSE to any windows this process has
+                        window_count = send_close_signal(proc)
+                        if window_count > 0:
+                            log(f"Sent close signal to {name} (PID: {proc.pid}, {window_count} windows)", "PROCESS")
+                        else:
+                            log(f"Closing{purpose_str}: {name} (PID: {proc.pid}, no windows)", "PROCESS")
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                pass
+            except Exception as e:
+                log(f"Error finding {name}: {e}", "ERROR")
 
-        if killed_count > 0:
-            killed_processes[name] = path_to_store
-            log(f"Closed {killed_count} instance(s) of {name}{purpose_str}", "PROCESS")
+    if not target_processes:
+        return
+
+    # Phase 2: Wait for graceful exit
+    log(f"Waiting {graceful_timeout}s for {len(target_processes)} process(es) to close gracefully...", "PROCESS")
+    time.sleep(graceful_timeout)
+
+    # Phase 3: Check which processes exited and force-terminate the rest
+    closed_counts = {}  # Count closed processes per name
+
+    for proc, name, path in target_processes:
+        try:
+            if not proc.is_running():
+                # Process exited gracefully
+                log(f"Gracefully closed: {name} (PID: {proc.pid})", "PROCESS")
+                closed_counts[name] = closed_counts.get(name, 0) + 1
+            else:
+                # Still running, force terminate
+                log(f"Force terminating: {name} (PID: {proc.pid})", "PROCESS")
+                proc.terminate()
+                try:
+                    proc.wait(timeout=2)
+                except psutil.TimeoutExpired:
+                    proc.kill()
+                closed_counts[name] = closed_counts.get(name, 0) + 1
+        except psutil.NoSuchProcess:
+            # Already exited
+            closed_counts[name] = closed_counts.get(name, 0) + 1
+        except Exception as e:
+            log(f"Error closing {name}: {e}", "ERROR")
+
+    # Record results
+    for name, count in closed_counts.items():
+        if count > 0:
+            killed_processes[name] = paths_by_name.get(name)
+            log(f"Closed {count} instance(s) of {name}{purpose_str}", "PROCESS")
+
+
+def kill_processes_async(process_names, killed_processes, purpose=""):
+    """
+    Run kill_processes in a background thread so it doesn't block other operations.
+    """
+    thread = threading.Thread(
+        target=kill_processes,
+        args=(process_names, killed_processes, purpose),
+        daemon=True
+    )
+    thread.start()
 
 
 def relaunch_processes(killed_processes, relaunch_on_exit, purpose=""):
@@ -1238,432 +623,6 @@ def relaunch_processes(killed_processes, relaunch_on_exit, purpose=""):
             killed_processes.pop(name, None)
         except Exception as e:
             log(f"Failed to relaunch {name}: {e}", "ERROR")
-
-
-# =============================================================================
-# Notifications
-# =============================================================================
-
-def show_notification(message):
-    """Display a Windows toast notification."""
-    log(f"Showing notification: {message}", "NOTIFY")
-    icon_path = os.path.abspath(TRAY_ICON_PATH)
-    win11toast.notify(body=message, app_id='Vapor - Streamline Gaming', duration='short', icon=icon_path,
-                      audio={'silent': 'true'})
-
-
-def show_temperature_alert(message, is_critical=False):
-    """Display a high-priority temperature alert notification that can bypass Do Not Disturb.
-
-    Uses the 'urgent' scenario to ensure the notification appears even when
-    Windows Focus Assist / Do Not Disturb is enabled during gameplay.
-
-    Args:
-        message: The alert message to display
-        is_critical: If True, uses alarm sound; if False, uses reminder sound
-    """
-    log(f"Showing temperature alert (critical={is_critical}): {message}", "ALERT")
-    icon_path = os.path.abspath(TRAY_ICON_PATH)
-
-    if is_critical:
-        # Critical alerts use Windows alarm sound (non-looping)
-        audio = {'src': 'ms-winsoundevent:Notification.Looping.Alarm', 'loop': 'false'}
-    else:
-        # Warning alerts use Windows reminder sound (gentler)
-        audio = {'src': 'ms-winsoundevent:Notification.Reminder'}
-
-    win11toast.notify(body=message, app_id='Vapor - Streamline Gaming', scenario='urgent', icon=icon_path,
-                      audio=audio)
-
-
-def show_brief_summary(session_data):
-    """Display a brief toast notification with session summary."""
-    hours = session_data['hours']
-    minutes = session_data['minutes']
-    game_name = session_data['game_name']
-    closed_apps_count = session_data['closed_apps_count']
-    max_cpu_temp = session_data.get('max_cpu_temp')
-    max_gpu_temp = session_data.get('max_gpu_temp')
-
-    # Build playtime string
-    if hours == 0:
-        playtime_str = f"{minutes} minutes"
-    elif hours == 1:
-        playtime_str = f"{hours} hour and {minutes} minutes"
-    else:
-        playtime_str = f"{hours} hours and {minutes} minutes"
-
-    # Build temperature string
-    temp_parts = []
-    if max_cpu_temp is not None:
-        temp_parts.append(f"CPU: {max_cpu_temp}°C")
-    if max_gpu_temp is not None:
-        temp_parts.append(f"GPU: {max_gpu_temp}°C")
-
-    if temp_parts:
-        temp_str = f" Max temps: {', '.join(temp_parts)}."
-        log(f"Max temperatures - {', '.join(temp_parts)}", "GAME")
-    else:
-        temp_str = ""
-
-    message = f"You played {game_name} for {playtime_str}. Vapor closed {closed_apps_count} apps when you started.{temp_str}"
-    show_notification(message)
-
-
-def show_detailed_summary(session_data):
-    """Display a detailed popup window with session statistics."""
-    import customtkinter as ctk
-    from PIL import Image
-    from io import BytesIO
-
-    app_id = session_data.get('app_id', 0)
-    game_name = session_data['game_name']
-    hours = session_data['hours']
-    minutes = session_data['minutes']
-    seconds = session_data['seconds']
-    closed_apps_count = session_data['closed_apps_count']
-    closed_apps_list = session_data.get('closed_apps_list', [])
-    start_cpu_temp = session_data.get('start_cpu_temp')
-    start_gpu_temp = session_data.get('start_gpu_temp')
-    max_cpu_temp = session_data.get('max_cpu_temp')
-    max_gpu_temp = session_data.get('max_gpu_temp')
-    lifetime_max_cpu = session_data.get('lifetime_max_cpu')
-    lifetime_max_gpu = session_data.get('lifetime_max_gpu')
-
-    # Run popup in a separate thread to avoid blocking
-    def show_popup():
-        # Get pre-loaded game details (developer, metacritic, etc.)
-        game_details = get_preloaded_game_details()
-
-        popup = ctk.CTk()
-        popup.title("Vapor - Game Session Details")
-
-        # Register popup for cleanup on quit
-        register_popup(popup)
-
-        def on_close():
-            unregister_popup(popup)
-            popup.destroy()
-
-        popup.protocol("WM_DELETE_WINDOW", on_close)
-
-        # Window dimensions - similar to settings window, use screen-based height
-        window_width = 550
-        screen_height = popup.winfo_screenheight()
-        # Use 70% of screen height, clamped between 600 and 850
-        window_height = int(screen_height * 0.70)
-        window_height = max(600, min(window_height, 850))
-
-        popup.geometry(f"{window_width}x{window_height}")
-        popup.resizable(False, False)
-
-        # Center on screen
-        screen_width = popup.winfo_screenwidth()
-        x = (screen_width - window_width) // 2
-        y = (screen_height - window_height) // 2
-        popup.geometry(f"{window_width}x{window_height}+{x}+{y}")
-
-        # Set window icon
-        icon_path = os.path.join(base_dir, 'Images', 'exe_icon.ico')
-        if os.path.exists(icon_path):
-            try:
-                popup.iconbitmap(icon_path)
-            except Exception:
-                pass
-
-        # IMPORTANT: Pack bottom bar FIRST so it reserves space at the bottom
-        bottom_bar = ctk.CTkFrame(master=popup, fg_color="transparent")
-        bottom_bar.pack(side="bottom", fill="x")
-
-        # Separator above button bar
-        sep_bottom = ctk.CTkFrame(master=bottom_bar, height=2, fg_color="gray50")
-        sep_bottom.pack(fill="x", padx=40, pady=(10, 0))
-
-        # Button container
-        button_container = ctk.CTkFrame(master=bottom_bar, fg_color="transparent")
-        button_container.pack(pady=15)
-
-        ok_button = ctk.CTkButton(
-            master=button_container,
-            text="OK",
-            command=on_close,
-            width=150,
-            height=35,
-            corner_radius=10,
-            fg_color="green",
-            hover_color="#228B22",
-            font=("Calibri", 15)
-        )
-        ok_button.pack()
-
-        # Content frame (fills remaining space above bottom bar)
-        content_frame = ctk.CTkFrame(master=popup, fg_color="transparent")
-        content_frame.pack(fill="both", expand=True, padx=15, pady=(20, 10))
-
-        # Title
-        title_label = ctk.CTkLabel(
-            master=content_frame,
-            text="Game Session Details",
-            font=("Calibri", 22, "bold")
-        )
-        title_label.pack(pady=(0, 5))
-
-        # Game name
-        game_label = ctk.CTkLabel(
-            master=content_frame,
-            text=game_name,
-            font=("Calibri", 17),
-            text_color="gray70"
-        )
-        game_label.pack(pady=(0, 10))
-
-        # Game header image (try pre-loaded first, fall back to cache)
-        pil_image = get_preloaded_header_image()
-        if pil_image is None and app_id:
-            # Fallback: load from cache if pre-loaded image not available
-            cached_image_path = get_cached_header_image_path(app_id)
-            if cached_image_path and os.path.exists(cached_image_path):
-                try:
-                    pil_image = Image.open(cached_image_path)
-                    aspect_ratio = pil_image.height / pil_image.width
-                    new_width = 400
-                    new_height = int(new_width * aspect_ratio)
-                    pil_image = pil_image.resize((new_width, new_height), Image.LANCZOS)
-                except Exception as e:
-                    log(f"Failed to load cached game header image: {e}", "NOTIFY")
-                    pil_image = None
-
-        if pil_image is not None:
-            try:
-                new_width = pil_image.width
-                new_height = pil_image.height
-                ctk_image = ctk.CTkImage(light_image=pil_image, dark_image=pil_image,
-                                         size=(new_width, new_height))
-                image_label = ctk.CTkLabel(master=content_frame, image=ctk_image, text="")
-                image_label.image = ctk_image  # Keep reference to prevent garbage collection
-                image_label.pack(pady=(5, 10))
-            except Exception as e:
-                log(f"Failed to display game header image: {e}", "NOTIFY")
-
-        # Separator
-        sep1 = ctk.CTkFrame(master=content_frame, height=2, fg_color="gray50")
-        sep1.pack(fill="x", padx=20, pady=5)
-
-        # Stats frame using grid for alignment
-        stats_frame = ctk.CTkFrame(master=content_frame, fg_color="transparent")
-        stats_frame.pack(pady=10, padx=20, fill="x")
-
-        # Time Played
-        ctk.CTkLabel(master=stats_frame, text="Time Played:", font=("Calibri", 14, "bold"),
-                     anchor="w").grid(row=0, column=0, sticky="w", pady=3)
-        time_str = f"{hours}h {minutes}m {seconds}s" if hours > 0 else f"{minutes}m {seconds}s"
-        ctk.CTkLabel(master=stats_frame, text=time_str, font=("Calibri", 14),
-                     anchor="e").grid(row=0, column=1, sticky="e", pady=3)
-
-        # Apps Closed
-        ctk.CTkLabel(master=stats_frame, text="Apps Closed:", font=("Calibri", 14, "bold"),
-                     anchor="w").grid(row=1, column=0, sticky="w", pady=3)
-        ctk.CTkLabel(master=stats_frame, text=str(closed_apps_count), font=("Calibri", 14),
-                     anchor="e").grid(row=1, column=1, sticky="e", pady=3)
-
-        stats_frame.grid_columnconfigure(1, weight=1)
-
-        # Show closed apps list if any
-        if closed_apps_list:
-            apps_list_frame = ctk.CTkFrame(master=content_frame, fg_color="transparent")
-            apps_list_frame.pack(pady=(0, 5), padx=40, fill="x")
-
-            # Format app names nicely (remove .exe extension)
-            app_names = [app.replace('.exe', '').replace('.EXE', '') for app in closed_apps_list]
-            apps_text = ", ".join(app_names[:8])  # Limit to first 8 apps
-            if len(app_names) > 8:
-                apps_text += f" (+{len(app_names) - 8} more)"
-
-            apps_list_label = ctk.CTkLabel(
-                master=apps_list_frame,
-                text=apps_text,
-                font=("Calibri", 12),
-                text_color="gray60",
-                wraplength=400
-            )
-            apps_list_label.pack(anchor="w")
-
-        # Game Info section (from Steam Store API)
-        if game_details:
-            # Separator before game info
-            sep_info = ctk.CTkFrame(master=content_frame, height=2, fg_color="gray50")
-            sep_info.pack(fill="x", padx=20, pady=5)
-
-            info_frame = ctk.CTkFrame(master=content_frame, fg_color="transparent")
-            info_frame.pack(pady=5, padx=20, fill="x")
-
-            info_row = 0
-
-            # Developer
-            developers = game_details.get('developers', [])
-            if developers:
-                ctk.CTkLabel(master=info_frame, text="Developer:", font=("Calibri", 14, "bold"),
-                             anchor="w").grid(row=info_row, column=0, sticky="w", pady=2)
-                ctk.CTkLabel(master=info_frame, text=", ".join(developers[:2]), font=("Calibri", 14),
-                             anchor="e").grid(row=info_row, column=1, sticky="e", pady=2)
-                info_row += 1
-
-            # Publisher (only if different from developer)
-            publishers = game_details.get('publishers', [])
-            if publishers and publishers != developers:
-                ctk.CTkLabel(master=info_frame, text="Publisher:", font=("Calibri", 14, "bold"),
-                             anchor="w").grid(row=info_row, column=0, sticky="w", pady=2)
-                ctk.CTkLabel(master=info_frame, text=", ".join(publishers[:2]), font=("Calibri", 14),
-                             anchor="e").grid(row=info_row, column=1, sticky="e", pady=2)
-                info_row += 1
-
-            # Release Date
-            release_date = game_details.get('release_date')
-            if release_date and release_date != 'Unknown':
-                ctk.CTkLabel(master=info_frame, text="Released:", font=("Calibri", 14, "bold"),
-                             anchor="w").grid(row=info_row, column=0, sticky="w", pady=2)
-                ctk.CTkLabel(master=info_frame, text=release_date, font=("Calibri", 14),
-                             anchor="e").grid(row=info_row, column=1, sticky="e", pady=2)
-                info_row += 1
-
-            # Metacritic Score
-            metacritic_score = game_details.get('metacritic_score')
-            if metacritic_score:
-                ctk.CTkLabel(master=info_frame, text="Metacritic:", font=("Calibri", 14, "bold"),
-                             anchor="w").grid(row=info_row, column=0, sticky="w", pady=2)
-                # Color code the score
-                if metacritic_score >= 75:
-                    score_color = "#66CC33"  # Green
-                elif metacritic_score >= 50:
-                    score_color = "#FFCC33"  # Yellow
-                else:
-                    score_color = "#FF0000"  # Red
-                ctk.CTkLabel(master=info_frame, text=str(metacritic_score), font=("Calibri", 14, "bold"),
-                             text_color=score_color, anchor="e").grid(row=info_row, column=1, sticky="e", pady=2)
-                info_row += 1
-
-            info_frame.grid_columnconfigure(1, weight=1)
-
-        # Separator
-        sep2 = ctk.CTkFrame(master=content_frame, height=2, fg_color="gray50")
-        sep2.pack(fill="x", padx=20, pady=5)
-
-        # Temperature section
-        temp_title = ctk.CTkLabel(
-            master=content_frame,
-            text="Temperatures",
-            font=("Calibri", 15, "bold")
-        )
-        temp_title.pack(pady=(5, 3))
-
-        # Subtitle explaining lifetime max
-        temp_subtitle = ctk.CTkLabel(
-            master=content_frame,
-            text=f"Lifetime Max = highest recorded temperature for {game_name}",
-            font=("Calibri", 12),
-            text_color="gray50"
-        )
-        temp_subtitle.pack(pady=(0, 8))
-
-        temp_frame = ctk.CTkFrame(master=content_frame, fg_color="transparent")
-        temp_frame.pack(pady=5, padx=20, fill="x")
-
-        has_temps = False
-
-        # Column headers - changed "Lifetime" to "Lifetime Max"
-        ctk.CTkLabel(master=temp_frame, text="", font=("Calibri", 12),
-                     anchor="w").grid(row=0, column=0, sticky="w", pady=3)
-        ctk.CTkLabel(master=temp_frame, text="Start", font=("Calibri", 12, "bold"),
-                     text_color="gray60").grid(row=0, column=1, sticky="e", pady=3, padx=(15, 0))
-        ctk.CTkLabel(master=temp_frame, text="Session Max", font=("Calibri", 12, "bold"),
-                     text_color="gray60").grid(row=0, column=2, sticky="e", pady=3, padx=(15, 0))
-        ctk.CTkLabel(master=temp_frame, text="Lifetime Max", font=("Calibri", 12, "bold"),
-                     text_color="#FFD700").grid(row=0, column=3, sticky="e", pady=3, padx=(15, 0))
-
-        # CPU temps
-        if start_cpu_temp is not None or max_cpu_temp is not None or lifetime_max_cpu is not None:
-            has_temps = True
-            ctk.CTkLabel(master=temp_frame, text="CPU:", font=("Calibri", 14, "bold"),
-                         anchor="w").grid(row=1, column=0, sticky="w", pady=3)
-
-            start_text = f"{start_cpu_temp}°C" if start_cpu_temp is not None else "N/A"
-            max_text = f"{max_cpu_temp}°C" if max_cpu_temp is not None else "N/A"
-            lifetime_text = f"{lifetime_max_cpu}°C" if lifetime_max_cpu is not None else "N/A"
-
-            ctk.CTkLabel(master=temp_frame, text=start_text,
-                         font=("Calibri", 13)).grid(row=1, column=1, sticky="e", pady=3, padx=(15, 0))
-            ctk.CTkLabel(master=temp_frame, text=max_text,
-                         font=("Calibri", 13)).grid(row=1, column=2, sticky="e", pady=3, padx=(15, 0))
-            ctk.CTkLabel(master=temp_frame, text=lifetime_text,
-                         font=("Calibri", 13), text_color="#FFD700").grid(row=1, column=3, sticky="e", pady=3, padx=(15, 0))
-
-        # GPU temps
-        if start_gpu_temp is not None or max_gpu_temp is not None or lifetime_max_gpu is not None:
-            has_temps = True
-            row = 2 if (start_cpu_temp is not None or max_cpu_temp is not None or lifetime_max_cpu is not None) else 1
-            ctk.CTkLabel(master=temp_frame, text="GPU:", font=("Calibri", 14, "bold"),
-                         anchor="w").grid(row=row, column=0, sticky="w", pady=3)
-
-            start_text = f"{start_gpu_temp}°C" if start_gpu_temp is not None else "N/A"
-            max_text = f"{max_gpu_temp}°C" if max_gpu_temp is not None else "N/A"
-            lifetime_text = f"{lifetime_max_gpu}°C" if lifetime_max_gpu is not None else "N/A"
-
-            ctk.CTkLabel(master=temp_frame, text=start_text,
-                         font=("Calibri", 13)).grid(row=row, column=1, sticky="e", pady=3, padx=(15, 0))
-            ctk.CTkLabel(master=temp_frame, text=max_text,
-                         font=("Calibri", 13)).grid(row=row, column=2, sticky="e", pady=3, padx=(15, 0))
-            ctk.CTkLabel(master=temp_frame, text=lifetime_text,
-                         font=("Calibri", 13), text_color="#FFD700").grid(row=row, column=3, sticky="e", pady=3, padx=(15, 0))
-
-        # No temps available message
-        if not has_temps:
-            ctk.CTkLabel(
-                master=temp_frame,
-                text="Temperature monitoring not enabled",
-                font=("Calibri", 13),
-                text_color="gray60"
-            ).grid(row=0, column=0, columnspan=4, pady=10)
-
-        temp_frame.grid_columnconfigure(3, weight=1)
-
-        popup.mainloop()
-
-    # Run in a thread to avoid blocking the main monitoring loop
-    threading.Thread(target=show_popup, daemon=True).start()
-    log(f"Showing detailed summary for {game_name}", "NOTIFY")
-
-
-# =============================================================================
-# Audio Control
-# =============================================================================
-
-def set_system_volume(level):
-    """Set system master volume (0-100)."""
-    log(f"Setting system volume to {level}%...", "AUDIO")
-    comtypes.CoInitializeEx(comtypes.COINIT_MULTITHREADED)
-    try:
-        level = max(0, min(100, level)) / 100.0
-
-        device_enumerator = comtypes.CoCreateInstance(
-            CLSID_MMDeviceEnumerator,
-            IMMDeviceEnumerator,
-            comtypes.CLSCTX_ALL
-        )
-
-        default_device = device_enumerator.GetDefaultAudioEndpoint(
-            EDataFlow.eRender.value,
-            ERole.eMultimedia.value
-        )
-
-        interface = default_device.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
-        volume = interface.QueryInterface(IAudioEndpointVolume)
-
-        volume.SetMasterVolumeLevelScalar(level, None)
-        log(f"System volume set to {int(level * 100)}%", "AUDIO")
-    except Exception as e:
-        log(f"Failed to set system volume: {e}", "ERROR")
-    finally:
-        comtypes.CoUninitialize()
 
 
 # =============================================================================
@@ -1726,766 +685,6 @@ def set_game_mode(enabled):
 
 
 # =============================================================================
-# Temperature Monitoring Functions
-# =============================================================================
-
-def get_gpu_temperature():
-    """
-    Get current GPU temperature in Celsius.
-    Tries multiple methods: NVIDIA pynvml, AMD pyadl, nvidia-smi CLI, and WMI fallbacks.
-    Returns None if temperature cannot be read.
-    """
-    # Try NVIDIA GPU first (pynvml library)
-    if NVML_AVAILABLE:
-        try:
-            pynvml.nvmlInit()
-            device_count = pynvml.nvmlDeviceGetCount()
-            if device_count > 0:
-                # Get temperature of first GPU (primary gaming GPU)
-                handle = pynvml.nvmlDeviceGetHandleByIndex(0)
-                temp = pynvml.nvmlDeviceGetTemperature(handle, pynvml.NVML_TEMPERATURE_GPU)
-                pynvml.nvmlShutdown()
-                return temp
-        except Exception as e:
-            try:
-                pynvml.nvmlShutdown()
-            except:
-                pass
-            # Don't log - will try fallbacks
-
-    # Try AMD GPU (pyadl library)
-    if PYADL_AVAILABLE:
-        try:
-            devices = ADLManager.getInstance().getDevices()
-            if devices:
-                # Get temperature of first GPU
-                temp = devices[0].getCurrentTemperature()
-                if temp is not None:
-                    return int(temp)
-        except Exception:
-            pass  # Don't log - will try fallbacks
-
-    # Fallback: Try nvidia-smi command line (works even if pynvml fails)
-    try:
-        result = subprocess.run(
-            ['nvidia-smi', '--query-gpu=temperature.gpu', '--format=csv,noheader,nounits'],
-            capture_output=True, text=True, timeout=5,
-            creationflags=subprocess.CREATE_NO_WINDOW
-        )
-        if result.returncode == 0 and result.stdout.strip():
-            temp = int(result.stdout.strip().split('\n')[0])
-            if 0 < temp < 150:
-                return temp
-    except Exception:
-        pass  # nvidia-smi not available or failed
-
-    # Fallback: Try WMI with LibreHardwareMonitor/OpenHardwareMonitor for GPU
-    if WMI_AVAILABLE:
-        for namespace in ["root\\LibreHardwareMonitor", "root\\OpenHardwareMonitor"]:
-            try:
-                w = wmi.WMI(namespace=namespace)
-                sensors = w.Sensor()
-                for sensor in sensors:
-                    if sensor.SensorType == "Temperature" and "GPU" in sensor.Name:
-                        if sensor.Value and sensor.Value > 0:
-                            return int(sensor.Value)
-            except Exception:
-                pass  # Namespace not available
-
-    return None
-
-
-def get_cpu_temperature():
-    """
-    Get current CPU temperature in Celsius.
-    Tries HardwareMonitor package, LibreHardwareMonitor (bundled), and WMI fallbacks.
-    Returns None if temperature cannot be read.
-    """
-    global HWMON_COMPUTER, LHM_COMPUTER
-
-    # Try HardwareMonitor package first (handles PawnIO driver automatically)
-    if HWMON_AVAILABLE and is_admin():
-        try:
-            from HardwareMonitor.Hardware import Computer, HardwareType, SensorType
-
-            if HWMON_COMPUTER is None:
-                log("Initializing HardwareMonitor Computer object...", "TEMP")
-                HWMON_COMPUTER = Computer()
-                HWMON_COMPUTER.IsCpuEnabled = True
-                HWMON_COMPUTER.Open()
-                # Use visitor pattern to update all hardware
-                HWMON_COMPUTER.Accept(HardwareUpdateVisitor())
-                log("HardwareMonitor initialized successfully", "TEMP")
-
-            # Update all hardware using visitor
-            HWMON_COMPUTER.Accept(HardwareUpdateVisitor())
-
-            # Look for CPU temperature
-            for hardware in HWMON_COMPUTER.Hardware:
-                if hardware.HardwareType == HardwareType.Cpu:
-                    # Check all temperature sensors
-                    for sensor in hardware.Sensors:
-                        if sensor.SensorType == SensorType.Temperature:
-                            try:
-                                value = sensor.Value
-                                if value is not None and float(value) > 0:
-                                    return int(float(value))
-                            except Exception:
-                                pass
-                    # Check subhardware
-                    for subhardware in hardware.SubHardware:
-                        for sensor in subhardware.Sensors:
-                            if sensor.SensorType == SensorType.Temperature:
-                                try:
-                                    value = sensor.Value
-                                    if value is not None and float(value) > 0:
-                                        return int(float(value))
-                                except Exception:
-                                    pass
-        except Exception as e:
-            log(f"HardwareMonitor read failed: {e}", "TEMP")
-
-    # Fallback: Try bundled LibreHardwareMonitorLib (requires admin privileges)
-    if LHM_AVAILABLE and is_admin():
-        try:
-            from LibreHardwareMonitor.Hardware import Computer, HardwareType, SensorType
-
-            if LHM_COMPUTER is None:
-                log("Initializing LibreHardwareMonitor Computer object...", "TEMP")
-                LHM_COMPUTER = Computer()
-                LHM_COMPUTER.IsCpuEnabled = True
-                LHM_COMPUTER.Open()
-                # Single update cycle with brief delay
-                for hardware in LHM_COMPUTER.Hardware:
-                    hardware.Update()
-                    for subhardware in hardware.SubHardware:
-                        subhardware.Update()
-                time.sleep(0.2)
-                log("LibreHardwareMonitor initialized successfully", "TEMP")
-
-            # Update all hardware
-            for hardware in LHM_COMPUTER.Hardware:
-                hardware.Update()
-                for subhardware in hardware.SubHardware:
-                    subhardware.Update()
-
-            # Look for CPU temperature
-            for hardware in LHM_COMPUTER.Hardware:
-                if hardware.HardwareType == HardwareType.Cpu:
-                    # Check all temperature sensors
-                    for sensor in hardware.Sensors:
-                        if sensor.SensorType == SensorType.Temperature:
-                            # Try multiple ways to get the value (pythonnet nullable handling)
-                            try:
-                                value = sensor.Value
-                                # Handle .NET nullable - try GetValueOrDefault if available
-                                if hasattr(value, 'GetValueOrDefault'):
-                                    value = value.GetValueOrDefault()
-                                elif hasattr(value, 'Value'):
-                                    value = value.Value
-                                if value is not None and float(value) > 0:
-                                    return int(float(value))
-                            except Exception:
-                                pass
-                    # Check subhardware
-                    for subhardware in hardware.SubHardware:
-                        for sensor in subhardware.Sensors:
-                            if sensor.SensorType == SensorType.Temperature:
-                                try:
-                                    value = sensor.Value
-                                    if hasattr(value, 'GetValueOrDefault'):
-                                        value = value.GetValueOrDefault()
-                                    elif hasattr(value, 'Value'):
-                                        value = value.Value
-                                    if value is not None and float(value) > 0:
-                                        return int(float(value))
-                                except Exception:
-                                    pass
-        except Exception as e:
-            log(f"LibreHardwareMonitorLib read failed: {e}", "TEMP")
-
-    # Fallback: Try WMI with external LibreHardwareMonitor/OpenHardwareMonitor
-    global CPU_TEMP_ERRORS_LOGGED
-    if WMI_AVAILABLE:
-        # Try LibreHardwareMonitor WMI
-        try:
-            w = wmi.WMI(namespace="root\\LibreHardwareMonitor")
-            sensors = w.Sensor()
-            for sensor in sensors:
-                if sensor.SensorType == "Temperature" and "CPU" in sensor.Name:
-                    if "Package" in sensor.Name or "Core" in sensor.Name:
-                        return int(sensor.Value)
-            for sensor in sensors:
-                if sensor.SensorType == "Temperature" and "CPU" in sensor.Name:
-                    return int(sensor.Value)
-        except Exception:
-            pass  # WMI namespace not available
-
-        # Try OpenHardwareMonitor WMI
-        try:
-            w = wmi.WMI(namespace="root\\OpenHardwareMonitor")
-            sensors = w.Sensor()
-            for sensor in sensors:
-                if sensor.SensorType == "Temperature" and "CPU" in sensor.Name:
-                    if "Package" in sensor.Name or "Core" in sensor.Name:
-                        return int(sensor.Value)
-            for sensor in sensors:
-                if sensor.SensorType == "Temperature" and "CPU" in sensor.Name:
-                    return int(sensor.Value)
-        except Exception:
-            pass  # WMI namespace not available
-
-        # Fallback: Try Windows native thermal zone (requires admin)
-        if is_admin():
-            try:
-                w = wmi.WMI(namespace="root\\wmi")
-                temps = w.MSAcpi_ThermalZoneTemperature()
-                if temps:
-                    # Convert from decikelvin to Celsius: (temp / 10) - 273.15
-                    for temp in temps:
-                        if hasattr(temp, 'CurrentTemperature') and temp.CurrentTemperature:
-                            celsius = (temp.CurrentTemperature / 10.0) - 273.15
-                            if 0 < celsius < 150:  # Sanity check for valid temp range
-                                return int(celsius)
-            except Exception:
-                pass  # Thermal zone not available
-
-    # Fallback: Try PowerShell Get-CimInstance for thermal zone
-    if is_admin():
-        try:
-            result = subprocess.run(
-                ['powershell', '-NoProfile', '-Command',
-                 'Get-CimInstance -Namespace root/wmi -ClassName MSAcpi_ThermalZoneTemperature | '
-                 'Select-Object -ExpandProperty CurrentTemperature | Select-Object -First 1'],
-                capture_output=True, text=True, timeout=10,
-                creationflags=subprocess.CREATE_NO_WINDOW
-            )
-            if result.returncode == 0 and result.stdout.strip():
-                # Convert from decikelvin to Celsius
-                decikelvin = float(result.stdout.strip())
-                celsius = (decikelvin / 10.0) - 273.15
-                if 0 < celsius < 150:
-                    return int(celsius)
-        except Exception:
-            pass  # PowerShell method failed
-
-    # Fallback: Try wmic command for thermal zone
-    if is_admin():
-        try:
-            result = subprocess.run(
-                ['wmic', '/namespace:\\\\root\\wmi', 'path', 'MSAcpi_ThermalZoneTemperature',
-                 'get', 'CurrentTemperature', '/value'],
-                capture_output=True, text=True, timeout=10,
-                creationflags=subprocess.CREATE_NO_WINDOW
-            )
-            if result.returncode == 0 and 'CurrentTemperature=' in result.stdout:
-                # Parse "CurrentTemperature=XXXXX" format
-                for line in result.stdout.split('\n'):
-                    if 'CurrentTemperature=' in line:
-                        decikelvin = float(line.split('=')[1].strip())
-                        celsius = (decikelvin / 10.0) - 273.15
-                        if 0 < celsius < 150:
-                            return int(celsius)
-        except Exception:
-            pass  # wmic method failed
-
-    # Log once that CPU temp is unavailable
-    if not CPU_TEMP_ERRORS_LOGGED:
-        log("CPU temperature monitoring unavailable on this system", "TEMP")
-        CPU_TEMP_ERRORS_LOGGED = True
-
-    return None
-
-
-class TemperatureTracker:
-    """
-    Tracks CPU and GPU temperatures during a gaming session.
-    Records starting temperatures and maximum temperatures reached.
-    Supports temperature alerts when thresholds are exceeded (warning and critical levels).
-    """
-
-    def __init__(self):
-        self.start_cpu_temp = None
-        self.start_gpu_temp = None
-        self.max_cpu_temp = None
-        self.max_gpu_temp = None
-        self.last_cpu_temp = None  # Most recent CPU temp reading
-        self.last_gpu_temp = None  # Most recent GPU temp reading
-        self._stop_event = None  # Global stop event (Vapor quitting)
-        self._internal_stop = None  # Internal stop event (game ended)
-        self._thread = None
-        self._monitoring = False
-        self._enable_cpu = False
-        self._enable_gpu = True
-        # Alert settings (warning and critical thresholds)
-        self._enable_cpu_alert = False
-        self._cpu_warning_threshold = 85
-        self._cpu_critical_threshold = 95
-        self._enable_gpu_alert = False
-        self._gpu_warning_threshold = 80
-        self._gpu_critical_threshold = 90
-        # Track which alerts have been triggered this session
-        self._cpu_warning_triggered = False
-        self._cpu_critical_triggered = False
-        self._gpu_warning_triggered = False
-        self._gpu_critical_triggered = False
-        self._game_name = None
-
-    def start_monitoring(self, stop_event, enable_cpu=False, enable_gpu=True,
-                         enable_cpu_alert=False, cpu_warning_threshold=85, cpu_critical_threshold=95,
-                         enable_gpu_alert=False, gpu_warning_threshold=80, gpu_critical_threshold=90,
-                         game_name=None):
-        """Start temperature monitoring in a background thread."""
-        if self._monitoring:
-            return
-
-        self.start_cpu_temp = None
-        self.start_gpu_temp = None
-        self.max_cpu_temp = None
-        self.max_gpu_temp = None
-        self.last_cpu_temp = None
-        self.last_gpu_temp = None
-        self._stop_event = stop_event
-        self._internal_stop = threading.Event()  # Create fresh event for this session
-        self._monitoring = True
-        self._enable_cpu = enable_cpu
-        self._enable_gpu = enable_gpu
-        # Alert settings (warning and critical thresholds)
-        self._enable_cpu_alert = enable_cpu_alert
-        self._cpu_warning_threshold = cpu_warning_threshold
-        self._cpu_critical_threshold = cpu_critical_threshold
-        self._enable_gpu_alert = enable_gpu_alert
-        self._gpu_warning_threshold = gpu_warning_threshold
-        self._gpu_critical_threshold = gpu_critical_threshold
-        # Reset alert triggers for new session
-        self._cpu_warning_triggered = False
-        self._cpu_critical_triggered = False
-        self._gpu_warning_triggered = False
-        self._gpu_critical_triggered = False
-        self._game_name = game_name
-
-        # Only start monitoring if at least one thermal type is enabled
-        if not enable_cpu and not enable_gpu:
-            log("Temperature monitoring disabled (both CPU and GPU disabled)", "TEMP")
-            self._monitoring = False
-            return
-
-        # Capture starting temperatures immediately
-        if enable_cpu:
-            self.start_cpu_temp = get_cpu_temperature()
-            self.max_cpu_temp = self.start_cpu_temp
-            if self.start_cpu_temp is not None:
-                log(f"Starting CPU temp: {self.start_cpu_temp}°C", "TEMP")
-
-        if enable_gpu:
-            self.start_gpu_temp = get_gpu_temperature()
-            self.max_gpu_temp = self.start_gpu_temp
-            if self.start_gpu_temp is not None:
-                log(f"Starting GPU temp: {self.start_gpu_temp}°C", "TEMP")
-
-        self._thread = threading.Thread(target=self._monitor_loop, daemon=True)
-        self._thread.start()
-        enabled_types = []
-        if enable_cpu:
-            enabled_types.append("CPU")
-        if enable_gpu:
-            enabled_types.append("GPU")
-        log(f"Temperature monitoring started ({', '.join(enabled_types)})", "TEMP")
-
-    def stop_monitoring(self):
-        """Stop temperature monitoring and return temperature data."""
-        self._monitoring = False
-        # Signal internal stop event to wake up the monitoring thread immediately
-        if self._internal_stop:
-            self._internal_stop.set()
-        if self._thread:
-            self._thread.join(timeout=0.5)  # Should be nearly instant now
-            self._thread = None
-
-        # Use last recorded temperatures from monitoring loop (more accurate than fresh read after game closes)
-        end_cpu_temp = self.last_cpu_temp
-        end_gpu_temp = self.last_gpu_temp
-
-        log(f"Temperature monitoring stopped. Start CPU: {self.start_cpu_temp}°C, End CPU: {end_cpu_temp}°C, "
-            f"Start GPU: {self.start_gpu_temp}°C, End GPU: {end_gpu_temp}°C", "TEMP")
-        return {
-            'start_cpu': self.start_cpu_temp,
-            'start_gpu': self.start_gpu_temp,
-            'end_cpu': end_cpu_temp,
-            'end_gpu': end_gpu_temp,
-            'max_cpu': self.max_cpu_temp,
-            'max_gpu': self.max_gpu_temp
-        }
-
-    def _play_critical_alert_sound(self):
-        """Play the critical alert sound if available."""
-        try:
-            import winsound
-            # Look for sound file in several locations
-            sound_locations = [
-                os.path.join(base_dir, 'sounds', 'critical_alert.wav'),
-                os.path.join(os.path.dirname(base_dir), 'sounds', 'critical_alert.wav'),
-                os.path.join(appdata_dir, 'sounds', 'critical_alert.wav')
-            ]
-            for sound_path in sound_locations:
-                if os.path.exists(sound_path):
-                    log(f"Playing critical alert sound: {sound_path}", "ALERT")
-                    winsound.PlaySound(sound_path, winsound.SND_FILENAME | winsound.SND_ASYNC)
-                    return
-            # Fallback to system beep if no custom sound found
-            log("Critical alert sound file not found (sounds/critical_alert.wav), using system beep", "ALERT")
-            winsound.MessageBeep(winsound.MB_ICONEXCLAMATION)
-        except Exception as e:
-            log(f"Error playing critical alert sound: {e}", "ALERT")
-
-    def _monitor_loop(self):
-        """Background loop that polls temperatures every 10 seconds."""
-        poll_interval = 10  # seconds
-
-        while self._monitoring:
-            # Get current temperatures (only if enabled)
-            cpu_temp = get_cpu_temperature() if self._enable_cpu else None
-            gpu_temp = get_gpu_temperature() if self._enable_gpu else None
-
-            # Save last readings for use when monitoring stops
-            if cpu_temp is not None:
-                self.last_cpu_temp = cpu_temp
-            if gpu_temp is not None:
-                self.last_gpu_temp = gpu_temp
-
-            # Update max values
-            if cpu_temp is not None:
-                if self.max_cpu_temp is None or cpu_temp > self.max_cpu_temp:
-                    self.max_cpu_temp = cpu_temp
-                    log(f"New max CPU temp: {cpu_temp}°C", "TEMP")
-
-            if gpu_temp is not None:
-                if self.max_gpu_temp is None or gpu_temp > self.max_gpu_temp:
-                    self.max_gpu_temp = gpu_temp
-                    log(f"New max GPU temp: {gpu_temp}°C", "TEMP")
-
-            # Check CPU temperature alerts (warning and critical levels)
-            if self._enable_cpu_alert and cpu_temp is not None:
-                game_info = f" while playing {self._game_name}" if self._game_name else ""
-                # Check critical first (higher priority)
-                if not self._cpu_critical_triggered and cpu_temp >= self._cpu_critical_threshold:
-                    self._cpu_critical_triggered = True
-                    self._cpu_warning_triggered = True  # Also mark warning as triggered
-                    log(f"CPU CRITICAL alert: {cpu_temp}°C exceeds critical threshold of {self._cpu_critical_threshold}°C", "ALERT")
-                    show_temperature_alert(f"⚠️ CRITICAL ALERT - CPU Temperature: {cpu_temp}°C{game_info}. "
-                                           f"Critical threshold of {self._cpu_critical_threshold}°C exceeded!",
-                                           is_critical=True)
-                # Check warning level
-                elif not self._cpu_warning_triggered and cpu_temp >= self._cpu_warning_threshold:
-                    self._cpu_warning_triggered = True
-                    log(f"CPU warning alert: {cpu_temp}°C exceeds warning threshold of {self._cpu_warning_threshold}°C", "ALERT")
-                    show_temperature_alert(f"CPU Temperature Warning: {cpu_temp}°C{game_info}. "
-                                           f"Warning threshold of {self._cpu_warning_threshold}°C exceeded.")
-
-            # Check GPU temperature alerts (warning and critical levels)
-            if self._enable_gpu_alert and gpu_temp is not None:
-                game_info = f" while playing {self._game_name}" if self._game_name else ""
-                # Check critical first (higher priority)
-                if not self._gpu_critical_triggered and gpu_temp >= self._gpu_critical_threshold:
-                    self._gpu_critical_triggered = True
-                    self._gpu_warning_triggered = True  # Also mark warning as triggered
-                    log(f"GPU CRITICAL alert: {gpu_temp}°C exceeds critical threshold of {self._gpu_critical_threshold}°C", "ALERT")
-                    show_temperature_alert(f"⚠️ CRITICAL ALERT - GPU Temperature: {gpu_temp}°C{game_info}. "
-                                           f"Critical threshold of {self._gpu_critical_threshold}°C exceeded!",
-                                           is_critical=True)
-                # Check warning level
-                elif not self._gpu_warning_triggered and gpu_temp >= self._gpu_warning_threshold:
-                    self._gpu_warning_triggered = True
-                    log(f"GPU warning alert: {gpu_temp}°C exceeds warning threshold of {self._gpu_warning_threshold}°C", "ALERT")
-                    show_temperature_alert(f"GPU Temperature Warning: {gpu_temp}°C{game_info}. "
-                                           f"Warning threshold of {self._gpu_warning_threshold}°C exceeded.")
-
-            # Wait for next poll or stop event (internal event wakes immediately when game ends)
-            if self._internal_stop:
-                if self._internal_stop.wait(poll_interval):
-                    break
-            elif self._stop_event:
-                if self._stop_event.wait(poll_interval):
-                    break
-            else:
-                time.sleep(poll_interval)
-
-
-# Global temperature tracker instance
-temperature_tracker = TemperatureTracker()
-
-# Track open popup windows for cleanup on quit
-_open_popups = []
-_open_popups_lock = threading.Lock()
-
-
-def register_popup(popup):
-    """Register a popup window for cleanup on quit."""
-    with _open_popups_lock:
-        _open_popups.append(popup)
-
-
-def unregister_popup(popup):
-    """Unregister a popup window when it's closed."""
-    with _open_popups_lock:
-        if popup in _open_popups:
-            _open_popups.remove(popup)
-
-
-def close_all_popups():
-    """Close all registered popup windows."""
-    with _open_popups_lock:
-        for popup in _open_popups[:]:  # Copy list to avoid modification during iteration
-            try:
-                popup.after(0, popup.destroy)
-            except Exception:
-                pass
-        _open_popups.clear()
-
-
-# =============================================================================
-# Temperature History Logging
-# =============================================================================
-
-# Directory for temperature history logs
-TEMP_HISTORY_DIR = os.path.join(appdata_dir, 'temp_history')
-os.makedirs(TEMP_HISTORY_DIR, exist_ok=True)
-
-
-def get_temp_history_path(app_id):
-    """Get the path to the temperature history file for a specific game."""
-    return os.path.join(TEMP_HISTORY_DIR, f'{app_id}_temp_history.json')
-
-
-def load_temp_history(app_id):
-    """Load temperature history for a specific game. Returns dict with lifetime max temps."""
-    history_path = get_temp_history_path(app_id)
-    if os.path.exists(history_path):
-        try:
-            with open(history_path, 'r') as f:
-                return json.load(f)
-        except Exception as e:
-            log(f"Error loading temp history for app {app_id}: {e}", "TEMP")
-    return {
-        'app_id': app_id,
-        'game_name': None,
-        'lifetime_max_cpu': None,
-        'lifetime_max_gpu': None,
-        'sessions': []
-    }
-
-
-def save_temp_history(app_id, game_name, max_cpu, max_gpu):
-    """Save temperature data for a game session and update lifetime maximums."""
-    history = load_temp_history(app_id)
-
-    # Update game name if we have it
-    if game_name:
-        history['game_name'] = game_name
-
-    # Update lifetime maximums
-    if max_cpu is not None:
-        if history['lifetime_max_cpu'] is None or max_cpu > history['lifetime_max_cpu']:
-            history['lifetime_max_cpu'] = max_cpu
-            log(f"New lifetime max CPU temp for {game_name}: {max_cpu}°C", "TEMP")
-
-    if max_gpu is not None:
-        if history['lifetime_max_gpu'] is None or max_gpu > history['lifetime_max_gpu']:
-            history['lifetime_max_gpu'] = max_gpu
-            log(f"New lifetime max GPU temp for {game_name}: {max_gpu}°C", "TEMP")
-
-    # Add session record
-    session_record = {
-        'timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
-        'max_cpu': max_cpu,
-        'max_gpu': max_gpu
-    }
-    history['sessions'].append(session_record)
-
-    # Keep only last 100 sessions to prevent file from growing too large
-    if len(history['sessions']) > 100:
-        history['sessions'] = history['sessions'][-100:]
-
-    # Save to file
-    history_path = get_temp_history_path(app_id)
-    try:
-        with open(history_path, 'w') as f:
-            json.dump(history, f, indent=2)
-        log(f"Saved temp history for {game_name} (AppID: {app_id})", "TEMP")
-    except Exception as e:
-        log(f"Error saving temp history: {e}", "TEMP")
-
-    return history
-
-
-def get_lifetime_max_temps(app_id):
-    """Get lifetime maximum temperatures for a specific game."""
-    history = load_temp_history(app_id)
-    return {
-        'lifetime_max_cpu': history.get('lifetime_max_cpu'),
-        'lifetime_max_gpu': history.get('lifetime_max_gpu')
-    }
-
-
-# =============================================================================
-# Steam Path Detection
-# =============================================================================
-
-def get_steam_path():
-    """Detect Steam installation path from registry."""
-    log("Detecting Steam installation path...", "STEAM")
-    try:
-        key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Valve\Steam")
-        path, _ = winreg.QueryValueEx(key, "SteamPath")
-        winreg.CloseKey(key)
-        steamapps = os.path.join(path, "steamapps")
-        log(f"Steam path detected: {steamapps}", "STEAM")
-        return steamapps
-    except Exception as e:
-        log(f"Failed to auto-detect Steam path: {e} - using default", "STEAM")
-        return STEAM_PATH
-
-
-def get_library_folders():
-    """Scan for all Steam library folders (including additional drives)."""
-    log("Scanning for Steam library folders...", "STEAM")
-    main_steamapps = get_steam_path()
-    steam_install_dir = os.path.dirname(main_steamapps)
-    vdf_paths = [
-        os.path.join(steam_install_dir, 'steamapps', 'libraryfolders.vdf'),
-        os.path.join(steam_install_dir, 'config', 'libraryfolders.vdf')
-    ]
-
-    libraries = set()
-    for vdf_path in vdf_paths:
-        if os.path.exists(vdf_path):
-            log(f"Found VDF: {vdf_path}", "STEAM")
-            try:
-                with open(vdf_path, 'r', encoding='utf-8') as f:
-                    content = f.read()
-                paths = re.findall(r'"path"\s+"(.*?)"', content)
-                for p in paths:
-                    lib_path = p.replace('\\\\', '\\')
-                    steamapps = os.path.join(lib_path, 'steamapps')
-                    if os.path.exists(steamapps):
-                        libraries.add(steamapps)
-            except Exception as e:
-                log(f"Error parsing VDF: {e}", "ERROR")
-
-    if os.path.exists(main_steamapps):
-        libraries.add(main_steamapps)
-
-    libraries = list(libraries)
-    log(f"Found {len(libraries)} library folder(s)", "STEAM")
-    return libraries
-
-
-def get_game_folder(app_id):
-    """Locate the installation folder for a Steam game by AppID."""
-    log(f"Locating game folder for AppID {app_id}...", "STEAM")
-    libraries = get_library_folders()
-    for lib in libraries:
-        manifest_path = os.path.join(lib, f"appmanifest_{app_id}.acf")
-        if os.path.exists(manifest_path):
-            log(f"Found manifest: {manifest_path}", "STEAM")
-            try:
-                with open(manifest_path, 'r', encoding='utf-8') as f:
-                    content = f.read()
-                installdir_match = re.search(r'"installdir"\s+"(.*?)"', content)
-                if installdir_match:
-                    installdir = installdir_match.group(1).replace('\\\\', '\\')
-                    game_folder = os.path.join(lib, "common", installdir)
-                    if os.path.exists(game_folder):
-                        log(f"Game folder found: {game_folder}", "STEAM")
-                        return game_folder
-            except Exception as e:
-                log(f"Error parsing manifest: {e}", "ERROR")
-    log(f"Could not find game folder for AppID {app_id}", "STEAM")
-    return None
-
-
-# =============================================================================
-# Game Audio Control
-# =============================================================================
-
-def find_game_pids(game_folder):
-    """Find process IDs for executables running from the game folder."""
-    if not game_folder:
-        return []
-    log(f"Scanning for game processes in: {game_folder}", "PROCESS")
-    pids = []
-    base_procs = []
-    for attempt in range(10):
-        for proc in psutil.process_iter(['pid', 'exe']):
-            try:
-                exe = proc.info['exe']
-                if exe and os.path.exists(exe):
-                    try:
-                        if os.path.commonpath([exe, game_folder]) == game_folder:
-                            base_procs.append(proc)
-                    except ValueError:
-                        pass
-            except Exception:
-                pass
-        if base_procs:
-            break
-        log(f"No game processes found yet (attempt {attempt + 1}/10)...", "PROCESS")
-        time.sleep(1)
-
-    for proc in base_procs:
-        pids.append(proc.pid)
-        try:
-            children = proc.children(recursive=True)
-            for child in children:
-                pids.append(child.pid)
-        except Exception:
-            pass
-
-    pids = list(set(pids))
-    if pids:
-        log(f"Found {len(pids)} game process(es)", "PROCESS")
-    else:
-        log("No game processes found", "PROCESS")
-    return pids
-
-
-def set_game_volume(game_pids, level):
-    """Set volume for game processes (0-100) with retry logic."""
-    if not game_pids:
-        return
-    log(f"Setting game volume to {level}% for {len(game_pids)} PID(s)...", "AUDIO")
-    comtypes.CoInitializeEx(comtypes.COINIT_MULTITHREADED)
-    try:
-        level = max(0, min(100, level)) / 100.0
-        max_attempts = 240  # 240 attempts × 0.5s = 120 seconds (2 min) max wait
-        retry_delay = 0.5
-
-        for attempt in range(max_attempts):
-            sessions = AudioUtilities.GetAllSessions()
-            set_count = 0
-            for session in sessions:
-                if session.ProcessId in game_pids:
-                    if hasattr(session, 'SimpleAudioVolume'):
-                        volume = session.SimpleAudioVolume
-                        volume.SetMasterVolume(level, None)
-                        set_count += 1
-
-            if set_count > 0:
-                log(f"Game volume set for {set_count} audio session(s)", "AUDIO")
-                break
-            else:
-                if attempt < max_attempts - 1:
-                    log(f"No audio sessions found (attempt {attempt + 1}/{max_attempts})...", "AUDIO")
-                    time.sleep(retry_delay)
-                else:
-                    log("No audio sessions found after all attempts", "AUDIO")
-    except Exception as e:
-        log(f"Failed to set game volume: {e}", "ERROR")
-    finally:
-        comtypes.CoUninitialize()
-
-
-# =============================================================================
 # Settings File Watcher
 # =============================================================================
 
@@ -2529,8 +728,35 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
 
     set_startup(launch_at_startup)
 
-    # Launch settings on start if enabled or if first run
-    if is_first_run or launch_settings_on_start:
+    # Check if we need to reopen settings after an admin restart
+    # Also check if CPU thermal is enabled but driver is missing
+    pending_settings_reopen = False
+    if os.path.exists(SETTINGS_FILE):
+        try:
+            with open(SETTINGS_FILE, 'r') as f:
+                startup_settings = json.load(f)
+            settings_modified = False
+
+            if startup_settings.get('pending_settings_reopen', False):
+                pending_settings_reopen = True
+                startup_settings['pending_settings_reopen'] = False
+                settings_modified = True
+                log("Pending settings reopen flag detected and cleared", "INIT")
+
+            # If CPU thermal is enabled but PawnIO driver is not installed, disable it
+            if startup_settings.get('enable_cpu_thermal', False) and not is_pawnio_installed():
+                log("CPU thermal enabled but PawnIO driver not installed - disabling setting", "INIT")
+                startup_settings['enable_cpu_thermal'] = False
+                settings_modified = True
+
+            if settings_modified:
+                with open(SETTINGS_FILE, 'w') as f:
+                    json.dump(startup_settings, f, indent=4)
+        except Exception as e:
+            log(f"Error checking startup settings: {e}", "ERROR")
+
+    # Launch settings on start if enabled, if first run, or if pending reopen
+    if is_first_run or launch_settings_on_start or pending_settings_reopen:
         log("Launching settings window on startup...", "INIT")
         try:
             if getattr(sys, 'frozen', False):
@@ -2559,15 +785,15 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
         start_time = time.time()
         current_game_name = game_name
         if notification_close_on_startup:
-            kill_processes(notification_processes, killed_notification, "notification")
+            kill_processes_async(notification_processes, killed_notification, "notification")
         if resource_close_on_startup:
-            kill_processes(resource_processes, killed_resource, "resource")
+            kill_processes_async(resource_processes, killed_resource, "resource")
         if enable_system_audio:
             set_system_volume(system_audio_level)
         if enable_game_audio:
             game_folder = get_game_folder(previous_app_id)
             game_pids = find_game_pids(game_folder)
-            set_game_volume(game_pids, game_audio_level)
+            set_game_volume(game_pids, game_audio_level, game_folder, current_game_name)
         if enable_during_power:
             set_power_plan(during_power_plan)
         if enable_game_mode_start:
@@ -2584,7 +810,9 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
         log("No game running at startup", "GAME")
 
     log("Vapor is now monitoring Steam games", "INIT")
-    show_notification("Vapor is now monitoring Steam games")
+    # Don't show notification if settings window is open (user can already see Vapor is running)
+    if not (is_first_run or launch_settings_on_start or pending_settings_reopen):
+        show_notification("Vapor is now monitoring Steam games")
 
     def reload_settings():
         nonlocal notification_processes, resource_processes, launch_at_startup, launch_settings_on_start, \
@@ -2771,17 +999,17 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
 
                         if notification_close_on_startup:
                             log("Closing notification apps...", "GAME")
-                            kill_processes(notification_processes, killed_notification, "notification")
+                            kill_processes_async(notification_processes, killed_notification, "notification")
                         if resource_close_on_startup:
                             log("Closing resource apps...", "GAME")
-                            kill_processes(resource_processes, killed_resource, "resource")
+                            kill_processes_async(resource_processes, killed_resource, "resource")
                         if enable_system_audio:
                             set_system_volume(system_audio_level)
                         if enable_game_audio:
                             log("Configuring game audio...", "GAME")
                             game_folder = get_game_folder(current_app_id)
                             game_pids = find_game_pids(game_folder)
-                            set_game_volume(game_pids, game_audio_level)
+                            set_game_volume(game_pids, game_audio_level, game_folder, game_name)
                         if enable_during_power:
                             set_power_plan(during_power_plan)
                         if enable_game_mode_start:
@@ -2819,9 +1047,10 @@ def open_settings(icon, query):
     log("Opening settings UI...", "UI")
     try:
         if getattr(sys, 'frozen', False):
-            subprocess.Popen([sys.executable, '--ui', str(os.getpid())])
+            proc = subprocess.Popen([sys.executable, '--ui', str(os.getpid())])
         else:
-            subprocess.Popen([sys.executable, __file__, '--ui', str(os.getpid())])
+            proc = subprocess.Popen([sys.executable, __file__, '--ui', str(os.getpid())])
+        _child_processes.append(proc)
         log("Settings UI launched", "UI")
     except Exception as e:
         log(f"Could not open settings: {e}", "ERROR")
@@ -2925,6 +1154,19 @@ if __name__ == '__main__':
             killed_notification = {}
             killed_resource = {}
             stop_event = threading.Event()
+            _stop_event = stop_event  # Make accessible to signal handler (module-level var)
+
+            # Log PyInstaller details for debugging restart issues
+            log(f"=== Vapor Startup ===", "INIT")
+            log(f"PID: {os.getpid()}", "INIT")
+            log(f"sys.executable: {sys.executable}", "INIT")
+            log(f"sys.frozen: {getattr(sys, 'frozen', False)}", "INIT")
+            log(f"sys._MEIPASS: {getattr(sys, '_MEIPASS', 'N/A')}", "INIT")
+            log(f"ENV _MEIPASS: {os.environ.get('_MEIPASS', 'N/A')}", "INIT")
+            log(f"ENV _MEIPASS2: {os.environ.get('_MEIPASS2', 'N/A')}", "INIT")
+            log(f"ENV VAPOR_EXE_PATH: {os.environ.get('VAPOR_EXE_PATH', 'N/A')}", "INIT")
+            log(f"TEMP: {os.environ.get('TEMP', 'N/A')}", "INIT")
+            log(f"Working dir: {os.getcwd()}", "INIT")
 
             # Check if this is the first run (no settings file exists)
             is_first_run = not os.path.exists(SETTINGS_FILE)
@@ -2991,6 +1233,10 @@ if __name__ == '__main__':
             icon_image = Image.open(TRAY_ICON_PATH) if os.path.exists(TRAY_ICON_PATH) else None
             icon = pystray.Icon("Vapor", icon_image, "Vapor - Streamline Gaming", menu)
             log("System tray icon created", "INIT")
+
+            # Store reference for signal handler to use during shutdown
+            _tray_icon = icon
+
             icon.run()
 
             thread.join()
