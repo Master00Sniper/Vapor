@@ -1466,20 +1466,21 @@ def reset_settings_and_restart():
 
 
 def reset_all_data_and_restart():
-    """Delete settings file and all temperature data, then close Vapor."""
+    """Delete settings file, temperature data, and cached images, then close Vapor."""
     debug_log("Reset all data requested", "Reset")
     response = show_vapor_dialog(
         title="Reset All Data",
         message="This will delete ALL Vapor data including:\n\n"
                 "• All settings\n"
                 "• All temperature history\n"
-                "• Lifetime max temperatures for all games\n\n"
+                "• Lifetime max temperatures for all games\n"
+                "• All cached game images\n\n"
                 "This cannot be undone. Vapor will close and you will\n"
                 "need to start it again manually. Are you sure?",
         dialog_type="warning",
         buttons=[
-            {"text": "Delete All & Stop", "value": True, "color": "#c9302c"},
-            {"text": "Cancel", "value": False, "color": "#28a745"}
+            {"text": "Delete All & Stop", "value": True, "color": "red"},
+            {"text": "Cancel", "value": False, "color": "green"}
         ],
         parent=root
     )
@@ -1502,6 +1503,15 @@ def reset_all_data_and_restart():
                 debug_log(f"Deleted temp history folder: {temp_history_dir}", "Reset")
         except Exception as e:
             debug_log(f"Error deleting temp history: {e}", "Reset")
+
+        # Delete cached images folder
+        images_dir = os.path.join(appdata_dir, 'images')
+        try:
+            if os.path.exists(images_dir):
+                shutil.rmtree(images_dir)
+                debug_log(f"Deleted images folder: {images_dir}", "Reset")
+        except Exception as e:
+            debug_log(f"Error deleting images: {e}", "Reset")
 
         # Close Vapor
         win11toast.notify(body="All data deleted. Please restart Vapor manually.", app_id='Vapor - Streamline Gaming',
