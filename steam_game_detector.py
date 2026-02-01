@@ -231,10 +231,21 @@ def _cleanup_console():
         pass
 
 
+# Global shutdown flag for graceful termination
+_shutdown_requested = threading.Event()
+_tray_icon = None  # Will hold reference to tray icon for shutdown
+
+
 def _signal_handler(signum, frame):
-    """Handle termination signals by cleaning up console."""
+    """Handle termination signals by requesting graceful shutdown."""
+    _shutdown_requested.set()
     _cleanup_console()
-    sys.exit(0)
+    # Stop the tray icon if it exists (this will unblock icon.run())
+    if _tray_icon is not None:
+        try:
+            _tray_icon.stop()
+        except Exception:
+            pass
 
 
 atexit.register(_cleanup_console)
@@ -1048,6 +1059,11 @@ if __name__ == '__main__':
             icon_image = Image.open(TRAY_ICON_PATH) if os.path.exists(TRAY_ICON_PATH) else None
             icon = pystray.Icon("Vapor", icon_image, "Vapor - Streamline Gaming", menu)
             log("System tray icon created", "INIT")
+
+            # Store reference for signal handler to use during shutdown
+            global _tray_icon
+            _tray_icon = icon
+
             icon.run()
 
             thread.join()
