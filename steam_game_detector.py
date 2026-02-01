@@ -235,6 +235,7 @@ def _cleanup_console():
 _shutdown_requested = threading.Event()
 _tray_icon = None  # Will hold reference to tray icon for shutdown
 _child_processes = []  # Track child processes (e.g., settings window)
+_stop_event = None  # Will hold reference to stop_event for signal handler
 
 
 def _terminate_child_processes():
@@ -249,16 +250,41 @@ def _terminate_child_processes():
 
 
 def _signal_handler(signum, frame):
-    """Handle termination signals by forcing immediate shutdown."""
+    """Handle termination signals with proper cleanup before exit."""
     _shutdown_requested.set()
-    _cleanup_console()
+
+    # Signal monitoring thread to stop
+    if _stop_event is not None:
+        _stop_event.set()
+
+    # Close any open popup windows
+    try:
+        close_all_popups()
+    except Exception:
+        pass
+
+    # Unhook keyboard hotkeys
+    try:
+        keyboard.unhook_all()
+    except Exception:
+        pass
+
+    # Terminate child processes (settings window, etc.)
     _terminate_child_processes()
+
+    # Clean up console
+    _cleanup_console()
+
     # Stop the tray icon if it exists
     if _tray_icon is not None:
         try:
             _tray_icon.stop()
         except Exception:
             pass
+
+    # Brief delay to allow cleanup to complete
+    time.sleep(0.1)
+
     # Force immediate exit - pystray's event loop doesn't always respond to stop()
     os._exit(0)
 
@@ -1009,9 +1035,11 @@ if __name__ == '__main__':
     else:
         # === NORMAL TRAY MODE ===
         try:
+            global _stop_event, _tray_icon
             killed_notification = {}
             killed_resource = {}
             stop_event = threading.Event()
+            _stop_event = stop_event  # Make accessible to signal handler
 
             # Check if this is the first run (no settings file exists)
             is_first_run = not os.path.exists(SETTINGS_FILE)
