@@ -103,11 +103,11 @@ def set_game_volume(game_pids, level):
     log(f"Setting game volume to {level}% for {len(game_pids)} PID(s)...", "AUDIO")
     comtypes.CoInitializeEx(comtypes.COINIT_MULTITHREADED)
     try:
-        level = max(0, min(100, level)) / 100.0
+        target_level = max(0, min(100, level)) / 100.0
         max_attempts = 240  # 240 attempts x 0.5s = 120 seconds (2 min) max wait
         retry_delay = 0.5
 
-        # Track sessions we've already set to avoid redundant operations
+        # Track sessions we've already set using their stable Identifier
         set_session_ids = set()
         total_set_count = 0
         # After finding first session, continue checking for additional sessions
@@ -120,19 +120,23 @@ def set_game_volume(game_pids, level):
 
             for session in sessions:
                 if session.ProcessId in game_pids:
-                    # Create unique identifier for this session
-                    session_id = (session.ProcessId, id(session._ctl))
+                    # Use the session's stable Identifier property
+                    session_id = session.Identifier
 
-                    if session_id not in set_session_ids:
-                        if hasattr(session, 'SimpleAudioVolume'):
-                            volume = session.SimpleAudioVolume
-                            volume.SetMasterVolume(level, None)
-                            set_session_ids.add(session_id)
-                            new_set_count += 1
-                            total_set_count += 1
+                    if session_id and session_id not in set_session_ids:
+                        if hasattr(session, 'SimpleAudioVolume') and session.SimpleAudioVolume:
+                            try:
+                                volume = session.SimpleAudioVolume
+                                volume.SetMasterVolume(target_level, None)
+                                set_session_ids.add(session_id)
+                                new_set_count += 1
+                                total_set_count += 1
+                                log(f"Set volume for session {session.ProcessId} to {level}%", "AUDIO")
+                            except Exception as e:
+                                log(f"Failed to set volume for session {session.ProcessId}: {e}", "AUDIO")
 
             if new_set_count > 0:
-                log(f"Game volume set for {new_set_count} new audio session(s) (total: {total_set_count})", "AUDIO")
+                log(f"Configured {new_set_count} new audio session(s) (total: {total_set_count})", "AUDIO")
                 stable_count = 0  # Reset stability counter when we find new sessions
             elif total_set_count > 0:
                 # We've set at least one session, now waiting to see if more appear
