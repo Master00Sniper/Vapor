@@ -146,29 +146,55 @@ def restart_vapor(main_pid, require_admin=False, delay_seconds=3):
     debug_log(f"Working dir: {working_dir}", "Restart")
     debug_log(f"Already admin: {is_admin()}", "Restart")
 
-    # Use PowerShell with a delay to start the new process
-    # This ensures the old process (settings UI) has fully exited before new Vapor starts
-    # The delay prevents "Failed to remove temporary directory" MEI folder errors
-    ps_command = f'Start-Sleep -Seconds {delay_seconds}; Start-Process -FilePath \\"{executable}\\"{args_part}'
-
     try:
         # Only use "runas" if elevation is required AND we're not already admin
-        # This avoids unnecessary UAC prompts
         need_elevation = require_admin and not is_admin()
-        verb = "runas" if need_elevation else "open"
-        debug_log(f"Using verb: {verb} (need_elevation={need_elevation})", "Restart")
+        debug_log(f"Need elevation: {need_elevation}", "Restart")
 
-        # Launch PowerShell hidden - it will wait 2 seconds then start Vapor
-        result = ctypes.windll.shell32.ShellExecuteW(
-            None,
-            verb,
-            "powershell.exe",
-            f'-WindowStyle Hidden -Command "{ps_command}"',
-            working_dir,
-            0  # SW_HIDE
-        )
-        debug_log(f"ShellExecuteW result: {result}", "Restart")
-        return result > 32  # ShellExecuteW returns > 32 on success
+        if need_elevation:
+            # Need UAC elevation - use ShellExecuteW with runas
+            ps_command = f'Start-Sleep -Seconds {delay_seconds}; Start-Process -FilePath \\"{executable}\\"{args_part}'
+            debug_log(f"Using runas with PowerShell", "Restart")
+            result = ctypes.windll.shell32.ShellExecuteW(
+                None,
+                "runas",
+                "powershell.exe",
+                f'-WindowStyle Hidden -Command "{ps_command}"',
+                working_dir,
+                0  # SW_HIDE
+            )
+            debug_log(f"ShellExecuteW result: {result}", "Restart")
+            return result > 32
+        else:
+            # Already admin or no elevation needed - use a batch file for clean restart
+            # This avoids inheriting any problematic state from the current process
+            import tempfile
+            batch_content = f'''@echo off
+timeout /t {delay_seconds} /nobreak >nul
+start "" /D "{working_dir}" "{executable}"{args_part.replace(chr(92)+'"', '"')}
+del "%~f0"
+'''
+            # Create batch file in temp directory
+            batch_path = os.path.join(tempfile.gettempdir(), f'vapor_restart_{os.getpid()}.bat')
+            with open(batch_path, 'w') as f:
+                f.write(batch_content)
+
+            debug_log(f"Created restart batch: {batch_path}", "Restart")
+
+            # Run batch file completely detached
+            DETACHED_PROCESS = 0x00000008
+            CREATE_NEW_PROCESS_GROUP = 0x00000200
+            CREATE_NO_WINDOW = 0x08000000
+
+            import subprocess
+            subprocess.Popen(
+                ['cmd.exe', '/c', batch_path],
+                cwd=working_dir,
+                creationflags=DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW,
+                close_fds=True
+            )
+            debug_log("Launched detached restart batch", "Restart")
+            return True
     except Exception as e:
         debug_log(f"Restart failed: {e}", "Restart")
         return False
