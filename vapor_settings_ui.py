@@ -1527,7 +1527,7 @@ moments, and constantly having to adjust audio levels for games. I hope it enhan
 as much as it has mine."""
 
 bio_label = ctk.CTkLabel(master=about_scroll_frame, text=bio_text, font=("Calibri", 13),
-                         wraplength=620, justify="center")
+                         wraplength=520, justify="center")
 bio_label.pack(pady=10, anchor='center')
 
 separator2 = ctk.CTkFrame(master=about_scroll_frame, height=2, fg_color="gray50")
