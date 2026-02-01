@@ -249,16 +249,18 @@ def _terminate_child_processes():
 
 
 def _signal_handler(signum, frame):
-    """Handle termination signals by requesting graceful shutdown."""
+    """Handle termination signals by forcing immediate shutdown."""
     _shutdown_requested.set()
     _cleanup_console()
     _terminate_child_processes()
-    # Stop the tray icon if it exists (this will unblock icon.run())
+    # Stop the tray icon if it exists
     if _tray_icon is not None:
         try:
             _tray_icon.stop()
         except Exception:
             pass
+    # Force immediate exit - pystray's event loop doesn't always respond to stop()
+    os._exit(0)
 
 
 atexit.register(_cleanup_console)
