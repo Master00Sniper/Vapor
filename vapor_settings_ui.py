@@ -236,7 +236,6 @@ def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=N
 
     # Create popup window
     dialog = ctk.CTkToplevel(parent) if parent else ctk.CTk()
-    dialog.withdraw()  # Hide while setting up
     dialog.title(f"Vapor - {title}")
     dialog.resizable(False, False)
 
@@ -252,9 +251,10 @@ def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=N
     y = (screen_height - height) // 2
     dialog.geometry(f"{width}x{height}+{x}+{y}")
 
-    # Set transient (but don't grab yet - do that after deiconify)
+    # Make dialog modal
     if parent:
         dialog.transient(parent)
+    dialog.grab_set()
 
     # Main content frame (expandable)
     content_frame = ctk.CTkFrame(master=dialog, fg_color="transparent")
@@ -340,13 +340,8 @@ def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=N
     # Handle window close button (X)
     dialog.protocol("WM_DELETE_WINDOW", lambda: (result.__setitem__(0, None), dialog.destroy()))
 
-    # Set icon before showing the dialog to avoid flash of default icon
+    # Set icon and bring to front
     set_vapor_icon(dialog)
-    dialog.update()
-
-    # Show window and bring to front
-    dialog.deiconify()
-    dialog.grab_set()  # Make modal (must be after deiconify)
     dialog.lift()
     dialog.attributes('-topmost', True)
     dialog.after(100, lambda: dialog.attributes('-topmost', False))
