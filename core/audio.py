@@ -200,14 +200,22 @@ def set_game_volume(game_pids, level, game_folder=None, game_name=None, is_game_
             # Log all audio sessions on first attempt for debugging
             if attempt == 0:
                 log(f"All audio sessions found:", "AUDIO")
+                pid_counts = {}  # Track how many sessions each PID has
                 for s in sessions:
                     if s.ProcessId == 0:
                         continue
+                    pid_counts[s.ProcessId] = pid_counts.get(s.ProcessId, 0) + 1
                     try:
                         pname = s.Process.name() if s.Process else "?"
                     except:
                         pname = "?"
-                    log(f"  - PID {s.ProcessId}: {pname} (DisplayName: {s.DisplayName})", "AUDIO")
+                    # Include session ID in log to identify multiple sessions per process
+                    session_id_short = s.Identifier[-8:] if s.Identifier else "none"
+                    log(f"  - PID {s.ProcessId}: {pname} (DisplayName: {s.DisplayName}, SessionID: ...{session_id_short})", "AUDIO")
+                # Warn about processes with multiple audio sessions
+                multi_session_pids = [pid for pid, count in pid_counts.items() if count > 1]
+                if multi_session_pids:
+                    log(f"Note: {len(multi_session_pids)} process(es) have multiple audio sessions", "AUDIO")
 
             for session in sessions:
                 # Skip system sounds (ProcessId 0)
@@ -241,9 +249,9 @@ def set_game_volume(game_pids, level, game_folder=None, game_name=None, is_game_
                         log(f"Matched session by display name: {session.DisplayName} (PID {session.ProcessId})", "AUDIO")
 
                 if is_match:
-                    # Always use ProcessId for tracking to ensure uniqueness
-                    # (multiple processes can share the same session.Identifier)
-                    session_id = f"pid_{session.ProcessId}"
+                    # Use session Identifier for tracking (a process can have multiple sessions)
+                    # Fall back to ProcessId if Identifier is not available
+                    session_id = session.Identifier if session.Identifier else f"pid_{session.ProcessId}"
 
                     if session_id not in set_session_ids:
                         if hasattr(session, 'SimpleAudioVolume') and session.SimpleAudioVolume:
@@ -257,11 +265,12 @@ def set_game_volume(game_pids, level, game_folder=None, game_name=None, is_game_
                                 total_set_count += 1
                                 display_info = f" [{process_name}]" if process_name else ""
                                 display_name_info = f" DisplayName='{session.DisplayName}'" if session.DisplayName else ""
+                                session_id_short = session.Identifier[-8:] if session.Identifier else "none"
                                 actual_percent = int(actual_level * 100)
                                 if abs(actual_level - target_level) < 0.01:
-                                    log(f"Set volume for PID {session.ProcessId}{display_info}{display_name_info} to {level}%", "AUDIO")
+                                    log(f"Set volume for PID {session.ProcessId}{display_info}{display_name_info} (session ...{session_id_short}) to {level}%", "AUDIO")
                                 else:
-                                    log(f"Set volume for PID {session.ProcessId}{display_info}{display_name_info} to {level}% (verified: {actual_percent}%)", "AUDIO")
+                                    log(f"Set volume for PID {session.ProcessId}{display_info}{display_name_info} (session ...{session_id_short}) to {level}% (verified: {actual_percent}%)", "AUDIO")
 
                                 # Expand known_pids to include siblings of matched process
                                 # This helps catch Electron helper processes with separate audio
