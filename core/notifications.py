@@ -414,21 +414,25 @@ def show_detailed_summary(session_data):
 
         popup.protocol("WM_DELETE_WINDOW", on_close)
 
-        # Window dimensions - match settings window behavior
+        # Window dimensions - account for taskbar and smaller screens
         window_width = 550
         screen_height = popup.winfo_screenheight()
-        # Use 85% of screen height, clamped between 600 and 1000
-        window_height = int(screen_height * 0.85)
-        window_height = max(600, min(window_height, 1000))
+        screen_width = popup.winfo_screenwidth()
+
+        # Reserve space for taskbar (~50px) and some margin
+        usable_height = screen_height - 80
+
+        # Use 75% of usable height, clamped between 500 and 850
+        window_height = int(usable_height * 0.75)
+        window_height = max(500, min(window_height, 850))
 
         popup.geometry(f"{window_width}x{window_height}")
         popup.resizable(False, True)  # Allow vertical resizing
-        popup.minsize(window_width, 500)  # Minimum height
+        popup.minsize(window_width, 400)  # Minimum height
 
-        # Center on screen
-        screen_width = popup.winfo_screenwidth()
+        # Center horizontally, position slightly above center vertically to avoid taskbar
         x = (screen_width - window_width) // 2
-        y = (screen_height - window_height) // 2
+        y = max(20, (usable_height - window_height) // 2)
         popup.geometry(f"{window_width}x{window_height}+{x}+{y}")
 
         # IMPORTANT: Pack bottom bar FIRST so it reserves space at the bottom
