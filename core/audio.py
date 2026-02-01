@@ -171,10 +171,13 @@ def set_game_volume(game_pids, level, game_folder=None, game_name=None):
                         log(f"Matched session by display name: {session.DisplayName} (PID {session.ProcessId})", "AUDIO")
 
                 if is_match:
-                    # Use the session's stable Identifier property
+                    # Use the session's Identifier, or fall back to ProcessId if None
                     session_id = session.Identifier
+                    if not session_id:
+                        # Fall back to ProcessId-based identifier
+                        session_id = f"pid_{session.ProcessId}"
 
-                    if session_id and session_id not in set_session_ids:
+                    if session_id not in set_session_ids:
                         if hasattr(session, 'SimpleAudioVolume') and session.SimpleAudioVolume:
                             try:
                                 vol_interface = session.SimpleAudioVolume
