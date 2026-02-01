@@ -640,20 +640,31 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
     set_startup(launch_at_startup)
 
     # Check if we need to reopen settings after an admin restart
+    # Also check if CPU thermal is enabled but driver is missing
     pending_settings_reopen = False
     if os.path.exists(SETTINGS_FILE):
         try:
             with open(SETTINGS_FILE, 'r') as f:
                 startup_settings = json.load(f)
+            settings_modified = False
+
             if startup_settings.get('pending_settings_reopen', False):
                 pending_settings_reopen = True
-                # Clear the flag immediately
                 startup_settings['pending_settings_reopen'] = False
+                settings_modified = True
+                log("Pending settings reopen flag detected and cleared", "INIT")
+
+            # If CPU thermal is enabled but PawnIO driver is not installed, disable it
+            if startup_settings.get('enable_cpu_thermal', False) and not is_pawnio_installed():
+                log("CPU thermal enabled but PawnIO driver not installed - disabling setting", "INIT")
+                startup_settings['enable_cpu_thermal'] = False
+                settings_modified = True
+
+            if settings_modified:
                 with open(SETTINGS_FILE, 'w') as f:
                     json.dump(startup_settings, f, indent=4)
-                log("Pending settings reopen flag detected and cleared", "INIT")
         except Exception as e:
-            log(f"Error checking pending_settings_reopen flag: {e}", "ERROR")
+            log(f"Error checking startup settings: {e}", "ERROR")
 
     # Launch settings on start if enabled, if first run, or if pending reopen
     if is_first_run or launch_settings_on_start or pending_settings_reopen:
