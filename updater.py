@@ -23,7 +23,9 @@ LATEST_RELEASE_PROXY_PATH = f"/repos/{GITHUB_OWNER}/{GITHUB_REPO}/releases/lates
 HEADERS = {
     "Accept": "application/vnd.github.v3+json",
     "User-Agent": "Vapor-Updater/1.0",
-    "X-Vapor-Auth": "ombxslvdyyqvlkiiogwmjlkpocwqufaa" #Token is for rate limiting purposes only, fine to be exposed
+    #Token is for rate limiting purposes, anonymous telemetry, and GitHub issues submission. Nothing important.
+    #If you'd really like to spam me with GitHub issues, I'd feel honored I at least got some attention.
+    "X-Vapor-Auth": "ombxslvdyyqvlkiiogwmjlkpocwqufaa"
 }
 
 # Tracks downloaded update waiting to be applied
