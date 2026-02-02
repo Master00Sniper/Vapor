@@ -1177,8 +1177,12 @@ if __name__ == '__main__':
 
         # Pass the actual Vapor executable path for restart functionality
         if getattr(sys, 'frozen', False):
-            # When frozen, sys.executable is the actual Vapor.exe path
-            os.environ['VAPOR_EXE_PATH'] = sys.executable
+            # PyInstaller: sys.executable is Vapor.exe
+            # Nuitka: sys.executable is python.exe in temp, use sys.argv[0] instead
+            if hasattr(sys, '_MEIPASS'):
+                os.environ['VAPOR_EXE_PATH'] = sys.executable
+            else:
+                os.environ['VAPOR_EXE_PATH'] = sys.argv[0]
         else:
             # When running from source, pass the script path
             os.environ['VAPOR_EXE_PATH'] = os.path.abspath(__file__)

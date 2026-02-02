@@ -125,17 +125,23 @@ def restart_vapor(main_pid, require_admin=False, delay_seconds=3):
         working_dir = os.path.dirname(executable)
         debug_log(f"Using VAPOR_EXE_PATH: {executable}", "Restart")
     elif getattr(sys, 'frozen', False):
-        # Fallback: try to find Vapor.exe in common locations
-        # Note: sys.executable here is the settings UI exe in temp folder, not what we want
-        possible_paths = [
-            os.path.join(os.path.dirname(os.path.dirname(sys.executable)), 'Vapor.exe'),
-            os.path.join(os.getcwd(), 'Vapor.exe'),
-        ]
-        for path in possible_paths:
-            if os.path.exists(path):
-                executable = path
-                working_dir = os.path.dirname(executable)
-                break
+        # Fallback: try to find Vapor.exe
+        # For Nuitka, sys.argv[0] should be the actual Vapor.exe path
+        if not hasattr(sys, '_MEIPASS') and os.path.exists(sys.argv[0]):
+            executable = sys.argv[0]
+            working_dir = os.path.dirname(executable)
+            debug_log(f"Using sys.argv[0] for Nuitka: {executable}", "Restart")
+        else:
+            # PyInstaller fallback: try common locations
+            possible_paths = [
+                os.path.join(os.path.dirname(os.path.dirname(sys.executable)), 'Vapor.exe'),
+                os.path.join(os.getcwd(), 'Vapor.exe'),
+            ]
+            for path in possible_paths:
+                if os.path.exists(path):
+                    executable = path
+                    working_dir = os.path.dirname(executable)
+                    break
         if not executable:
             debug_log("ERROR: Could not find Vapor.exe for restart", "Restart")
             return False
