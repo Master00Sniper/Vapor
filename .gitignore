@@ -1,7 +1,7 @@
 #Custom
 .idea/
 version.txt
-gitupdate.bat
+git_update.bat
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
