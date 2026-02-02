@@ -330,7 +330,7 @@ from platform_utils import (
 # Additional paths specific to main application
 UI_SCRIPT_PATH = os.path.join(base_dir, 'vapor_settings_ui.py')
 
-from updater import check_for_updates, CURRENT_VERSION
+from updater import check_for_updates, CURRENT_VERSION, send_telemetry
 
 
 # =============================================================================
@@ -1215,6 +1215,9 @@ if __name__ == '__main__':
             log(f"Temperature libraries - NVIDIA: {NVML_AVAILABLE}, AMD: {PYADL_AVAILABLE}, "
                 f"LHM DLL: {LHM_AVAILABLE}, WMI: {WMI_AVAILABLE}", "TEMP")
             log(f"Admin privileges: {is_admin()}", "INIT")
+
+            # Send anonymous telemetry (startup ping)
+            send_telemetry("app_start")
 
             # Check Windows notification settings and warn if disabled
             check_and_warn_notifications()

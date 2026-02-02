@@ -14,7 +14,7 @@ import os
 
 GITHUB_OWNER = "Master00Sniper"
 GITHUB_REPO = "Vapor"
-CURRENT_VERSION = "0.3.2"  # Single source of truth for app version
+CURRENT_VERSION = "0.3.3"  # Single source of truth for app version
 
 # Cloudflare Worker proxy (handles GitHub API authentication)
 PROXY_BASE_URL = "https://vapor-proxy.mortonapps.com"
@@ -23,7 +23,9 @@ LATEST_RELEASE_PROXY_PATH = f"/repos/{GITHUB_OWNER}/{GITHUB_REPO}/releases/lates
 HEADERS = {
     "Accept": "application/vnd.github.v3+json",
     "User-Agent": "Vapor-Updater/1.0",
-    "X-Vapor-Auth": "ombxslvdyyqvlkiiogwmjlkpocwqufaa" #Token is for rate limiting purposes only, fine to be exposed
+    #Token is for rate limiting purposes, anonymous telemetry, and GitHub issues submission. Nothing important.
+    #If you'd really like to spam me with GitHub issues, I'd feel honored I at least got some attention.
+    "X-Vapor-Auth": "ombxslvdyyqvlkiiogwmjlkpocwqufaa"
 }
 
 # Tracks downloaded update waiting to be applied
@@ -97,6 +99,85 @@ def compare_versions(version1, version2):
 
     # Handle different version lengths (e.g., 1.2 vs 1.2.1)
     return 0 if len(v1) == len(v2) else (1 if len(v1) > len(v2) else -1)
+
+
+# =============================================================================
+# Telemetry (Anonymous Usage Analytics)
+# =============================================================================
+
+# File to store unique installation ID
+INSTALL_ID_FILE = os.path.join(_appdata_dir, 'install_id')
+
+
+def _get_or_create_install_id():
+    """Get existing install ID or create a new one."""
+    import uuid
+    try:
+        if os.path.exists(INSTALL_ID_FILE):
+            with open(INSTALL_ID_FILE, 'r') as f:
+                install_id = f.read().strip()
+                if install_id:
+                    return install_id
+
+        # Generate new UUID for this installation
+        install_id = str(uuid.uuid4())
+        with open(INSTALL_ID_FILE, 'w') as f:
+            f.write(install_id)
+        return install_id
+    except Exception:
+        return "unknown"
+
+
+def _get_os_info():
+    """Get basic OS information."""
+    import platform
+    try:
+        return f"{platform.system()} {platform.release()}"
+    except Exception:
+        return "unknown"
+
+
+def send_telemetry(event="app_start"):
+    """
+    Send anonymous usage telemetry to the proxy.
+    This helps track how many people are using Vapor.
+
+    Data sent:
+    - event: Type of event (app_start, app_close, etc.)
+    - version: App version
+    - os: Operating system info
+    - install_id: Anonymous unique installation identifier
+
+    No personal information is collected.
+    """
+    import threading
+
+    def _send():
+        try:
+            payload = {
+                "event": event,
+                "version": CURRENT_VERSION,
+                "os": _get_os_info(),
+                "install_id": _get_or_create_install_id()
+            }
+
+            response = requests.post(
+                f"{PROXY_BASE_URL}/telemetry",
+                headers=HEADERS,
+                json=payload,
+                timeout=5
+            )
+
+            if response.status_code == 200:
+                log(f"Telemetry sent: {event}", "TELEMETRY")
+            else:
+                log(f"Telemetry failed: {response.status_code}", "TELEMETRY")
+        except Exception as e:
+            # Fail silently - telemetry should never affect the app
+            log(f"Telemetry error (ignored): {e}", "TELEMETRY")
+
+    # Run in background thread to not block startup
+    threading.Thread(target=_send, daemon=True).start()
 
 
 # =============================================================================
