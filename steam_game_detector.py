@@ -198,11 +198,17 @@ def request_admin_restart():
     try:
         # Get the executable path and working directory
         if getattr(sys, 'frozen', False):
-            executable = sys.executable
+            # PyInstaller: sys.executable is Vapor.exe
+            # Nuitka: sys.executable is python.exe in temp, use sys.argv[0] instead
+            if hasattr(sys, '_MEIPASS'):
+                executable = sys.executable
+                work_dir = os.path.dirname(sys.executable)
+            else:
+                executable = sys.argv[0]
+                work_dir = os.path.dirname(sys.argv[0])
             # Add --elevated flag to skip splash screen on restart
             existing_params = ' '.join(sys.argv[1:])
             params = f'{existing_params} --elevated'.strip()
-            work_dir = os.path.dirname(sys.executable)
         else:
             # Use pythonw.exe to avoid console window when elevated
             python_dir = os.path.dirname(sys.executable)

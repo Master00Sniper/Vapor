@@ -327,7 +327,16 @@ def perform_update(new_exe_path):
     Execute the update by replacing the current executable.
     Uses a VBScript wrapper to run the update batch file silently (no window flash).
     """
-    current_exe = sys.executable
+    # Determine the actual Vapor.exe path
+    # PyInstaller: sys.executable is Vapor.exe
+    # Nuitka: sys.executable is python.exe in temp, use sys.argv[0] instead
+    if getattr(sys, 'frozen', False):
+        if hasattr(sys, '_MEIPASS'):
+            current_exe = sys.executable
+        else:
+            current_exe = sys.argv[0]
+    else:
+        current_exe = sys.executable
     current_exe_dir = os.path.dirname(current_exe)
     temp_dir = tempfile.gettempdir()
     batch_path = os.path.join(temp_dir, "vapor_update.bat")
