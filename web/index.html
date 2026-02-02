@@ -814,8 +814,13 @@
     <style>
         /* Remove dark background from Ko-fi widget container */
         .floatingchat-container-wrap,
-        .floatingchat-container-wrap-mo498 {
+        .floatingchat-container-wrap-mo498,
+        [class*="floatingchat-container"],
+        [class*="kofi-widget"],
+        .kofi-widget-overlay-wrapper,
+        #kofi-widget-overlay-wrapper {
             background: transparent !important;
+            background-color: transparent !important;
         }
     </style>
     <script src='https://storage.ko-fi.com/cdn/scripts/overlay-widget.js'></script>
