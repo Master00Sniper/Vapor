@@ -1901,9 +1901,15 @@ separator3.pack(fill="x", padx=40, pady=15)
 donate_title = ctk.CTkLabel(master=about_scroll_frame, text="Support Development", font=("Calibri", 15, "bold"))
 donate_title.pack(pady=(5, 5), anchor='center')
 
-donate_label = ctk.CTkLabel(master=about_scroll_frame, text="Donation page coming soon!",
-                            font=("Calibri", 13))
-donate_label.pack(pady=5, anchor='center')
+donate_label = ctk.CTkLabel(master=about_scroll_frame, text="If Vapor has improved your gaming experience,\nconsider supporting development!",
+                            font=("Calibri", 13), justify="center")
+donate_label.pack(pady=(5, 10), anchor='center')
+
+kofi_button = ctk.CTkButton(master=about_scroll_frame, text="☕  Buy me a Coffee on Ko-fi",
+                            command=lambda: os.startfile("https://ko-fi.com/master00sniper"),
+                            corner_radius=10, fg_color="#FF5E5B", hover_color="#d94a47",
+                            text_color="white", width=220, font=("Calibri", 14, "bold"))
+kofi_button.pack(pady=(0, 5), anchor='center')
 
 separator4 = ctk.CTkFrame(master=about_scroll_frame, height=2, fg_color="gray50")
 separator4.pack(fill="x", padx=40, pady=15)
