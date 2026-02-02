@@ -22,6 +22,7 @@ echo.
 python -m nuitka ^
     --standalone ^
     --onefile ^
+    --msvc=latest ^
     --windows-console-mode=disable ^
     --windows-icon-from-ico=Images/exe_icon.ico ^
     --output-filename=Vapor.exe ^
