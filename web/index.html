@@ -813,15 +813,19 @@
     <!-- Ko-fi Floating Button Widget -->
     <style>
         /* Force transparency on Ko-fi widget elements */
+        #ko-fi-widget,
         .kofi-button,
         [class*="kofi"],
-        [class*="floatingchat"] {
+        [class*="floatingchat"],
+        [id*="kofi"] {
             background-color: transparent !important;
-            background: none !important;
+            background: rgba(0,0,0,0) !important;
         }
-        /* Target the iframe container */
-        iframe.floatingchat-container {
-            background: transparent !important;
+        /* Target the iframe and its wrapper divs */
+        iframe.floatingchat-container,
+        div[class*="floatingchat"],
+        div[id*="kofi"] {
+            background: rgba(0,0,0,0) !important;
             background-color: transparent !important;
         }
     </style>
