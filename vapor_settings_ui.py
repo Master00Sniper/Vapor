@@ -1905,11 +1905,21 @@ donate_label = ctk.CTkLabel(master=about_scroll_frame, text="If Vapor has improv
                             font=("Calibri", 13), justify="center")
 donate_label.pack(pady=(5, 10), anchor='center')
 
-kofi_button = ctk.CTkButton(master=about_scroll_frame, text="☕  Buy me a Coffee on Ko-fi",
+# Ko-fi button with icon
+kofi_frame = ctk.CTkFrame(master=about_scroll_frame, fg_color="transparent")
+kofi_frame.pack(pady=(0, 5), anchor='center')
+
+kofi_icon_path = os.path.join(base_dir, 'Images', 'ko-fi_icon.png')
+if os.path.exists(kofi_icon_path):
+    kofi_icon = ctk.CTkImage(light_image=Image.open(kofi_icon_path), size=(24, 24))
+    kofi_icon_label = ctk.CTkLabel(master=kofi_frame, image=kofi_icon, text="")
+    kofi_icon_label.pack(side="left", padx=(0, 8))
+
+kofi_button = ctk.CTkButton(master=kofi_frame, text="Buy me a Coffee on Ko-fi",
                             command=lambda: os.startfile("https://ko-fi.com/master00sniper"),
                             corner_radius=10, fg_color="#FF5E5B", hover_color="#d94a47",
-                            text_color="white", width=220, font=("Calibri", 14, "bold"))
-kofi_button.pack(pady=(0, 5), anchor='center')
+                            text_color="white", width=200, font=("Calibri", 14, "bold"))
+kofi_button.pack(side="left")
 
 separator4 = ctk.CTkFrame(master=about_scroll_frame, height=2, fg_color="gray50")
 separator4.pack(fill="x", padx=40, pady=15)
