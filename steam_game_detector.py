@@ -71,7 +71,10 @@ def show_splash_screen():
 
         # Determine base directory
         if getattr(sys, 'frozen', False):
-            base_dir = sys._MEIPASS
+            if hasattr(sys, '_MEIPASS'):
+                base_dir = sys._MEIPASS
+            else:
+                base_dir = os.path.dirname(sys.executable)
         else:
             base_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -315,7 +318,10 @@ except (AttributeError, ValueError):
 
 # Set working directory for frozen executable compatibility
 if getattr(sys, 'frozen', False):
-    application_path = sys._MEIPASS
+    if hasattr(sys, '_MEIPASS'):
+        application_path = sys._MEIPASS
+    else:
+        application_path = os.path.dirname(sys.executable)
 else:
     application_path = os.path.dirname(os.path.abspath(__file__))
 os.chdir(application_path)

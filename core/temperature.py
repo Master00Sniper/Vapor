@@ -59,9 +59,15 @@ if not HWMON_AVAILABLE:
         import System
         from System.Reflection import Assembly
 
+        # Determine frozen base directory (PyInstaller or Nuitka)
+        def get_frozen_base():
+            if hasattr(sys, '_MEIPASS'):
+                return sys._MEIPASS
+            return os.path.dirname(sys.executable)
+
         # Determine lib folder path
         if getattr(sys, 'frozen', False):
-            lib_dir = os.path.join(sys._MEIPASS, 'lib')
+            lib_dir = os.path.join(get_frozen_base(), 'lib')
         else:
             lib_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'lib')
 
@@ -70,8 +76,9 @@ if not HWMON_AVAILABLE:
         # Fallback to root directory for backwards compatibility
         if not os.path.exists(lhm_dll_path):
             if getattr(sys, 'frozen', False):
-                lhm_dll_path = os.path.join(sys._MEIPASS, 'LibreHardwareMonitorLib.dll')
-                lib_dir = sys._MEIPASS
+                frozen_base = get_frozen_base()
+                lhm_dll_path = os.path.join(frozen_base, 'LibreHardwareMonitorLib.dll')
+                lib_dir = frozen_base
             else:
                 lhm_dll_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'LibreHardwareMonitorLib.dll')
                 lib_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
