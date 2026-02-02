@@ -31,9 +31,9 @@ python -m nuitka ^
     --include-data-dir=Images=Images ^
     --include-data-dir=lib=lib ^
     --include-data-dir=sounds=sounds ^
-    --include-data-files=vapor_settings_ui.py=vapor_settings_ui.py ^
-    --include-data-files=updater.py=updater.py ^
     --include-data-files=install_pawnio.ps1=install_pawnio.ps1 ^
+    --include-module=vapor_settings_ui ^
+    --include-module=updater ^
     --include-module=core ^
     --include-module=utils ^
     --include-module=platform_utils ^
