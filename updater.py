@@ -100,6 +100,85 @@ def compare_versions(version1, version2):
 
 
 # =============================================================================
+# Telemetry (Anonymous Usage Analytics)
+# =============================================================================
+
+# File to store unique installation ID
+INSTALL_ID_FILE = os.path.join(_appdata_dir, 'install_id')
+
+
+def _get_or_create_install_id():
+    """Get existing install ID or create a new one."""
+    import uuid
+    try:
+        if os.path.exists(INSTALL_ID_FILE):
+            with open(INSTALL_ID_FILE, 'r') as f:
+                install_id = f.read().strip()
+                if install_id:
+                    return install_id
+
+        # Generate new UUID for this installation
+        install_id = str(uuid.uuid4())
+        with open(INSTALL_ID_FILE, 'w') as f:
+            f.write(install_id)
+        return install_id
+    except Exception:
+        return "unknown"
+
+
+def _get_os_info():
+    """Get basic OS information."""
+    import platform
+    try:
+        return f"{platform.system()} {platform.release()}"
+    except Exception:
+        return "unknown"
+
+
+def send_telemetry(event="app_start"):
+    """
+    Send anonymous usage telemetry to the proxy.
+    This helps track how many people are using Vapor.
+
+    Data sent:
+    - event: Type of event (app_start, app_close, etc.)
+    - version: App version
+    - os: Operating system info
+    - install_id: Anonymous unique installation identifier
+
+    No personal information is collected.
+    """
+    import threading
+
+    def _send():
+        try:
+            payload = {
+                "event": event,
+                "version": CURRENT_VERSION,
+                "os": _get_os_info(),
+                "install_id": _get_or_create_install_id()
+            }
+
+            response = requests.post(
+                f"{PROXY_BASE_URL}/telemetry",
+                headers=HEADERS,
+                json=payload,
+                timeout=5
+            )
+
+            if response.status_code == 200:
+                log(f"Telemetry sent: {event}", "TELEMETRY")
+            else:
+                log(f"Telemetry failed: {response.status_code}", "TELEMETRY")
+        except Exception as e:
+            # Fail silently - telemetry should never affect the app
+            log(f"Telemetry error (ignored): {e}", "TELEMETRY")
+
+    # Run in background thread to not block startup
+    threading.Thread(target=_send, daemon=True).start()
+
+
+# =============================================================================
 # Update Check & Download
 # =============================================================================
 
