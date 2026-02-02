@@ -10,8 +10,11 @@ import os
 
 # Detect Nuitka compilation and set sys.frozen for compatibility
 # Nuitka sets __compiled__ but not sys.frozen, which breaks frozen detection
-if '__compiled__' in dir():
-    sys.frozen = True
+try:
+    if __compiled__:
+        sys.frozen = True
+except NameError:
+    pass
 
 # Only enforce single instance for main app, not settings UI
 VAPOR_MUTEX = None  # Global mutex handle for single instance check
