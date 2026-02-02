@@ -8,7 +8,7 @@
     <link rel="icon" type="image/png" href="../Images/tray_icon.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Oswald:wght@700&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -17,15 +17,19 @@
         }
 
         :root {
-            --bg-primary: #0a0a0f;
-            --bg-secondary: #12121a;
-            --bg-card: #1a1a24;
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #111111;
+            --bg-card: #1a1a1a;
             --text-primary: #ffffff;
-            --text-secondary: #a0a0b0;
-            --accent: #6366f1;
-            --accent-hover: #818cf8;
-            --accent-glow: rgba(99, 102, 241, 0.3);
-            --border: #2a2a3a;
+            --text-secondary: #888888;
+            --accent: #cc2020;
+            --accent-hover: #ff3030;
+            --accent-glow: rgba(204, 32, 32, 0.4);
+            --accent-dim: #8a1515;
+            --border: #2a2020;
+            --metallic-light: #e8e8e8;
+            --metallic-mid: #a0a0a0;
+            --metallic-dark: #606060;
         }
 
         body {
@@ -41,7 +45,7 @@
             top: 0;
             width: 100%;
             padding: 1rem 2rem;
-            background: rgba(10, 10, 15, 0.8);
+            background: rgba(10, 10, 10, 0.9);
             backdrop-filter: blur(10px);
             border-bottom: 1px solid var(--border);
             z-index: 1000;
@@ -51,22 +55,24 @@
         }
 
         .logo {
+            font-family: 'Oswald', sans-serif;
             font-size: 1.5rem;
             font-weight: 700;
-            color: var(--text-primary);
             text-decoration: none;
             display: flex;
             align-items: center;
             gap: 0.5rem;
+            background: linear-gradient(180deg, var(--metallic-light) 0%, var(--metallic-mid) 50%, var(--metallic-dark) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 0 20px var(--accent-glow);
+            filter: drop-shadow(0 0 3px var(--accent));
         }
 
         .logo img {
             width: 32px;
             height: 32px;
-        }
-
-        .logo span {
-            color: var(--accent);
         }
 
         .nav-links {
@@ -83,7 +89,7 @@
         }
 
         .nav-links a:hover {
-            color: var(--text-primary);
+            color: var(--accent-hover);
         }
 
         /* Hero Section */
@@ -95,34 +101,71 @@
             align-items: center;
             text-align: center;
             padding: 6rem 2rem 4rem;
-            background: radial-gradient(ellipse at top, rgba(99, 102, 241, 0.1) 0%, transparent 50%);
+            background:
+                radial-gradient(ellipse at center, rgba(204, 32, 32, 0.15) 0%, transparent 50%),
+                linear-gradient(180deg, #0a0a0a 0%, #111 100%);
+            position: relative;
+            overflow: hidden;
         }
 
-        .hero-logo {
-            width: 96px;
-            height: 96px;
-            margin-bottom: 1.5rem;
-            filter: drop-shadow(0 0 20px var(--accent-glow));
+        /* Smoke effect overlay */
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('../Images/splash_screen.png') center center no-repeat;
+            background-size: cover;
+            opacity: 0.15;
+            pointer-events: none;
         }
 
-        .hero h1 {
-            font-size: clamp(2.5rem, 6vw, 4rem);
+        .hero-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero-logo-img {
+            width: 120px;
+            height: 120px;
+            margin-bottom: 1rem;
+            filter: drop-shadow(0 0 30px var(--accent-glow));
+        }
+
+        /* Vapor title styled like splash screen */
+        .vapor-title {
+            font-family: 'Oswald', sans-serif;
+            font-size: clamp(4rem, 12vw, 8rem);
             font-weight: 700;
-            margin-bottom: 1.5rem;
-            line-height: 1.1;
-        }
-
-        .hero h1 span {
-            background: linear-gradient(135deg, var(--accent), #a855f7);
+            letter-spacing: 0.1em;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(180deg,
+                var(--metallic-light) 0%,
+                var(--metallic-light) 20%,
+                var(--metallic-mid) 40%,
+                var(--metallic-dark) 60%,
+                var(--metallic-mid) 80%,
+                var(--metallic-light) 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
+            filter: drop-shadow(0 0 10px var(--accent)) drop-shadow(0 0 30px var(--accent-glow));
+            text-transform: uppercase;
+        }
+
+        .hero-tagline {
+            font-size: 1.5rem;
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+            font-weight: 500;
         }
 
         .hero p {
-            font-size: 1.25rem;
+            font-size: 1.1rem;
             color: var(--text-secondary);
-            max-width: 600px;
+            max-width: 550px;
             margin-bottom: 2.5rem;
         }
 
@@ -134,26 +177,30 @@
         }
 
         .btn {
-            padding: 0.875rem 2rem;
-            border-radius: 8px;
+            padding: 1rem 2rem;
+            border-radius: 4px;
             font-size: 1rem;
-            font-weight: 500;
+            font-weight: 600;
             text-decoration: none;
             transition: all 0.2s;
             display: inline-flex;
             align-items: center;
             gap: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
 
         .btn-primary {
-            background: var(--accent);
+            background: linear-gradient(180deg, var(--accent-hover) 0%, var(--accent) 50%, var(--accent-dim) 100%);
             color: white;
-            box-shadow: 0 0 20px var(--accent-glow);
+            box-shadow: 0 0 20px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.2);
+            border: 1px solid var(--accent);
         }
 
         .btn-primary:hover {
-            background: var(--accent-hover);
+            background: linear-gradient(180deg, #ff4040 0%, var(--accent-hover) 50%, var(--accent) 100%);
             transform: translateY(-2px);
+            box-shadow: 0 0 30px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.3);
         }
 
         .btn-secondary {
@@ -163,29 +210,25 @@
         }
 
         .btn-secondary:hover {
-            background: var(--bg-secondary);
+            background: #222;
             border-color: var(--accent);
-        }
-
-        .hero-image {
-            margin-top: 4rem;
-            max-width: 900px;
-            width: 100%;
-            border-radius: 12px;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-            border: 1px solid var(--border);
+            color: var(--accent-hover);
         }
 
         /* App Icons Strip */
         .app-strip {
             margin-top: 3rem;
             text-align: center;
+            position: relative;
+            z-index: 1;
         }
 
         .app-strip p {
             color: var(--text-secondary);
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             margin-bottom: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
         }
 
         .app-icons {
@@ -193,26 +236,28 @@
             gap: 1rem;
             justify-content: center;
             flex-wrap: wrap;
-            opacity: 0.7;
+            opacity: 0.6;
         }
 
         .app-icons img {
-            width: 36px;
-            height: 36px;
+            width: 32px;
+            height: 32px;
             transition: all 0.2s;
-            filter: grayscale(30%);
+            filter: grayscale(50%);
         }
 
         .app-icons img:hover {
             opacity: 1;
-            filter: grayscale(0%);
-            transform: scale(1.1);
+            filter: grayscale(0%) drop-shadow(0 0 8px var(--accent-glow));
+            transform: scale(1.15);
         }
 
         /* Features Section */
         .features {
             padding: 6rem 2rem;
             background: var(--bg-secondary);
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
         }
 
         .section-header {
@@ -221,8 +266,11 @@
         }
 
         .section-header h2 {
+            font-family: 'Oswald', sans-serif;
             font-size: 2.5rem;
             margin-bottom: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
 
         .section-header p {
@@ -242,26 +290,28 @@
         .feature-card {
             background: var(--bg-card);
             border: 1px solid var(--border);
-            border-radius: 12px;
+            border-radius: 8px;
             padding: 2rem;
             transition: all 0.2s;
         }
 
         .feature-card:hover {
             border-color: var(--accent);
+            box-shadow: 0 0 20px rgba(204, 32, 32, 0.1);
             transform: translateY(-4px);
         }
 
         .feature-icon {
             width: 48px;
             height: 48px;
-            background: linear-gradient(135deg, var(--accent), #a855f7);
-            border-radius: 10px;
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dim) 100%);
+            border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
             margin-bottom: 1.25rem;
             font-size: 1.5rem;
+            box-shadow: 0 0 15px var(--accent-glow);
         }
 
         .feature-card h3 {
@@ -285,12 +335,13 @@
         .feature-apps img {
             width: 24px;
             height: 24px;
-            opacity: 0.8;
+            opacity: 0.7;
         }
 
         /* How it Works */
         .how-it-works {
             padding: 6rem 2rem;
+            background: var(--bg-primary);
         }
 
         .steps {
@@ -316,9 +367,12 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            font-family: 'Oswald', sans-serif;
             font-weight: 700;
             font-size: 1.25rem;
             flex-shrink: 0;
+            color: var(--accent);
+            box-shadow: 0 0 15px var(--accent-glow);
         }
 
         .step-content h3 {
@@ -330,39 +384,44 @@
             color: var(--text-secondary);
         }
 
-        /* Screenshot Section */
-        .screenshot-section {
-            padding: 4rem 2rem;
-            background: var(--bg-secondary);
-        }
-
-        .screenshot-container {
-            max-width: 1000px;
-            margin: 0 auto;
-            text-align: center;
-        }
-
-        .screenshot-container img {
-            max-width: 100%;
-            border-radius: 12px;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-            border: 1px solid var(--border);
-        }
-
         /* Download Section */
         .download {
             padding: 6rem 2rem;
+            background: var(--bg-secondary);
             text-align: center;
+            border-top: 1px solid var(--border);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .download::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(ellipse at center, rgba(204, 32, 32, 0.1) 0%, transparent 60%);
+            pointer-events: none;
         }
 
         .download h2 {
+            font-family: 'Oswald', sans-serif;
             font-size: 2.5rem;
             margin-bottom: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            position: relative;
         }
 
         .download p {
             color: var(--text-secondary);
             margin-bottom: 2rem;
+            position: relative;
+        }
+
+        .download .btn {
+            position: relative;
         }
 
         .download-info {
@@ -371,6 +430,7 @@
             gap: 3rem;
             margin-top: 2rem;
             flex-wrap: wrap;
+            position: relative;
         }
 
         .download-info span {
@@ -383,6 +443,7 @@
             padding: 3rem 2rem;
             border-top: 1px solid var(--border);
             text-align: center;
+            background: var(--bg-primary);
         }
 
         .footer-links {
@@ -401,7 +462,7 @@
         }
 
         .footer-links a:hover {
-            color: var(--text-primary);
+            color: var(--accent-hover);
         }
 
         .copyright {
@@ -423,9 +484,17 @@
                 padding: 5rem 1.5rem 3rem;
             }
 
-            .hero-logo {
-                width: 72px;
-                height: 72px;
+            .hero-logo-img {
+                width: 80px;
+                height: 80px;
+            }
+
+            .vapor-title {
+                letter-spacing: 0.05em;
+            }
+
+            .hero-tagline {
+                font-size: 1.2rem;
             }
 
             .step {
@@ -449,7 +518,7 @@
     <nav>
         <a href="#" class="logo">
             <img src="../Images/tray_icon.png" alt="Vapor">
-            <span>V</span>apor
+            VAPOR
         </a>
         <ul class="nav-links">
             <li><a href="#features">Features</a></li>
@@ -460,44 +529,38 @@
     </nav>
 
     <section class="hero">
-        <img src="../Images/tray_icon.png" alt="Vapor Logo" class="hero-logo">
-        <h1>Your PC, <span>Game-Ready</span></h1>
-        <p>Vapor automatically configures your Windows PC when you launch a Steam game. Close distracting apps, optimize performance, and just play.</p>
-        <div class="cta-buttons">
-            <a href="https://github.com/Master00Sniper/Vapor/releases/latest" class="btn btn-primary">
-                <svg width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
-                Download for Windows
-            </a>
-            <a href="https://github.com/Master00Sniper/Vapor" class="btn btn-secondary">
-                <svg width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
-                View on GitHub
-            </a>
-        </div>
+        <div class="hero-content">
+            <img src="../Images/tray_icon.png" alt="Vapor Logo" class="hero-logo-img">
+            <h1 class="vapor-title">Vapor</h1>
+            <p class="hero-tagline">Your Personal Gaming Assistant</p>
+            <p>Automatically configures your Windows PC when you launch a Steam game. Close distracting apps, optimize performance, and just play.</p>
+            <div class="cta-buttons">
+                <a href="https://github.com/Master00Sniper/Vapor/releases/latest" class="btn btn-primary">
+                    <svg width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
+                    Download for Windows
+                </a>
+                <a href="https://github.com/Master00Sniper/Vapor" class="btn btn-secondary">
+                    <svg width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+                    View on GitHub
+                </a>
+            </div>
 
-        <div class="app-strip">
-            <p>Automatically manages these apps and more</p>
-            <div class="app-icons">
-                <img src="../Images/discord_icon.png" alt="Discord" title="Discord">
-                <img src="../Images/slack_icon.png" alt="Slack" title="Slack">
-                <img src="../Images/whatsapp_icon.png" alt="WhatsApp" title="WhatsApp">
-                <img src="../Images/teams_icon.png" alt="Teams" title="Teams">
-                <img src="../Images/telegram_icon.png" alt="Telegram" title="Telegram">
-                <img src="../Images/chrome_icon.png" alt="Chrome" title="Chrome">
-                <img src="../Images/firefox_icon.png" alt="Firefox" title="Firefox">
-                <img src="../Images/spotify_icon.png" alt="Spotify" title="Spotify">
-                <img src="../Images/wallpaperengine_icon.png" alt="Wallpaper Engine" title="Wallpaper Engine">
+            <div class="app-strip">
+                <p>Automatically manages these apps and more</p>
+                <div class="app-icons">
+                    <img src="../Images/discord_icon.png" alt="Discord" title="Discord">
+                    <img src="../Images/slack_icon.png" alt="Slack" title="Slack">
+                    <img src="../Images/whatsapp_icon.png" alt="WhatsApp" title="WhatsApp">
+                    <img src="../Images/teams_icon.png" alt="Teams" title="Teams">
+                    <img src="../Images/telegram_icon.png" alt="Telegram" title="Telegram">
+                    <img src="../Images/chrome_icon.png" alt="Chrome" title="Chrome">
+                    <img src="../Images/firefox_icon.png" alt="Firefox" title="Firefox">
+                    <img src="../Images/spotify_icon.png" alt="Spotify" title="Spotify">
+                    <img src="../Images/wallpaperengine_icon.png" alt="Wallpaper Engine" title="Wallpaper Engine">
+                </div>
             </div>
         </div>
     </section>
-
-    <!-- Optional: Add a screenshot section. Upload screenshot.png to docs/ folder -->
-    <!--
-    <section class="screenshot-section">
-        <div class="screenshot-container">
-            <img src="screenshot.png" alt="Vapor Settings Screenshot">
-        </div>
-    </section>
-    -->
 
     <section class="features" id="features">
         <div class="section-header">
