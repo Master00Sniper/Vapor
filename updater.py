@@ -360,12 +360,6 @@ echo Force-killing any lingering Vapor processes... >> "{log_path}"
 taskkill /f /im vapor.exe >> "{log_path}" 2>&1
 ping 127.0.0.1 -n 3 > nul
 
-echo Cleaning up old PyInstaller temp folders... >> "{log_path}"
-for /d %%i in ("%TEMP%\\_MEI*") do (
-    rmdir /s /q "%%i" 2>nul
-)
-echo Cleanup complete. >> "{log_path}"
-
 :delete_loop
 set /a attempts+=1
 echo Attempt %attempts%: Deleting old version... >> "{log_path}"
