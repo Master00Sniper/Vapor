@@ -774,7 +774,9 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
         log("Launching settings window on startup...", "INIT")
         try:
             if getattr(sys, 'frozen', False):
-                subprocess.Popen([sys.executable, '--ui', str(os.getpid())])
+                # PyInstaller uses sys.executable, Nuitka uses sys.argv[0]
+                exe_path = sys.executable if hasattr(sys, '_MEIPASS') else sys.argv[0]
+                subprocess.Popen([exe_path, '--ui', str(os.getpid())])
             else:
                 subprocess.Popen([sys.executable, __file__, '--ui', str(os.getpid())])
         except Exception as e:
@@ -1080,7 +1082,9 @@ def open_settings(icon, query):
     log("Opening settings UI...", "UI")
     try:
         if getattr(sys, 'frozen', False):
-            proc = subprocess.Popen([sys.executable, '--ui', str(os.getpid())])
+            # PyInstaller uses sys.executable, Nuitka uses sys.argv[0]
+            exe_path = sys.executable if hasattr(sys, '_MEIPASS') else sys.argv[0]
+            proc = subprocess.Popen([exe_path, '--ui', str(os.getpid())])
         else:
             proc = subprocess.Popen([sys.executable, __file__, '--ui', str(os.getpid())])
         _child_processes.append(proc)
