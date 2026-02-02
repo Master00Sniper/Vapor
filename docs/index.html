@@ -116,7 +116,7 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: url('../Images/splash_screen.png') center center no-repeat;
+            background: url('../Images/vapor_original_splash_screen.png') center center no-repeat;
             background-size: cover;
             opacity: 0.15;
             pointer-events: none;
@@ -127,32 +127,11 @@
             z-index: 1;
         }
 
-        .hero-logo-img {
-            width: 120px;
-            height: 120px;
-            margin-bottom: 1rem;
+        .hero-banner {
+            max-width: 600px;
+            width: 90%;
+            margin-bottom: 1.5rem;
             filter: drop-shadow(0 0 30px var(--accent-glow));
-        }
-
-        /* Vapor title styled like splash screen */
-        .vapor-title {
-            font-family: 'Oswald', sans-serif;
-            font-size: clamp(4rem, 12vw, 8rem);
-            font-weight: 700;
-            letter-spacing: 0.1em;
-            margin-bottom: 0.5rem;
-            background: linear-gradient(180deg,
-                var(--metallic-light) 0%,
-                var(--metallic-light) 20%,
-                var(--metallic-mid) 40%,
-                var(--metallic-dark) 60%,
-                var(--metallic-mid) 80%,
-                var(--metallic-light) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            filter: drop-shadow(0 0 10px var(--accent)) drop-shadow(0 0 30px var(--accent-glow));
-            text-transform: uppercase;
         }
 
         .hero-tagline {
@@ -250,6 +229,48 @@
             opacity: 1;
             filter: grayscale(0%) drop-shadow(0 0 8px var(--accent-glow));
             transform: scale(1.15);
+        }
+
+        /* Screenshots Section */
+        .screenshots {
+            padding: 6rem 2rem;
+            background: var(--bg-primary);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .screenshots-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .screenshot-card {
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            transition: all 0.3s;
+        }
+
+        .screenshot-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-4px);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        .screenshot-card img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .screenshot-card .caption {
+            padding: 1rem;
+            background: var(--bg-card);
+            text-align: center;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
         }
 
         /* Features Section */
@@ -484,13 +505,8 @@
                 padding: 5rem 1.5rem 3rem;
             }
 
-            .hero-logo-img {
-                width: 80px;
-                height: 80px;
-            }
-
-            .vapor-title {
-                letter-spacing: 0.05em;
+            .hero-banner {
+                max-width: 90%;
             }
 
             .hero-tagline {
@@ -511,6 +527,10 @@
                 width: 28px;
                 height: 28px;
             }
+
+            .screenshots-grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
@@ -521,6 +541,7 @@
             VAPOR
         </a>
         <ul class="nav-links">
+            <li><a href="#screenshots">Screenshots</a></li>
             <li><a href="#features">Features</a></li>
             <li><a href="#how-it-works">How it Works</a></li>
             <li><a href="#download">Download</a></li>
@@ -530,12 +551,11 @@
 
     <section class="hero">
         <div class="hero-content">
-            <img src="../Images/tray_icon.png" alt="Vapor Logo" class="hero-logo-img">
-            <h1 class="vapor-title">Vapor</h1>
+            <img src="../Images/vapor_banner.png" alt="VAPOR" class="hero-banner">
             <p class="hero-tagline">Your Personal Gaming Assistant</p>
             <p>Automatically configures your Windows PC when you launch a Steam game. Close distracting apps, optimize performance, and just play.</p>
             <div class="cta-buttons">
-                <a href="https://github.com/Master00Sniper/Vapor/releases/latest" class="btn btn-primary">
+                <a href="https://mortonapps.itch.io/vapor" class="btn btn-primary">
                     <svg width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
                     Download for Windows
                 </a>
@@ -558,6 +578,35 @@
                     <img src="../Images/spotify_icon.png" alt="Spotify" title="Spotify">
                     <img src="../Images/wallpaperengine_icon.png" alt="Wallpaper Engine" title="Wallpaper Engine">
                 </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="screenshots" id="screenshots">
+        <div class="section-header">
+            <h2>See It In Action</h2>
+            <p>Clean, intuitive interface designed to stay out of your way.</p>
+        </div>
+        <div class="screenshots-grid">
+            <div class="screenshot-card">
+                <img src="../Images/screenshot_preferences.png" alt="Preferences Settings">
+                <div class="caption">Preferences & Audio Settings</div>
+            </div>
+            <div class="screenshot-card">
+                <img src="../Images/screenshot_notification_settings.png" alt="Notification Settings">
+                <div class="caption">Notification App Management</div>
+            </div>
+            <div class="screenshot-card">
+                <img src="../Images/screenshot_resource_settings.png" alt="Resource Settings">
+                <div class="caption">Resource App Management</div>
+            </div>
+            <div class="screenshot-card">
+                <img src="../Images/screenshot_thermal_settings.png" alt="Thermal Settings">
+                <div class="caption">Temperature Monitoring</div>
+            </div>
+            <div class="screenshot-card">
+                <img src="../Images/screenshot_game_details.png" alt="Game Session Details">
+                <div class="caption">Game Session Summary</div>
             </div>
         </div>
     </section>
@@ -648,14 +697,14 @@
 
     <section class="download" id="download">
         <h2>Ready to Play?</h2>
-        <p>Free, open source, and lightweight. Download Vapor and simplify your gaming setup.</p>
-        <a href="https://github.com/Master00Sniper/Vapor/releases/latest" class="btn btn-primary">
+        <p>Free, source-available, and lightweight. Download Vapor and simplify your gaming setup.</p>
+        <a href="https://mortonapps.itch.io/vapor" class="btn btn-primary">
             <svg width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
             Download Latest Release
         </a>
         <div class="download-info">
             <span>Windows 10/11</span>
-            <span>~15 MB</span>
+            <span>~30 MB</span>
             <span>No installation required</span>
         </div>
     </section>
@@ -663,11 +712,11 @@
     <footer>
         <div class="footer-links">
             <a href="https://github.com/Master00Sniper/Vapor">GitHub</a>
-            <a href="https://github.com/Master00Sniper/Vapor/releases">Releases</a>
+            <a href="https://mortonapps.itch.io/vapor">itch.io</a>
             <a href="https://github.com/Master00Sniper/Vapor/issues">Report a Bug</a>
             <a href="https://x.com/master00sniper">Twitter</a>
         </div>
-        <p class="copyright">&copy; 2025 Vapor. Open source under MIT License.</p>
+        <p class="copyright">&copy; 2025 Vapor. Source-Available Software.</p>
     </footer>
 </body>
 </html>
