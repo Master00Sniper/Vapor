@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vapor - Your Personal Gaming Assistant</title>
     <meta name="description" content="Vapor automatically configures your Windows PC when you launch a Steam game. Close distracting apps, optimize performance, and just play.">
+    <link rel="icon" type="image/png" href="../Images/tray_icon.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -54,6 +55,14 @@
             font-weight: 700;
             color: var(--text-primary);
             text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .logo img {
+            width: 32px;
+            height: 32px;
         }
 
         .logo span {
@@ -87,6 +96,13 @@
             text-align: center;
             padding: 6rem 2rem 4rem;
             background: radial-gradient(ellipse at top, rgba(99, 102, 241, 0.1) 0%, transparent 50%);
+        }
+
+        .hero-logo {
+            width: 96px;
+            height: 96px;
+            margin-bottom: 1.5rem;
+            filter: drop-shadow(0 0 20px var(--accent-glow));
         }
 
         .hero h1 {
@@ -160,6 +176,39 @@
             border: 1px solid var(--border);
         }
 
+        /* App Icons Strip */
+        .app-strip {
+            margin-top: 3rem;
+            text-align: center;
+        }
+
+        .app-strip p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+
+        .app-icons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            opacity: 0.7;
+        }
+
+        .app-icons img {
+            width: 36px;
+            height: 36px;
+            transition: all 0.2s;
+            filter: grayscale(30%);
+        }
+
+        .app-icons img:hover {
+            opacity: 1;
+            filter: grayscale(0%);
+            transform: scale(1.1);
+        }
+
         /* Features Section */
         .features {
             padding: 6rem 2rem;
@@ -225,6 +274,20 @@
             font-size: 0.95rem;
         }
 
+        /* App icons in feature cards */
+        .feature-apps {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .feature-apps img {
+            width: 24px;
+            height: 24px;
+            opacity: 0.8;
+        }
+
         /* How it Works */
         .how-it-works {
             padding: 6rem 2rem;
@@ -267,10 +330,28 @@
             color: var(--text-secondary);
         }
 
+        /* Screenshot Section */
+        .screenshot-section {
+            padding: 4rem 2rem;
+            background: var(--bg-secondary);
+        }
+
+        .screenshot-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .screenshot-container img {
+            max-width: 100%;
+            border-radius: 12px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--border);
+        }
+
         /* Download Section */
         .download {
             padding: 6rem 2rem;
-            background: var(--bg-secondary);
             text-align: center;
         }
 
@@ -342,6 +423,11 @@
                 padding: 5rem 1.5rem 3rem;
             }
 
+            .hero-logo {
+                width: 72px;
+                height: 72px;
+            }
+
             .step {
                 flex-direction: column;
                 gap: 1rem;
@@ -351,12 +437,20 @@
             .step-number {
                 margin: 0 auto;
             }
+
+            .app-icons img {
+                width: 28px;
+                height: 28px;
+            }
         }
     </style>
 </head>
 <body>
     <nav>
-        <a href="#" class="logo"><span>V</span>apor</a>
+        <a href="#" class="logo">
+            <img src="../Images/tray_icon.png" alt="Vapor">
+            <span>V</span>apor
+        </a>
         <ul class="nav-links">
             <li><a href="#features">Features</a></li>
             <li><a href="#how-it-works">How it Works</a></li>
@@ -366,6 +460,7 @@
     </nav>
 
     <section class="hero">
+        <img src="../Images/tray_icon.png" alt="Vapor Logo" class="hero-logo">
         <h1>Your PC, <span>Game-Ready</span></h1>
         <p>Vapor automatically configures your Windows PC when you launch a Steam game. Close distracting apps, optimize performance, and just play.</p>
         <div class="cta-buttons">
@@ -378,8 +473,31 @@
                 View on GitHub
             </a>
         </div>
-        <!-- Add a screenshot here: <img src="screenshot.png" alt="Vapor Screenshot" class="hero-image"> -->
+
+        <div class="app-strip">
+            <p>Automatically manages these apps and more</p>
+            <div class="app-icons">
+                <img src="../Images/discord_icon.png" alt="Discord" title="Discord">
+                <img src="../Images/slack_icon.png" alt="Slack" title="Slack">
+                <img src="../Images/whatsapp_icon.png" alt="WhatsApp" title="WhatsApp">
+                <img src="../Images/teams_icon.png" alt="Teams" title="Teams">
+                <img src="../Images/telegram_icon.png" alt="Telegram" title="Telegram">
+                <img src="../Images/chrome_icon.png" alt="Chrome" title="Chrome">
+                <img src="../Images/firefox_icon.png" alt="Firefox" title="Firefox">
+                <img src="../Images/spotify_icon.png" alt="Spotify" title="Spotify">
+                <img src="../Images/wallpaperengine_icon.png" alt="Wallpaper Engine" title="Wallpaper Engine">
+            </div>
+        </div>
     </section>
+
+    <!-- Optional: Add a screenshot section. Upload screenshot.png to docs/ folder -->
+    <!--
+    <section class="screenshot-section">
+        <div class="screenshot-container">
+            <img src="screenshot.png" alt="Vapor Settings Screenshot">
+        </div>
+    </section>
+    -->
 
     <section class="features" id="features">
         <div class="section-header">
@@ -390,12 +508,27 @@
             <div class="feature-card">
                 <div class="feature-icon">🔕</div>
                 <h3>Close Distractions</h3>
-                <p>Automatically close Discord, Slack, WhatsApp, Teams, and other messaging apps when you start playing. They reopen when you're done.</p>
+                <p>Automatically close messaging apps when you start playing. They reopen when you're done.</p>
+                <div class="feature-apps">
+                    <img src="../Images/discord_icon.png" alt="Discord" title="Discord">
+                    <img src="../Images/slack_icon.png" alt="Slack" title="Slack">
+                    <img src="../Images/whatsapp_icon.png" alt="WhatsApp" title="WhatsApp">
+                    <img src="../Images/teams_icon.png" alt="Teams" title="Teams">
+                    <img src="../Images/telegram_icon.png" alt="Telegram" title="Telegram">
+                    <img src="../Images/signal_icon.png" alt="Signal" title="Signal">
+                </div>
             </div>
             <div class="feature-card">
                 <div class="feature-icon">⚡</div>
                 <h3>Free Up Resources</h3>
-                <p>Close browsers, Spotify, Wallpaper Engine, and other resource-heavy apps to give your game more RAM and CPU headroom.</p>
+                <p>Close resource-heavy apps to give your game more RAM and CPU headroom.</p>
+                <div class="feature-apps">
+                    <img src="../Images/chrome_icon.png" alt="Chrome" title="Chrome">
+                    <img src="../Images/firefox_icon.png" alt="Firefox" title="Firefox">
+                    <img src="../Images/spotify_icon.png" alt="Spotify" title="Spotify">
+                    <img src="../Images/wallpaperengine_icon.png" alt="Wallpaper Engine" title="Wallpaper Engine">
+                    <img src="../Images/onedrive_icon.png" alt="OneDrive" title="OneDrive">
+                </div>
             </div>
             <div class="feature-card">
                 <div class="feature-icon">🔊</div>
