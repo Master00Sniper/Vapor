@@ -215,43 +215,6 @@
             color: var(--accent-hover);
         }
 
-        /* App Icons Strip */
-        .app-strip {
-            margin-top: 3rem;
-            text-align: center;
-            position: relative;
-            z-index: 1;
-        }
-
-        .app-strip p {
-            color: var(--text-secondary);
-            font-size: 0.85rem;
-            margin-bottom: 1rem;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-        }
-
-        .app-icons {
-            display: flex;
-            gap: 1rem;
-            justify-content: center;
-            flex-wrap: wrap;
-            opacity: 0.6;
-        }
-
-        .app-icons img {
-            width: 32px;
-            height: 32px;
-            transition: all 0.2s;
-            filter: grayscale(50%);
-        }
-
-        .app-icons img:hover {
-            opacity: 1;
-            filter: grayscale(0%) drop-shadow(0 0 8px var(--accent-glow));
-            transform: scale(1.15);
-        }
-
         /* Features Section */
         .features {
             padding: 6rem 2rem;
@@ -633,8 +596,8 @@
         </a>
         <ul class="nav-links">
             <li><a href="#features">Features</a></li>
-            <li><a href="#screenshots">Screenshots</a></li>
             <li><a href="#how-it-works">How it Works</a></li>
+            <li><a href="#screenshots">Screenshots</a></li>
             <li><a href="#download">Download</a></li>
             <li><a href="https://github.com/Master00Sniper/Vapor">GitHub</a></li>
         </ul>
@@ -645,7 +608,7 @@
             <img src="../Images/tray_icon.png" alt="Vapor Logo" class="hero-logo-img">
             <h1 class="vapor-title">Vapor</h1>
             <p class="hero-tagline">Your Personal Gaming Assistant</p>
-            <p>Automatically configures your Windows PC when you launch a Steam game. Close distracting apps, optimize performance, and just play.</p>
+            <p>Ever wish you could just launch a game and have everything else get out of the way? Vapor is a lightweight Windows utility that watches for Steam game launches and applies your preferred settings automatically—so you can jump straight into the action.</p>
             <div class="cta-buttons">
                 <a href="https://mortonapps.itch.io/vapor" class="btn btn-primary">
                     <svg width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
@@ -655,21 +618,6 @@
                     <svg width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
                     View on GitHub
                 </a>
-            </div>
-
-            <div class="app-strip">
-                <p>Automatically manages these apps and more</p>
-                <div class="app-icons">
-                    <img src="../Images/discord_icon.png" alt="Discord" title="Discord">
-                    <img src="../Images/slack_icon.png" alt="Slack" title="Slack">
-                    <img src="../Images/whatsapp_icon.png" alt="WhatsApp" title="WhatsApp">
-                    <img src="../Images/teams_icon.png" alt="Teams" title="Teams">
-                    <img src="../Images/telegram_icon.png" alt="Telegram" title="Telegram">
-                    <img src="../Images/chrome_icon.png" alt="Chrome" title="Chrome">
-                    <img src="../Images/firefox_icon.png" alt="Firefox" title="Firefox">
-                    <img src="../Images/spotify_icon.png" alt="Spotify" title="Spotify">
-                    <img src="../Images/wallpaperengine_icon.png" alt="Wallpaper Engine" title="Wallpaper Engine">
-                </div>
             </div>
         </div>
     </section>
@@ -728,6 +676,36 @@
         </div>
     </section>
 
+    <section class="how-it-works" id="how-it-works">
+        <div class="section-header">
+            <h2>How It Works</h2>
+            <p>Three simple steps to a distraction-free gaming experience.</p>
+        </div>
+        <div class="steps">
+            <div class="step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <h3>Configure Your Preferences</h3>
+                    <p>Choose which apps to close, set your volume levels, pick your power plans, and customize temperature alerts. Do this once.</p>
+                </div>
+            </div>
+            <div class="step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <h3>Launch Any Steam Game</h3>
+                    <p>Vapor detects when you start a game and automatically applies your settings. Apps close gracefully, volumes adjust, and your PC optimizes itself.</p>
+                </div>
+            </div>
+            <div class="step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <h3>Quit and Resume</h3>
+                    <p>When you're done playing, Vapor restores everything. Closed apps reopen, power settings return to normal, and you get a summary of your session.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <section class="screenshots" id="screenshots">
         <div class="section-header">
             <h2>See It In Action</h2>
@@ -757,36 +735,6 @@
             <div class="screenshot-card" onclick="openLightbox('../Images/screenshot_game_details.png')">
                 <img src="../Images/screenshot_game_details.png" alt="Game Session Details">
                 <div class="caption">Detailed stats after every gaming session</div>
-            </div>
-        </div>
-    </section>
-
-    <section class="how-it-works" id="how-it-works">
-        <div class="section-header">
-            <h2>How It Works</h2>
-            <p>Three simple steps to a distraction-free gaming experience.</p>
-        </div>
-        <div class="steps">
-            <div class="step">
-                <div class="step-number">1</div>
-                <div class="step-content">
-                    <h3>Configure Your Preferences</h3>
-                    <p>Choose which apps to close, set your volume levels, pick your power plans, and customize temperature alerts. Do this once.</p>
-                </div>
-            </div>
-            <div class="step">
-                <div class="step-number">2</div>
-                <div class="step-content">
-                    <h3>Launch Any Steam Game</h3>
-                    <p>Vapor detects when you start a game and automatically applies your settings. Apps close gracefully, volumes adjust, and your PC optimizes itself.</p>
-                </div>
-            </div>
-            <div class="step">
-                <div class="step-number">3</div>
-                <div class="step-content">
-                    <h3>Quit and Resume</h3>
-                    <p>When you're done playing, Vapor restores everything. Closed apps reopen, power settings return to normal, and you get a summary of your session.</p>
-                </div>
             </div>
         </div>
     </section>
