@@ -244,7 +244,7 @@ def check_for_updates(current_app_id=None, show_notification_func=None):
         # Download the update
         log("Starting download...")
         if show_notification_func:
-            show_notification_func(f"Downloading Vapor update {latest_version}...")
+            show_notification_func(f"Downloading and installing update {latest_version}...")
 
         download_headers = {**HEADERS, "Accept": "application/octet-stream"}
         download_response = requests.get(download_proxy_url, headers=download_headers, stream=True, timeout=30)
@@ -315,7 +315,7 @@ def apply_pending_update(show_notification_func=None):
     log(f"Applying pending update from: {pending_update_path}")
 
     if show_notification_func:
-        show_notification_func("Update ready! Vapor will restart in 5 seconds...")
+        show_notification_func("Vapor will restart in a few seconds...")
 
     time.sleep(5)
     perform_update(pending_update_path)
