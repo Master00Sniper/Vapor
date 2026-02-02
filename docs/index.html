@@ -116,7 +116,7 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: url('../Images/vapor_original_splash_screen.png') center center no-repeat;
+            background: url('../Images/vapor_background.png') center center no-repeat;
             background-size: cover;
             opacity: 0.15;
             pointer-events: none;
@@ -127,11 +127,32 @@
             z-index: 1;
         }
 
-        .hero-banner {
-            max-width: 600px;
-            width: 90%;
-            margin-bottom: 1.5rem;
+        .hero-logo-img {
+            width: 120px;
+            height: 120px;
+            margin-bottom: 1rem;
             filter: drop-shadow(0 0 30px var(--accent-glow));
+        }
+
+        /* Vapor title styled like splash screen */
+        .vapor-title {
+            font-family: 'Oswald', sans-serif;
+            font-size: clamp(4rem, 12vw, 8rem);
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(180deg,
+                var(--metallic-light) 0%,
+                var(--metallic-light) 20%,
+                var(--metallic-mid) 40%,
+                var(--metallic-dark) 60%,
+                var(--metallic-mid) 80%,
+                var(--metallic-light) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            filter: drop-shadow(0 0 10px var(--accent)) drop-shadow(0 0 30px var(--accent-glow));
+            text-transform: uppercase;
         }
 
         .hero-tagline {
@@ -231,48 +252,6 @@
             transform: scale(1.15);
         }
 
-        /* Screenshots Section */
-        .screenshots {
-            padding: 6rem 2rem;
-            background: var(--bg-primary);
-            border-bottom: 1px solid var(--border);
-        }
-
-        .screenshots-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 1.5rem;
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        .screenshot-card {
-            border-radius: 8px;
-            overflow: hidden;
-            border: 1px solid var(--border);
-            transition: all 0.3s;
-        }
-
-        .screenshot-card:hover {
-            border-color: var(--accent);
-            transform: translateY(-4px);
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
-        }
-
-        .screenshot-card img {
-            width: 100%;
-            height: auto;
-            display: block;
-        }
-
-        .screenshot-card .caption {
-            padding: 1rem;
-            background: var(--bg-card);
-            text-align: center;
-            font-size: 0.9rem;
-            color: var(--text-secondary);
-        }
-
         /* Features Section */
         .features {
             padding: 6rem 2rem;
@@ -359,10 +338,113 @@
             opacity: 0.7;
         }
 
+        /* Screenshots Section */
+        .screenshots {
+            padding: 6rem 2rem;
+            background: var(--bg-primary);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .screenshots-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .screenshot-card {
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .screenshot-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-4px);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        .screenshot-card img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .screenshot-card .caption {
+            padding: 1rem;
+            background: var(--bg-card);
+            text-align: center;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        /* Featured Screenshot (Game Session) */
+        .featured-screenshot {
+            margin-top: 4rem;
+            text-align: center;
+        }
+
+        .featured-screenshot h3 {
+            font-family: 'Oswald', sans-serif;
+            font-size: 1.75rem;
+            margin-bottom: 1.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .featured-screenshot .screenshot-card {
+            display: inline-block;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        /* Lightbox */
+        .lightbox {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .lightbox.active {
+            display: flex;
+        }
+
+        .lightbox img {
+            max-width: 90%;
+            max-height: 90%;
+            border-radius: 8px;
+            box-shadow: 0 0 50px rgba(0, 0, 0, 0.5);
+        }
+
+        .lightbox-close {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            font-size: 2.5rem;
+            color: white;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .lightbox-close:hover {
+            color: var(--accent);
+        }
+
         /* How it Works */
         .how-it-works {
             padding: 6rem 2rem;
-            background: var(--bg-primary);
+            background: var(--bg-secondary);
         }
 
         .steps {
@@ -408,7 +490,7 @@
         /* Download Section */
         .download {
             padding: 6rem 2rem;
-            background: var(--bg-secondary);
+            background: var(--bg-primary);
             text-align: center;
             border-top: 1px solid var(--border);
             position: relative;
@@ -464,7 +546,7 @@
             padding: 3rem 2rem;
             border-top: 1px solid var(--border);
             text-align: center;
-            background: var(--bg-primary);
+            background: var(--bg-secondary);
         }
 
         .footer-links {
@@ -505,8 +587,13 @@
                 padding: 5rem 1.5rem 3rem;
             }
 
-            .hero-banner {
-                max-width: 90%;
+            .hero-logo-img {
+                width: 80px;
+                height: 80px;
+            }
+
+            .vapor-title {
+                letter-spacing: 0.05em;
             }
 
             .hero-tagline {
@@ -531,6 +618,10 @@
             .screenshots-grid {
                 grid-template-columns: 1fr;
             }
+
+            .featured-screenshot .screenshot-card {
+                max-width: 100%;
+            }
         }
     </style>
 </head>
@@ -541,8 +632,8 @@
             VAPOR
         </a>
         <ul class="nav-links">
-            <li><a href="#screenshots">Screenshots</a></li>
             <li><a href="#features">Features</a></li>
+            <li><a href="#screenshots">Screenshots</a></li>
             <li><a href="#how-it-works">How it Works</a></li>
             <li><a href="#download">Download</a></li>
             <li><a href="https://github.com/Master00Sniper/Vapor">GitHub</a></li>
@@ -551,7 +642,8 @@
 
     <section class="hero">
         <div class="hero-content">
-            <img src="../Images/vapor_banner.png" alt="VAPOR" class="hero-banner">
+            <img src="../Images/tray_icon.png" alt="Vapor Logo" class="hero-logo-img">
+            <h1 class="vapor-title">Vapor</h1>
             <p class="hero-tagline">Your Personal Gaming Assistant</p>
             <p>Automatically configures your Windows PC when you launch a Steam game. Close distracting apps, optimize performance, and just play.</p>
             <div class="cta-buttons">
@@ -578,35 +670,6 @@
                     <img src="../Images/spotify_icon.png" alt="Spotify" title="Spotify">
                     <img src="../Images/wallpaperengine_icon.png" alt="Wallpaper Engine" title="Wallpaper Engine">
                 </div>
-            </div>
-        </div>
-    </section>
-
-    <section class="screenshots" id="screenshots">
-        <div class="section-header">
-            <h2>See It In Action</h2>
-            <p>Clean, intuitive interface designed to stay out of your way.</p>
-        </div>
-        <div class="screenshots-grid">
-            <div class="screenshot-card">
-                <img src="../Images/screenshot_preferences.png" alt="Preferences Settings">
-                <div class="caption">Preferences & Audio Settings</div>
-            </div>
-            <div class="screenshot-card">
-                <img src="../Images/screenshot_notification_settings.png" alt="Notification Settings">
-                <div class="caption">Notification App Management</div>
-            </div>
-            <div class="screenshot-card">
-                <img src="../Images/screenshot_resource_settings.png" alt="Resource Settings">
-                <div class="caption">Resource App Management</div>
-            </div>
-            <div class="screenshot-card">
-                <img src="../Images/screenshot_thermal_settings.png" alt="Thermal Settings">
-                <div class="caption">Temperature Monitoring</div>
-            </div>
-            <div class="screenshot-card">
-                <img src="../Images/screenshot_game_details.png" alt="Game Session Details">
-                <div class="caption">Game Session Summary</div>
             </div>
         </div>
     </section>
@@ -665,6 +728,39 @@
         </div>
     </section>
 
+    <section class="screenshots" id="screenshots">
+        <div class="section-header">
+            <h2>See It In Action</h2>
+            <p>Clean, intuitive interface designed to stay out of your way.</p>
+        </div>
+        <div class="screenshots-grid">
+            <div class="screenshot-card" onclick="openLightbox('../Images/screenshot_preferences.png')">
+                <img src="../Images/screenshot_preferences.png" alt="Preferences Settings">
+                <div class="caption">Preferences & Audio Settings</div>
+            </div>
+            <div class="screenshot-card" onclick="openLightbox('../Images/screenshot_notification_settings.png')">
+                <img src="../Images/screenshot_notification_settings.png" alt="Notification Settings">
+                <div class="caption">Notification App Management</div>
+            </div>
+            <div class="screenshot-card" onclick="openLightbox('../Images/screenshot_resource_settings.png')">
+                <img src="../Images/screenshot_resource_settings.png" alt="Resource Settings">
+                <div class="caption">Resource App Management</div>
+            </div>
+            <div class="screenshot-card" onclick="openLightbox('../Images/screenshot_thermal_settings.png')">
+                <img src="../Images/screenshot_thermal_settings.png" alt="Thermal Settings">
+                <div class="caption">Temperature Monitoring</div>
+            </div>
+        </div>
+
+        <div class="featured-screenshot">
+            <h3>Game Session Summary</h3>
+            <div class="screenshot-card" onclick="openLightbox('../Images/screenshot_game_details.png')">
+                <img src="../Images/screenshot_game_details.png" alt="Game Session Details">
+                <div class="caption">Detailed stats after every gaming session</div>
+            </div>
+        </div>
+    </section>
+
     <section class="how-it-works" id="how-it-works">
         <div class="section-header">
             <h2>How It Works</h2>
@@ -718,5 +814,30 @@
         </div>
         <p class="copyright">&copy; 2025 Vapor. Source-Available Software.</p>
     </footer>
+
+    <!-- Lightbox -->
+    <div class="lightbox" id="lightbox" onclick="closeLightbox()">
+        <span class="lightbox-close">&times;</span>
+        <img id="lightbox-img" src="" alt="Screenshot">
+    </div>
+
+    <script>
+        function openLightbox(src) {
+            document.getElementById('lightbox-img').src = src;
+            document.getElementById('lightbox').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeLightbox() {
+            document.getElementById('lightbox').classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeLightbox();
+            }
+        });
+    </script>
 </body>
 </html>
