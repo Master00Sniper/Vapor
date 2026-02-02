@@ -8,6 +8,11 @@
 import sys
 import os
 
+# Detect Nuitka compilation and set sys.frozen for compatibility
+# Nuitka sets __compiled__ but not sys.frozen, which breaks frozen detection
+if '__compiled__' in dir():
+    sys.frozen = True
+
 # Only enforce single instance for main app, not settings UI
 VAPOR_MUTEX = None  # Global mutex handle for single instance check
 if '--ui' not in sys.argv:
