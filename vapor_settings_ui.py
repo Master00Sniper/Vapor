@@ -1840,7 +1840,7 @@ about_title.pack(pady=(10, 5), anchor='center')
 version_label = ctk.CTkLabel(master=about_scroll_frame, text=f"Version {CURRENT_VERSION}", font=("Calibri", 15))
 version_label.pack(pady=(0, 15), anchor='center')
 
-description_text = """Vapor is a lightweight utility designed to enhance your gaming experience on Windows.
+description_text = """Vapor is a free, open source, lightweight utility designed to enhance your gaming experience on Windows.
 It automatically detects when you launch a Steam game and optimizes your system by closing
 distracting notification apps and resource-heavy applications. When you're done gaming,
 Vapor seamlessly relaunches your closed apps, so you can pick up right where you left off.
@@ -1868,7 +1868,7 @@ small winery owner. Vapor was born from my own frustration with notifications in
 epic gaming moments, and constantly having to adjust audio levels for games. I hope it
 enhances your gaming sessions as much as it has mine."""
 
-bio_label = ctk.CTkLabel(master=about_scroll_frame, text=bio_text, font=("Calibri", 13),
+bio_label = ctk.CTkLabel(master=about_scroll_frame, text=bio_text, font=("Calibri", 14),
                          wraplength=520, justify="center")
 bio_label.pack(pady=10, anchor='center')
 
