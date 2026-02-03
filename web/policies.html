@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy Policy & Project Governance - Vapor</title>
+    <meta name="description" content="Vapor's privacy policy and project governance information.">
+    <link rel="icon" type="image/png" href="images/tray_icon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Oswald:wght@700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #111111;
+            --bg-card: #1a1a1a;
+            --text-primary: #ffffff;
+            --text-secondary: #888888;
+            --accent: #cc2020;
+            --accent-hover: #ff3030;
+            --accent-glow: rgba(204, 32, 32, 0.4);
+            --border: #2a2020;
+            --metallic-light: #e8e8e8;
+            --metallic-mid: #a0a0a0;
+            --metallic-dark: #606060;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        /* Navigation */
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            padding: 1rem 2rem;
+            background: rgba(10, 10, 10, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border);
+            z-index: 1000;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-family: 'Oswald', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: linear-gradient(180deg, var(--metallic-light) 0%, var(--metallic-mid) 50%, var(--metallic-dark) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 0 20px var(--accent-glow);
+            filter: drop-shadow(0 0 3px var(--accent));
+        }
+
+        .logo img {
+            width: 32px;
+            height: 32px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.2s;
+        }
+
+        .nav-links a:hover {
+            color: var(--accent-hover);
+        }
+
+        /* Main Content */
+        main {
+            padding-top: 80px;
+        }
+
+        .page-header {
+            padding: 4rem 2rem 2rem;
+            text-align: center;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .page-header h1 {
+            font-family: 'Oswald', sans-serif;
+            font-size: 2.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
+        }
+
+        .page-header p {
+            color: var(--text-secondary);
+        }
+
+        /* Policy Sections */
+        .policy-section-container {
+            padding: 3rem 2rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .policy-section-container:nth-child(odd) {
+            background: var(--bg-primary);
+        }
+
+        .policy-section-container:nth-child(even) {
+            background: var(--bg-secondary);
+        }
+
+        .policy-section-container h2 {
+            font-family: 'Oswald', sans-serif;
+            font-size: 1.75rem;
+            margin-bottom: 1.5rem;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .policy-content {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .policy-block {
+            margin-bottom: 2rem;
+        }
+
+        .policy-block:last-child {
+            margin-bottom: 0;
+        }
+
+        .policy-block h3 {
+            font-size: 1.1rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+
+        .policy-block p {
+            color: var(--text-secondary);
+            line-height: 1.7;
+            margin-bottom: 0.75rem;
+        }
+
+        .policy-block ul {
+            color: var(--text-secondary);
+            line-height: 1.7;
+            margin-left: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .policy-block li {
+            margin-bottom: 0.25rem;
+        }
+
+        .policy-block a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        .policy-block a:hover {
+            color: var(--accent-hover);
+            text-decoration: underline;
+        }
+
+        /* Footer */
+        footer {
+            padding: 3rem 2rem;
+            border-top: 1px solid var(--border);
+            text-align: center;
+            background: var(--bg-secondary);
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .footer-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.2s;
+        }
+
+        .footer-links a:hover {
+            color: var(--accent-hover);
+        }
+
+        .copyright {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            nav {
+                flex-direction: column;
+                gap: 1rem;
+                padding: 1rem;
+            }
+
+            .nav-links {
+                gap: 1rem;
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            .page-header h1 {
+                font-size: 2rem;
+            }
+
+            .footer-links {
+                gap: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="index.html" class="logo">
+            <img src="images/tray_icon.png" alt="Vapor">
+            VAPOR
+        </a>
+        <ul class="nav-links">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="index.html#features">Features</a></li>
+            <li><a href="index.html#download">Download</a></li>
+            <li><a href="https://github.com/Master00Sniper/Vapor">GitHub</a></li>
+        </ul>
+    </nav>
+
+    <main>
+        <div class="page-header">
+            <h1>Privacy & Governance</h1>
+            <p>How Vapor handles your data and how the project is maintained</p>
+        </div>
+
+        <div class="policy-section-container">
+            <h2>Privacy Policy</h2>
+            <div class="policy-content">
+                <div class="policy-block">
+                    <h3>Anonymous Usage Statistics</h3>
+                    <p>Vapor collects anonymous usage statistics to help the developer understand how many people are using the application. This data includes:</p>
+                    <ul>
+                        <li>App start and heartbeat events</li>
+                        <li>Vapor version number</li>
+                        <li>Operating system type (e.g., "Windows 10")</li>
+                        <li>A randomly generated installation ID (not linked to any personal information)</li>
+                    </ul>
+                    <p><strong>No personal information is collected.</strong> You can disable this in Settings &gt; Preferences &gt; "Send Anonymous Usage Statistics".</p>
+                </div>
+
+                <div class="policy-block">
+                    <h3>Bug Reports</h3>
+                    <p>Bug reports are only submitted when you explicitly click "Submit Bug Report" in the Help tab. You may optionally include:</p>
+                    <ul>
+                        <li>System information (OS, Vapor version)</li>
+                        <li>Recent log data (you can opt out by unchecking "Include recent logs")</li>
+                    </ul>
+                    <p>Bug reports are submitted to GitHub Issues and are publicly visible. Your Windows username is automatically redacted from logs.</p>
+                </div>
+
+                <div class="policy-block">
+                    <h3>No Other Data Collection</h3>
+                    <p>Vapor does not collect, store, or transmit any other data. Your gaming activity, system configuration, and personal files are never accessed or shared.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="policy-section-container">
+            <h2>Project Governance</h2>
+            <div class="policy-content">
+                <div class="policy-block">
+                    <h3>Maintainer</h3>
+                    <p>Vapor is developed and maintained by <strong>Greg Morton</strong> (<a href="https://github.com/Master00Sniper">@Master00Sniper</a>).</p>
+                    <p>As the sole maintainer, Greg is responsible for:</p>
+                    <ul>
+                        <li><strong>Code Authorship:</strong> All source code development</li>
+                        <li><strong>Code Review:</strong> Review of all contributions and pull requests</li>
+                        <li><strong>Release Approval:</strong> Approval and signing of all releases</li>
+                    </ul>
+                </div>
+
+                <div class="policy-block">
+                    <h3>Source Code</h3>
+                    <p>Vapor is open source software licensed under the <a href="https://www.gnu.org/licenses/gpl-3.0.html">GNU General Public License v3.0</a>.</p>
+                    <p>The complete source code is available on <a href="https://github.com/Master00Sniper/Vapor">GitHub</a>.</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="footer-links">
+            <a href="https://github.com/Master00Sniper/Vapor">GitHub</a>
+            <a href="https://mortonapps.itch.io/vapor">itch.io</a>
+            <a href="https://github.com/Master00Sniper/Vapor/issues">Report a Bug</a>
+            <a href="https://x.com/master00sniper">Twitter</a>
+            <a href="https://ko-fi.com/master00sniper">Ko-fi</a>
+        </div>
+        <p class="copyright">&copy; 2025 Vapor. Licensed under GPL v3.</p>
+    </footer>
+</body>
+</html>
