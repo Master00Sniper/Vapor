@@ -1879,7 +1879,7 @@ donate_title = ctk.CTkLabel(master=about_scroll_frame, text="Support Development
 donate_title.pack(pady=(5, 5), anchor='center')
 
 donate_label = ctk.CTkLabel(master=about_scroll_frame, text="If Vapor has improved your gaming experience,\nconsider supporting development!",
-                            font=("Calibri", 13), justify="center")
+                            font=("Calibri", 14), justify="center")
 donate_label.pack(pady=(5, 10), anchor='center')
 
 # Ko-fi button with icon
@@ -1904,25 +1904,35 @@ separator3.pack(fill="x", padx=40, pady=15)
 contact_title = ctk.CTkLabel(master=about_scroll_frame, text="Contact & Connect", font=("Calibri", 15, "bold"))
 contact_title.pack(pady=(5, 10), anchor='center')
 
-email_label = ctk.CTkLabel(master=about_scroll_frame, text="Email: greg@mortonapps.com", font=("Calibri", 13))
+email_label = ctk.CTkLabel(master=about_scroll_frame, text="Email: greg@mortonapps.com", font=("Calibri", 14))
 email_label.pack(pady=2, anchor='center')
 
 x_link_frame = ctk.CTkFrame(master=about_scroll_frame, fg_color="transparent")
 x_link_frame.pack(pady=2, anchor='center')
 
-x_icon_label = ctk.CTkLabel(master=x_link_frame, text="X: ", font=("Calibri", 13))
+x_icon_label = ctk.CTkLabel(master=x_link_frame, text="X: ", font=("Calibri", 14))
 x_icon_label.pack(side="left")
 
-x_link_label = ctk.CTkLabel(master=x_link_frame, text="x.com/master00sniper", font=("Calibri", 13, "underline"),
+x_link_label = ctk.CTkLabel(master=x_link_frame, text="x.com/master00sniper", font=("Calibri", 14, "underline"),
                             text_color="#1DA1F2", cursor="hand2")
 x_link_label.pack(side="left")
 x_link_label.bind("<Button-1>", lambda e: os.startfile("https://x.com/master00sniper"))
 
-x_handle_label = ctk.CTkLabel(master=x_link_frame, text="  -  @Master00Sniper", font=("Calibri", 13))
+x_handle_label = ctk.CTkLabel(master=x_link_frame, text="  -  @Master00Sniper", font=("Calibri", 14))
 x_handle_label.pack(side="left")
 
 separator4 = ctk.CTkFrame(master=about_scroll_frame, height=2, fg_color="gray50")
 separator4.pack(fill="x", padx=40, pady=15)
+
+supporters_title = ctk.CTkLabel(master=about_scroll_frame, text="Vapor Supporters", font=("Calibri", 15, "bold"))
+supporters_title.pack(pady=(5, 5), anchor='center')
+
+supporters_label = ctk.CTkLabel(master=about_scroll_frame, text="To become a Vapor Supporter, click the Ko-fi link above to become a member!",
+                                font=("Calibri", 14), justify="center")
+supporters_label.pack(pady=(5, 10), anchor='center')
+
+separator5 = ctk.CTkFrame(master=about_scroll_frame, height=2, fg_color="gray50")
+separator5.pack(fill="x", padx=40, pady=15)
 
 credits_title = ctk.CTkLabel(master=about_scroll_frame, text="Credits", font=("Calibri", 15, "bold"))
 credits_title.pack(pady=(5, 5), anchor='center')
@@ -1930,16 +1940,16 @@ credits_title.pack(pady=(5, 5), anchor='center')
 credits_frame = ctk.CTkFrame(master=about_scroll_frame, fg_color="transparent")
 credits_frame.pack(pady=2, anchor='center')
 
-credits_text_label = ctk.CTkLabel(master=credits_frame, text="Icons by ", font=("Calibri", 13))
+credits_text_label = ctk.CTkLabel(master=credits_frame, text="Icons by ", font=("Calibri", 14))
 credits_text_label.pack(side="left")
 
-icons8_link_label = ctk.CTkLabel(master=credits_frame, text="Icons8", font=("Calibri", 13, "underline"),
+icons8_link_label = ctk.CTkLabel(master=credits_frame, text="Icons8", font=("Calibri", 14, "underline"),
                                  text_color="#1DA1F2", cursor="hand2")
 icons8_link_label.pack(side="left")
 icons8_link_label.bind("<Button-1>", lambda e: os.startfile("https://icons8.com"))
 
-separator5 = ctk.CTkFrame(master=about_scroll_frame, height=2, fg_color="gray50")
-separator5.pack(fill="x", padx=40, pady=15)
+separator6 = ctk.CTkFrame(master=about_scroll_frame, height=2, fg_color="gray50")
+separator6.pack(fill="x", padx=40, pady=15)
 
 copyright_label = ctk.CTkLabel(master=about_scroll_frame,
                                text=f"(c) 2024-2026 Greg Morton (@Master00Sniper). All Rights Reserved.",
