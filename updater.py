@@ -152,8 +152,18 @@ def send_telemetry(event="app_start"):
     - install_id: Anonymous unique installation identifier
 
     No personal information is collected.
+    Telemetry can be disabled in Settings > Preferences.
     """
     import threading
+
+    # Check if telemetry is enabled in settings
+    try:
+        from utils.settings import get_setting
+        if not get_setting('enable_telemetry', True):
+            log("Telemetry disabled by user setting", "TELEMETRY")
+            return
+    except Exception:
+        pass  # If settings can't be read, proceed with telemetry (default enabled)
 
     def _send():
         try:

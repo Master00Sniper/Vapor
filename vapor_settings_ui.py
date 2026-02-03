@@ -456,12 +456,12 @@ def load_settings():
 def save_settings(selected_notification_apps, customs, selected_resource_apps, resource_customs, launch_startup,
                   launch_settings_on_start, close_on_startup, close_on_hotkey, relaunch_on_exit,
                   resource_close_on_startup, resource_close_on_hotkey, resource_relaunch_on_exit,
-                  enable_playtime_summary, playtime_summary_mode, enable_debug_mode, system_audio_level,
-                  enable_system_audio, game_audio_level, enable_game_audio, enable_during_power, during_power_plan,
-                  enable_after_power, after_power_plan, enable_game_mode_start, enable_game_mode_end,
-                  enable_cpu_thermal, enable_gpu_thermal, enable_cpu_temp_alert, cpu_temp_warning_threshold,
-                  cpu_temp_critical_threshold, enable_gpu_temp_alert, gpu_temp_warning_threshold,
-                  gpu_temp_critical_threshold):
+                  enable_playtime_summary, playtime_summary_mode, enable_debug_mode, enable_telemetry,
+                  system_audio_level, enable_system_audio, game_audio_level, enable_game_audio,
+                  enable_during_power, during_power_plan, enable_after_power, after_power_plan,
+                  enable_game_mode_start, enable_game_mode_end, enable_cpu_thermal, enable_gpu_thermal,
+                  enable_cpu_temp_alert, cpu_temp_warning_threshold, cpu_temp_critical_threshold,
+                  enable_gpu_temp_alert, gpu_temp_warning_threshold, gpu_temp_critical_threshold):
     """Save all settings to the JSON configuration file."""
     # Build process lists from selected apps (UI-specific logic)
     notification_processes = []
@@ -495,6 +495,7 @@ def save_settings(selected_notification_apps, customs, selected_resource_apps, r
         'enable_playtime_summary': enable_playtime_summary,
         'playtime_summary_mode': playtime_summary_mode,
         'enable_debug_mode': enable_debug_mode,
+        'enable_telemetry': enable_telemetry,
         'system_audio_level': system_audio_level,
         'enable_system_audio': enable_system_audio,
         'game_audio_level': game_audio_level,
@@ -638,6 +639,7 @@ cpu_temp_critical_threshold = current_settings.get('cpu_temp_critical_threshold'
 enable_gpu_temp_alert = current_settings.get('enable_gpu_temp_alert', False)
 gpu_temp_warning_threshold = current_settings.get('gpu_temp_warning_threshold', 80)
 gpu_temp_critical_threshold = current_settings.get('gpu_temp_critical_threshold', 90)
+enable_telemetry = current_settings.get('enable_telemetry', True)
 
 # Get main process PID for communication with main app
 main_pid = None
@@ -880,6 +882,20 @@ debug_mode_var = tk.BooleanVar(value=enable_debug_mode)
 debug_mode_switch = ctk.CTkSwitch(master=general_frame, text="Enable Debug Console Window",
                                   variable=debug_mode_var, font=("Calibri", 14))
 debug_mode_switch.pack(pady=5, anchor='w')
+
+# Telemetry toggle with description
+telemetry_frame = ctk.CTkFrame(master=general_frame, fg_color="transparent")
+telemetry_frame.pack(pady=5, anchor='w')
+
+enable_telemetry_var = tk.BooleanVar(value=enable_telemetry)
+telemetry_switch = ctk.CTkSwitch(master=telemetry_frame, text="Send Anonymous Usage Statistics",
+                                 variable=enable_telemetry_var, font=("Calibri", 14))
+telemetry_switch.pack(side="left")
+
+telemetry_hint = ctk.CTkLabel(master=general_frame,
+                              text="No personal data is collected. Only used to see how many people use Vapor.",
+                              font=("Calibri", 11), text_color="gray50")
+telemetry_hint.pack(pady=(0, 5), anchor='w', padx=(48, 0))
 
 pref_sep2 = ctk.CTkFrame(master=pref_scroll_frame, height=2, fg_color="gray50")
 pref_sep2.pack(fill="x", padx=40, pady=15)
@@ -2108,6 +2124,7 @@ def on_save():
     new_enable_playtime_summary = playtime_summary_var.get()
     new_playtime_summary_mode = playtime_summary_mode_var.get()
     new_enable_debug_mode = debug_mode_var.get()
+    new_enable_telemetry = enable_telemetry_var.get()
     new_system_audio_level = system_audio_slider_var.get()
     new_enable_system_audio = enable_system_audio_var.get()
     new_game_audio_level = game_audio_slider_var.get()
@@ -2143,12 +2160,12 @@ def on_save():
                   new_launch_startup, new_launch_settings_on_start, new_close_on_startup, new_close_on_hotkey,
                   new_relaunch_on_exit, new_resource_close_on_startup, new_resource_close_on_hotkey,
                   new_resource_relaunch_on_exit, new_enable_playtime_summary, new_playtime_summary_mode,
-                  new_enable_debug_mode, new_system_audio_level, new_enable_system_audio, new_game_audio_level,
-                  new_enable_game_audio, new_enable_during_power, new_during_power_plan, new_enable_after_power,
-                  new_after_power_plan, new_enable_game_mode_start, new_enable_game_mode_end, new_enable_cpu_thermal,
-                  new_enable_gpu_thermal, new_enable_cpu_temp_alert, new_cpu_temp_warning_threshold,
-                  new_cpu_temp_critical_threshold, new_enable_gpu_temp_alert, new_gpu_temp_warning_threshold,
-                  new_gpu_temp_critical_threshold)
+                  new_enable_debug_mode, new_enable_telemetry, new_system_audio_level, new_enable_system_audio,
+                  new_game_audio_level, new_enable_game_audio, new_enable_during_power, new_during_power_plan,
+                  new_enable_after_power, new_after_power_plan, new_enable_game_mode_start, new_enable_game_mode_end,
+                  new_enable_cpu_thermal, new_enable_gpu_thermal, new_enable_cpu_temp_alert,
+                  new_cpu_temp_warning_threshold, new_cpu_temp_critical_threshold, new_enable_gpu_temp_alert,
+                  new_gpu_temp_warning_threshold, new_gpu_temp_critical_threshold)
 
     # Check if CPU thermal is enabled and Vapor needs to restart with admin privileges
     if new_enable_cpu_thermal and not is_admin():
