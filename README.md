@@ -9,7 +9,7 @@ Vapor is a lightweight Windows utility that watches for Steam game launches and 
 
 No more alt-tabbing to close chat apps, adjusting volume sliders, or switching power plans. Just configure Vapor once with your preferences, and it handles the routine stuff while you focus on playing.
 
-🌐 **Website:** [vaporapp.mortonapps.com](https://vaporapp.mortonapps.com)
+🌐 **Website:** [vapor.mortonapps.com](https://vapor.mortonapps.com)
 
 ## You're in Control
 
@@ -89,7 +89,7 @@ To build Vapor.exe yourself:
 
 Vapor collects minimal anonymous usage statistics (app version, OS type, random installation ID) to help understand how many people use it. No personal data is ever collected. You can disable this in Settings > Preferences.
 
-See our [Privacy Policy](https://vaporapp.mortonapps.com/policies.html) for details.
+See our [Privacy Policy](https://vapor.mortonapps.com/policies.html) for details.
 
 ## Support
 
