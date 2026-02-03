@@ -1932,7 +1932,7 @@ Windows Game Mode integration, GPU/CPU temperature monitoring with customizable 
 and detailed session summaries showing playtime and peak temperatures."""
 
 description_label = ctk.CTkLabel(master=about_scroll_frame, text=description_text, font=("Calibri", 14),
-                                 wraplength=550, justify="center")
+                                 wraplength=480, justify="center")
 description_label.pack(pady=10, anchor='center')
 
 separator1 = ctk.CTkFrame(master=about_scroll_frame, height=2, fg_color="gray50")
