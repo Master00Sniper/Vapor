@@ -23,7 +23,10 @@ if win32api.GetLastError() == winerror.ERROR_ALREADY_EXISTS:
 # =============================================================================
 
 if getattr(sys, 'frozen', False):
-    application_path = sys._MEIPASS
+    if hasattr(sys, '_MEIPASS'):
+        application_path = sys._MEIPASS
+    else:
+        application_path = os.path.dirname(sys.executable)
 else:
     application_path = os.path.dirname(os.path.abspath(__file__))
 os.chdir(application_path)
@@ -122,17 +125,23 @@ def restart_vapor(main_pid, require_admin=False, delay_seconds=3):
         working_dir = os.path.dirname(executable)
         debug_log(f"Using VAPOR_EXE_PATH: {executable}", "Restart")
     elif getattr(sys, 'frozen', False):
-        # Fallback: try to find Vapor.exe in common locations
-        # Note: sys.executable here is the settings UI exe in temp folder, not what we want
-        possible_paths = [
-            os.path.join(os.path.dirname(os.path.dirname(sys.executable)), 'Vapor.exe'),
-            os.path.join(os.getcwd(), 'Vapor.exe'),
-        ]
-        for path in possible_paths:
-            if os.path.exists(path):
-                executable = path
-                working_dir = os.path.dirname(executable)
-                break
+        # Fallback: try to find Vapor.exe
+        # For Nuitka, sys.argv[0] should be the actual Vapor.exe path
+        if not hasattr(sys, '_MEIPASS') and os.path.exists(sys.argv[0]):
+            executable = sys.argv[0]
+            working_dir = os.path.dirname(executable)
+            debug_log(f"Using sys.argv[0] for Nuitka: {executable}", "Restart")
+        else:
+            # PyInstaller fallback: try common locations
+            possible_paths = [
+                os.path.join(os.path.dirname(os.path.dirname(sys.executable)), 'Vapor.exe'),
+                os.path.join(os.getcwd(), 'Vapor.exe'),
+            ]
+            for path in possible_paths:
+                if os.path.exists(path):
+                    executable = path
+                    working_dir = os.path.dirname(executable)
+                    break
         if not executable:
             debug_log("ERROR: Could not find Vapor.exe for restart", "Restart")
             return False
@@ -1892,9 +1901,25 @@ separator3.pack(fill="x", padx=40, pady=15)
 donate_title = ctk.CTkLabel(master=about_scroll_frame, text="Support Development", font=("Calibri", 15, "bold"))
 donate_title.pack(pady=(5, 5), anchor='center')
 
-donate_label = ctk.CTkLabel(master=about_scroll_frame, text="Donation page coming soon!",
-                            font=("Calibri", 13))
-donate_label.pack(pady=5, anchor='center')
+donate_label = ctk.CTkLabel(master=about_scroll_frame, text="If Vapor has improved your gaming experience,\nconsider supporting development!",
+                            font=("Calibri", 13), justify="center")
+donate_label.pack(pady=(5, 10), anchor='center')
+
+# Ko-fi button with icon
+kofi_frame = ctk.CTkFrame(master=about_scroll_frame, fg_color="transparent")
+kofi_frame.pack(pady=(0, 5), anchor='center')
+
+kofi_icon_path = os.path.join(base_dir, 'Images', 'ko-fi_icon.png')
+if os.path.exists(kofi_icon_path):
+    kofi_icon = ctk.CTkImage(light_image=Image.open(kofi_icon_path), size=(24, 24))
+    kofi_icon_label = ctk.CTkLabel(master=kofi_frame, image=kofi_icon, text="")
+    kofi_icon_label.pack(side="left", padx=(0, 8))
+
+kofi_button = ctk.CTkButton(master=kofi_frame, text="Buy me a Coffee on Ko-fi",
+                            command=lambda: os.startfile("https://ko-fi.com/master00sniper"),
+                            corner_radius=10, fg_color="#FF5E5B", hover_color="#d94a47",
+                            text_color="white", width=200, font=("Calibri", 14, "bold"))
+kofi_button.pack(side="left")
 
 separator4 = ctk.CTkFrame(master=about_scroll_frame, height=2, fg_color="gray50")
 separator4.pack(fill="x", padx=40, pady=15)

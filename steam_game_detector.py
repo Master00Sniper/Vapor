@@ -8,6 +8,14 @@
 import sys
 import os
 
+# Detect Nuitka compilation and set sys.frozen for compatibility
+# Nuitka sets __compiled__ but not sys.frozen, which breaks frozen detection
+try:
+    if __compiled__:
+        sys.frozen = True
+except NameError:
+    pass
+
 # Only enforce single instance for main app, not settings UI
 VAPOR_MUTEX = None  # Global mutex handle for single instance check
 if '--ui' not in sys.argv:
@@ -63,7 +71,10 @@ def show_splash_screen():
 
         # Determine base directory
         if getattr(sys, 'frozen', False):
-            base_dir = sys._MEIPASS
+            if hasattr(sys, '_MEIPASS'):
+                base_dir = sys._MEIPASS
+            else:
+                base_dir = os.path.dirname(sys.executable)
         else:
             base_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -187,11 +198,17 @@ def request_admin_restart():
     try:
         # Get the executable path and working directory
         if getattr(sys, 'frozen', False):
-            executable = sys.executable
+            # PyInstaller: sys.executable is Vapor.exe
+            # Nuitka: sys.executable is python.exe in temp, use sys.argv[0] instead
+            if hasattr(sys, '_MEIPASS'):
+                executable = sys.executable
+                work_dir = os.path.dirname(sys.executable)
+            else:
+                executable = sys.argv[0]
+                work_dir = os.path.dirname(sys.argv[0])
             # Add --elevated flag to skip splash screen on restart
             existing_params = ' '.join(sys.argv[1:])
             params = f'{existing_params} --elevated'.strip()
-            work_dir = os.path.dirname(sys.executable)
         else:
             # Use pythonw.exe to avoid console window when elevated
             python_dir = os.path.dirname(sys.executable)
@@ -307,7 +324,10 @@ except (AttributeError, ValueError):
 
 # Set working directory for frozen executable compatibility
 if getattr(sys, 'frozen', False):
-    application_path = sys._MEIPASS
+    if hasattr(sys, '_MEIPASS'):
+        application_path = sys._MEIPASS
+    else:
+        application_path = os.path.dirname(sys.executable)
 else:
     application_path = os.path.dirname(os.path.abspath(__file__))
 os.chdir(application_path)
@@ -760,7 +780,9 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
         log("Launching settings window on startup...", "INIT")
         try:
             if getattr(sys, 'frozen', False):
-                subprocess.Popen([sys.executable, '--ui', str(os.getpid())])
+                # PyInstaller uses sys.executable, Nuitka uses sys.argv[0]
+                exe_path = sys.executable if hasattr(sys, '_MEIPASS') else sys.argv[0]
+                subprocess.Popen([exe_path, '--ui', str(os.getpid())])
             else:
                 subprocess.Popen([sys.executable, __file__, '--ui', str(os.getpid())])
         except Exception as e:
@@ -1066,7 +1088,9 @@ def open_settings(icon, query):
     log("Opening settings UI...", "UI")
     try:
         if getattr(sys, 'frozen', False):
-            proc = subprocess.Popen([sys.executable, '--ui', str(os.getpid())])
+            # PyInstaller uses sys.executable, Nuitka uses sys.argv[0]
+            exe_path = sys.executable if hasattr(sys, '_MEIPASS') else sys.argv[0]
+            proc = subprocess.Popen([exe_path, '--ui', str(os.getpid())])
         else:
             proc = subprocess.Popen([sys.executable, __file__, '--ui', str(os.getpid())])
         _child_processes.append(proc)
@@ -1159,8 +1183,12 @@ if __name__ == '__main__':
 
         # Pass the actual Vapor executable path for restart functionality
         if getattr(sys, 'frozen', False):
-            # When frozen, sys.executable is the actual Vapor.exe path
-            os.environ['VAPOR_EXE_PATH'] = sys.executable
+            # PyInstaller: sys.executable is Vapor.exe
+            # Nuitka: sys.executable is python.exe in temp, use sys.argv[0] instead
+            if hasattr(sys, '_MEIPASS'):
+                os.environ['VAPOR_EXE_PATH'] = sys.executable
+            else:
+                os.environ['VAPOR_EXE_PATH'] = sys.argv[0]
         else:
             # When running from source, pass the script path
             os.environ['VAPOR_EXE_PATH'] = os.path.abspath(__file__)

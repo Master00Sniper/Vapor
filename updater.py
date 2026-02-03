@@ -14,7 +14,7 @@ import os
 
 GITHUB_OWNER = "Master00Sniper"
 GITHUB_REPO = "Vapor"
-CURRENT_VERSION = "0.3.3"  # Single source of truth for app version
+CURRENT_VERSION = "0.3.4"  # Single source of truth for app version
 
 # Cloudflare Worker proxy (handles GitHub API authentication)
 PROXY_BASE_URL = "https://vapor-proxy.mortonapps.com"
@@ -27,6 +27,9 @@ HEADERS = {
     #If you'd really like to spam me with GitHub issues, I'd feel honored I at least got some attention.
     "X-Vapor-Auth": "ombxslvdyyqvlkiiogwmjlkpocwqufaa"
 }
+
+# Telemetry heartbeat interval in seconds (1 hour = 3600, can be changed to 12h or 24h later)
+HEARTBEAT_INTERVAL = 3600
 
 # Tracks downloaded update waiting to be applied
 pending_update_path = None
@@ -244,7 +247,7 @@ def check_for_updates(current_app_id=None, show_notification_func=None):
         # Download the update
         log("Starting download...")
         if show_notification_func:
-            show_notification_func(f"Downloading Vapor update {latest_version}...")
+            show_notification_func(f"Downloading and installing update {latest_version}...")
 
         download_headers = {**HEADERS, "Accept": "application/octet-stream"}
         download_response = requests.get(download_proxy_url, headers=download_headers, stream=True, timeout=30)
@@ -315,7 +318,7 @@ def apply_pending_update(show_notification_func=None):
     log(f"Applying pending update from: {pending_update_path}")
 
     if show_notification_func:
-        show_notification_func("Update ready! Vapor will restart in 5 seconds...")
+        show_notification_func("Vapor will restart in a few seconds...")
 
     time.sleep(5)
     perform_update(pending_update_path)
@@ -327,7 +330,16 @@ def perform_update(new_exe_path):
     Execute the update by replacing the current executable.
     Uses a VBScript wrapper to run the update batch file silently (no window flash).
     """
-    current_exe = sys.executable
+    # Determine the actual Vapor.exe path
+    # PyInstaller: sys.executable is Vapor.exe
+    # Nuitka: sys.executable is python.exe in temp, use sys.argv[0] instead
+    if getattr(sys, 'frozen', False):
+        if hasattr(sys, '_MEIPASS'):
+            current_exe = sys.executable
+        else:
+            current_exe = sys.argv[0]
+    else:
+        current_exe = sys.executable
     current_exe_dir = os.path.dirname(current_exe)
     temp_dir = tempfile.gettempdir()
     batch_path = os.path.join(temp_dir, "vapor_update.bat")
@@ -350,12 +362,6 @@ ping 127.0.0.1 -n 3 > nul
 echo Force-killing any lingering Vapor processes... >> "{log_path}"
 taskkill /f /im vapor.exe >> "{log_path}" 2>&1
 ping 127.0.0.1 -n 3 > nul
-
-echo Cleaning up old PyInstaller temp folders... >> "{log_path}"
-for /d %%i in ("%TEMP%\\_MEI*") do (
-    rmdir /s /q "%%i" 2>nul
-)
-echo Cleanup complete. >> "{log_path}"
 
 :delete_loop
 set /a attempts+=1
@@ -442,7 +448,7 @@ Set WshShell = Nothing
 
 def periodic_update_check(stop_event, get_current_app_id_func, show_notification_func, check_interval=3600):
     """
-    Background thread that periodically checks for updates.
+    Background thread that periodically checks for updates and sends telemetry heartbeats.
 
     Args:
         stop_event: Threading event to signal shutdown
@@ -453,6 +459,8 @@ def periodic_update_check(stop_event, get_current_app_id_func, show_notification
     log(f"Update checker starting (first check in {check_interval // 60} minutes)...")
 
     check_count = 0
+    last_heartbeat_time = time.time()  # Track when we last sent a heartbeat
+
     while not stop_event.is_set():
         # Wait before checking (first check waits full interval, no immediate check on startup)
         log(f"Next check in {check_interval // 60} minutes")
@@ -462,6 +470,14 @@ def periodic_update_check(stop_event, get_current_app_id_func, show_notification
         try:
             check_count += 1
             log(f"Periodic check #{check_count}")
+
+            # Send telemetry heartbeat if enough time has passed
+            current_time = time.time()
+            if current_time - last_heartbeat_time >= HEARTBEAT_INTERVAL:
+                log("Sending telemetry heartbeat...")
+                send_telemetry("heartbeat")
+                last_heartbeat_time = current_time
+
             current_app_id = get_current_app_id_func() if get_current_app_id_func else 0
             check_for_updates(current_app_id, show_notification_func)
         except Exception as e:
