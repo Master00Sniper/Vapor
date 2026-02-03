@@ -1,9 +1,17 @@
-# Vapor
+<p align="center">
+  <img src="Images/splash_screen.png" alt="Vapor Banner" width="400">
+</p>
 
-**Your Personal Gaming Assistant for Windows**
+<h1 align="center">Vapor</h1>
 
-[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![GitHub release](https://img.shields.io/github/v/release/Master00Sniper/Vapor)](https://github.com/Master00Sniper/Vapor/releases)
+<p align="center">
+  <strong>Your Personal Gaming Assistant for Windows</strong>
+</p>
+
+<p align="center">
+  <a href="https://www.gnu.org/licenses/gpl-3.0"><img src="https://img.shields.io/badge/License-GPLv3-blue.svg" alt="License: GPL v3"></a>
+  <a href="https://github.com/Master00Sniper/Vapor/releases"><img src="https://img.shields.io/github/v/release/Master00Sniper/Vapor" alt="GitHub release"></a>
+</p>
 
 Vapor is a lightweight Windows utility that watches for Steam game launches and applies your preferred settings automatically—so you can jump straight into the action.
 
