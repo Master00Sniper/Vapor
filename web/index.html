@@ -536,6 +536,70 @@
             font-size: 0.9rem;
         }
 
+        /* Privacy Policy & Project Governance */
+        .privacy-policy,
+        .project-governance {
+            padding: 4rem 2rem;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border);
+        }
+
+        .privacy-policy {
+            background: var(--bg-primary);
+        }
+
+        .privacy-policy h2,
+        .project-governance h2 {
+            font-family: 'Oswald', sans-serif;
+            font-size: 2rem;
+            margin-bottom: 2rem;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .policy-content {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .policy-section {
+            margin-bottom: 2rem;
+        }
+
+        .policy-section h3 {
+            font-size: 1.2rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+
+        .policy-section p {
+            color: var(--text-secondary);
+            line-height: 1.7;
+            margin-bottom: 0.75rem;
+        }
+
+        .policy-section ul {
+            color: var(--text-secondary);
+            line-height: 1.7;
+            margin-left: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .policy-section li {
+            margin-bottom: 0.25rem;
+        }
+
+        .policy-section a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        .policy-section a:hover {
+            color: var(--accent-hover);
+            text-decoration: underline;
+        }
+
         /* Footer */
         footer {
             padding: 3rem 2rem;
@@ -631,6 +695,7 @@
             <li><a href="#how-it-works">How it Works</a></li>
             <li><a href="#screenshots">Screenshots</a></li>
             <li><a href="#download">Download</a></li>
+            <li><a href="#privacy">Privacy</a></li>
             <li><a href="https://github.com/Master00Sniper/Vapor">GitHub</a></li>
             <li><a href="https://ko-fi.com/master00sniper">Support</a></li>
         </ul>
@@ -788,6 +853,57 @@
             <span>Windows 10/11</span>
             <span>~30 MB</span>
             <span>No installation required</span>
+        </div>
+    </section>
+
+    <section class="privacy-policy" id="privacy">
+        <h2>Privacy Policy</h2>
+        <div class="policy-content">
+            <div class="policy-section">
+                <h3>Anonymous Usage Statistics</h3>
+                <p>Vapor collects anonymous usage statistics to help the developer understand how many people are using the application. This data includes:</p>
+                <ul>
+                    <li>App start and heartbeat events</li>
+                    <li>Vapor version number</li>
+                    <li>Operating system type (e.g., "Windows 10")</li>
+                    <li>A randomly generated installation ID (not linked to any personal information)</li>
+                </ul>
+                <p><strong>No personal information is collected.</strong> You can disable this in Settings &gt; Preferences &gt; "Send Anonymous Usage Statistics".</p>
+            </div>
+            <div class="policy-section">
+                <h3>Bug Reports</h3>
+                <p>Bug reports are only submitted when you explicitly click "Submit Bug Report" in the Help tab. You may optionally include:</p>
+                <ul>
+                    <li>System information (OS, Vapor version)</li>
+                    <li>Recent log data (you can opt out by unchecking "Include recent logs")</li>
+                </ul>
+                <p>Bug reports are submitted to GitHub Issues and are publicly visible. Your Windows username is automatically redacted from logs.</p>
+            </div>
+            <div class="policy-section">
+                <h3>No Other Data Collection</h3>
+                <p>Vapor does not collect, store, or transmit any other data. Your gaming activity, system configuration, and personal files are never accessed or shared.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="project-governance" id="governance">
+        <h2>Project Governance</h2>
+        <div class="policy-content">
+            <div class="policy-section">
+                <h3>Maintainer</h3>
+                <p>Vapor is developed and maintained by <strong>Greg Morton</strong> (<a href="https://github.com/Master00Sniper">@Master00Sniper</a>).</p>
+                <p>As the sole maintainer, Greg is responsible for:</p>
+                <ul>
+                    <li><strong>Code Authorship:</strong> All source code development</li>
+                    <li><strong>Code Review:</strong> Review of all contributions and pull requests</li>
+                    <li><strong>Release Approval:</strong> Approval and signing of all releases</li>
+                </ul>
+            </div>
+            <div class="policy-section">
+                <h3>Source Code</h3>
+                <p>Vapor is open source software licensed under the <a href="https://www.gnu.org/licenses/gpl-3.0.html">GNU General Public License v3.0</a>.</p>
+                <p>The complete source code is available on <a href="https://github.com/Master00Sniper/Vapor">GitHub</a>.</p>
+            </div>
         </div>
     </section>
 
