@@ -13,7 +13,18 @@
 
 - Install dependencies: `pip install -r requirements.txt`
 - Run from source: `python steam_game_detector.py`
-- Build executable: Run `build_nuitka.bat` (Windows only)
+- Build executable: Run `build_nuitka.ps1` (Windows only)
+- Create release: Run `git_update.ps1` (pushes tag, GitHub Actions builds & releases)
+
+## Release Notes
+
+- **IMPORTANT**: When making changes to the Vapor application, update `RELEASE_NOTES.md`
+- **Only include changes that affect users**: New features, UI changes, bug fixes, settings changes
+- **Do NOT include**: Website changes, build script changes, CI/CD changes, documentation, CLAUDE.md updates
+- Group changes under headings: `New Features`, `Improvements`, `Bug Fixes`
+- Keep adding to the existing release notes while the version in `updater.py` stays the same
+- When the version in `updater.py` is incremented, start fresh release notes for the new version
+- The release notes will be automatically included in GitHub releases
 
 ## Project Structure
 

@@ -42,6 +42,7 @@ $nuitkaArgs = @(
     "-m", "nuitka",
     "--standalone",
     "--onefile",
+    "--assume-yes-for-downloads",
     "--msvc=latest",
     "--windows-console-mode=disable",
     "--windows-icon-from-ico=Images/exe_icon.ico",
