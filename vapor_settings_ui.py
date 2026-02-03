@@ -1875,29 +1875,6 @@ bio_label.pack(pady=10, anchor='center')
 separator2 = ctk.CTkFrame(master=about_scroll_frame, height=2, fg_color="gray50")
 separator2.pack(fill="x", padx=40, pady=15)
 
-contact_title = ctk.CTkLabel(master=about_scroll_frame, text="Contact & Connect", font=("Calibri", 15, "bold"))
-contact_title.pack(pady=(5, 10), anchor='center')
-
-email_label = ctk.CTkLabel(master=about_scroll_frame, text="Email: greg@mortonapps.com", font=("Calibri", 13))
-email_label.pack(pady=2, anchor='center')
-
-x_link_frame = ctk.CTkFrame(master=about_scroll_frame, fg_color="transparent")
-x_link_frame.pack(pady=2, anchor='center')
-
-x_icon_label = ctk.CTkLabel(master=x_link_frame, text="X: ", font=("Calibri", 13))
-x_icon_label.pack(side="left")
-
-x_link_label = ctk.CTkLabel(master=x_link_frame, text="x.com/master00sniper", font=("Calibri", 13, "underline"),
-                            text_color="#1DA1F2", cursor="hand2")
-x_link_label.pack(side="left")
-x_link_label.bind("<Button-1>", lambda e: os.startfile("https://x.com/master00sniper"))
-
-x_handle_label = ctk.CTkLabel(master=x_link_frame, text="  -  @Master00Sniper", font=("Calibri", 13))
-x_handle_label.pack(side="left")
-
-separator3 = ctk.CTkFrame(master=about_scroll_frame, height=2, fg_color="gray50")
-separator3.pack(fill="x", padx=40, pady=15)
-
 donate_title = ctk.CTkLabel(master=about_scroll_frame, text="Support Development", font=("Calibri", 15, "bold"))
 donate_title.pack(pady=(5, 5), anchor='center')
 
@@ -1920,6 +1897,29 @@ kofi_button = ctk.CTkButton(master=kofi_frame, text="Buy me a Coffee on Ko-fi",
                             corner_radius=10, fg_color="#FF5E5B", hover_color="#d94a47",
                             text_color="white", width=200, font=("Calibri", 14, "bold"))
 kofi_button.pack(side="left")
+
+separator3 = ctk.CTkFrame(master=about_scroll_frame, height=2, fg_color="gray50")
+separator3.pack(fill="x", padx=40, pady=15)
+
+contact_title = ctk.CTkLabel(master=about_scroll_frame, text="Contact & Connect", font=("Calibri", 15, "bold"))
+contact_title.pack(pady=(5, 10), anchor='center')
+
+email_label = ctk.CTkLabel(master=about_scroll_frame, text="Email: greg@mortonapps.com", font=("Calibri", 13))
+email_label.pack(pady=2, anchor='center')
+
+x_link_frame = ctk.CTkFrame(master=about_scroll_frame, fg_color="transparent")
+x_link_frame.pack(pady=2, anchor='center')
+
+x_icon_label = ctk.CTkLabel(master=x_link_frame, text="X: ", font=("Calibri", 13))
+x_icon_label.pack(side="left")
+
+x_link_label = ctk.CTkLabel(master=x_link_frame, text="x.com/master00sniper", font=("Calibri", 13, "underline"),
+                            text_color="#1DA1F2", cursor="hand2")
+x_link_label.pack(side="left")
+x_link_label.bind("<Button-1>", lambda e: os.startfile("https://x.com/master00sniper"))
+
+x_handle_label = ctk.CTkLabel(master=x_link_frame, text="  -  @Master00Sniper", font=("Calibri", 13))
+x_handle_label.pack(side="left")
 
 separator4 = ctk.CTkFrame(master=about_scroll_frame, height=2, fg_color="gray50")
 separator4.pack(fill="x", padx=40, pady=15)
