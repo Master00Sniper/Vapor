@@ -18,9 +18,12 @@
 
 ## Release Notes
 
-- **IMPORTANT**: When making code changes, always update `RELEASE_NOTES.md` with a summary of what changed
-- Group changes under appropriate headings: `New Features`, `Improvements`, `Bug Fixes`, `Build System`, etc.
-- Keep entries concise but descriptive
+- **IMPORTANT**: When making changes to the Vapor application, update `RELEASE_NOTES.md`
+- **Only include changes that affect users**: New features, UI changes, bug fixes, settings changes
+- **Do NOT include**: Website changes, build script changes, CI/CD changes, documentation, CLAUDE.md updates
+- Group changes under headings: `New Features`, `Improvements`, `Bug Fixes`
+- Keep adding to the existing release notes while the version in `updater.py` stays the same
+- When the version in `updater.py` is incremented, start fresh release notes for the new version
 - The release notes will be automatically included in GitHub releases
 
 ## Project Structure

@@ -9,12 +9,6 @@
 
 ### Improvements
 - **Reset Settings Section** - Improved layout with clearer button labels and explanatory text
-- **Privacy Policy** - Added dedicated privacy policy page to the website detailing data collection practices
-- **Project Governance** - Added project governance information to the website
-
-### Build System
-- **GitHub Actions** - Builds are now automated through GitHub Actions for improved security and reproducibility
-- **Streamlined Release Process** - Simplified release workflow with automatic artifact attachment
 
 ### Bug Fixes
 - Fixed Ko-fi button text spelling (now displays "Ko-fi" correctly)
