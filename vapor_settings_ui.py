@@ -2026,16 +2026,19 @@ separator6 = ctk.CTkFrame(master=about_scroll_frame, height=2, fg_color="gray50"
 separator6.pack(fill="x", padx=40, pady=15)
 
 copyright_label = ctk.CTkLabel(master=about_scroll_frame,
-                               text=f"(c) 2024-2026 Greg Morton (@Master00Sniper). All Rights Reserved.",
+                               text=f"(c) 2024-2026 Greg Morton (@Master00Sniper)",
                                font=("Calibri", 12))
-copyright_label.pack(pady=(5, 5), anchor='center')
+copyright_label.pack(pady=(5, 2), anchor='center')
 
-disclaimer_text = """DISCLAIMER: This software is provided "as is" without warranty of any kind, express or implied, 
-including but not limited to the warranties of merchantability, fitness for a particular purpose, and noninfringement. 
-In no event shall the author be liable for any claim, damages, or other liability arising from the use of this software."""
+license_label = ctk.CTkLabel(master=about_scroll_frame,
+                             text="Licensed under the GNU General Public License v3.0",
+                             font=("Calibri", 12), text_color="gray60")
+license_label.pack(pady=(0, 5), anchor='center')
+
+disclaimer_text = """This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GPL v3 license for details."""
 
 disclaimer_label = ctk.CTkLabel(master=about_scroll_frame, text=disclaimer_text, font=("Calibri", 11),
-                                wraplength=400, justify="center", text_color="gray60")
+                                wraplength=400, justify="center", text_color="gray50")
 disclaimer_label.pack(pady=(5, 20), anchor='center')
 
 # =============================================================================
