@@ -1840,7 +1840,7 @@ about_title.pack(pady=(10, 5), anchor='center')
 version_label = ctk.CTkLabel(master=about_scroll_frame, text=f"Version {CURRENT_VERSION}", font=("Calibri", 15))
 version_label.pack(pady=(0, 15), anchor='center')
 
-description_text = """Vapor is a lightweight utility designed to enhance your gaming experience on Windows.
+description_text = """Vapor is a free, open source, lightweight utility designed to enhance your gaming experience on Windows.
 It automatically detects when you launch a Steam game and optimizes your system by closing
 distracting notification apps and resource-heavy applications. When you're done gaming,
 Vapor seamlessly relaunches your closed apps, so you can pick up right where you left off.
@@ -1868,41 +1868,18 @@ small winery owner. Vapor was born from my own frustration with notifications in
 epic gaming moments, and constantly having to adjust audio levels for games. I hope it
 enhances your gaming sessions as much as it has mine."""
 
-bio_label = ctk.CTkLabel(master=about_scroll_frame, text=bio_text, font=("Calibri", 13),
+bio_label = ctk.CTkLabel(master=about_scroll_frame, text=bio_text, font=("Calibri", 14),
                          wraplength=520, justify="center")
 bio_label.pack(pady=10, anchor='center')
 
 separator2 = ctk.CTkFrame(master=about_scroll_frame, height=2, fg_color="gray50")
 separator2.pack(fill="x", padx=40, pady=15)
 
-contact_title = ctk.CTkLabel(master=about_scroll_frame, text="Contact & Connect", font=("Calibri", 15, "bold"))
-contact_title.pack(pady=(5, 10), anchor='center')
-
-email_label = ctk.CTkLabel(master=about_scroll_frame, text="Email: greg@mortonapps.com", font=("Calibri", 13))
-email_label.pack(pady=2, anchor='center')
-
-x_link_frame = ctk.CTkFrame(master=about_scroll_frame, fg_color="transparent")
-x_link_frame.pack(pady=2, anchor='center')
-
-x_icon_label = ctk.CTkLabel(master=x_link_frame, text="X: ", font=("Calibri", 13))
-x_icon_label.pack(side="left")
-
-x_link_label = ctk.CTkLabel(master=x_link_frame, text="x.com/master00sniper", font=("Calibri", 13, "underline"),
-                            text_color="#1DA1F2", cursor="hand2")
-x_link_label.pack(side="left")
-x_link_label.bind("<Button-1>", lambda e: os.startfile("https://x.com/master00sniper"))
-
-x_handle_label = ctk.CTkLabel(master=x_link_frame, text="  -  @Master00Sniper", font=("Calibri", 13))
-x_handle_label.pack(side="left")
-
-separator3 = ctk.CTkFrame(master=about_scroll_frame, height=2, fg_color="gray50")
-separator3.pack(fill="x", padx=40, pady=15)
-
 donate_title = ctk.CTkLabel(master=about_scroll_frame, text="Support Development", font=("Calibri", 15, "bold"))
 donate_title.pack(pady=(5, 5), anchor='center')
 
 donate_label = ctk.CTkLabel(master=about_scroll_frame, text="If Vapor has improved your gaming experience,\nconsider supporting development!",
-                            font=("Calibri", 13), justify="center")
+                            font=("Calibri", 14), justify="center")
 donate_label.pack(pady=(5, 10), anchor='center')
 
 # Ko-fi button with icon
@@ -1915,14 +1892,47 @@ if os.path.exists(kofi_icon_path):
     kofi_icon_label = ctk.CTkLabel(master=kofi_frame, image=kofi_icon, text="")
     kofi_icon_label.pack(side="left", padx=(0, 8))
 
-kofi_button = ctk.CTkButton(master=kofi_frame, text="Buy me a Coffee on Ko-fi",
+kofi_button = ctk.CTkButton(master=kofi_frame, text="Support Vapor's Development on Kofi",
                             command=lambda: os.startfile("https://ko-fi.com/master00sniper"),
-                            corner_radius=10, fg_color="#FF5E5B", hover_color="#d94a47",
-                            text_color="white", width=200, font=("Calibri", 14, "bold"))
+                            corner_radius=10, fg_color="#72a4f2", hover_color="#5a8fd9",
+                            text_color="white", width=250, font=("Calibri", 14, "bold"))
 kofi_button.pack(side="left")
+
+separator3 = ctk.CTkFrame(master=about_scroll_frame, height=2, fg_color="gray50")
+separator3.pack(fill="x", padx=40, pady=15)
+
+contact_title = ctk.CTkLabel(master=about_scroll_frame, text="Contact & Connect", font=("Calibri", 15, "bold"))
+contact_title.pack(pady=(5, 10), anchor='center')
+
+email_label = ctk.CTkLabel(master=about_scroll_frame, text="Email: greg@mortonapps.com", font=("Calibri", 14))
+email_label.pack(pady=2, anchor='center')
+
+x_link_frame = ctk.CTkFrame(master=about_scroll_frame, fg_color="transparent")
+x_link_frame.pack(pady=2, anchor='center')
+
+x_icon_label = ctk.CTkLabel(master=x_link_frame, text="X: ", font=("Calibri", 14))
+x_icon_label.pack(side="left")
+
+x_link_label = ctk.CTkLabel(master=x_link_frame, text="x.com/master00sniper", font=("Calibri", 14, "underline"),
+                            text_color="#1DA1F2", cursor="hand2")
+x_link_label.pack(side="left")
+x_link_label.bind("<Button-1>", lambda e: os.startfile("https://x.com/master00sniper"))
+
+x_handle_label = ctk.CTkLabel(master=x_link_frame, text="  -  @Master00Sniper", font=("Calibri", 14))
+x_handle_label.pack(side="left")
 
 separator4 = ctk.CTkFrame(master=about_scroll_frame, height=2, fg_color="gray50")
 separator4.pack(fill="x", padx=40, pady=15)
+
+supporters_title = ctk.CTkLabel(master=about_scroll_frame, text="Vapor Supporters", font=("Calibri", 15, "bold"))
+supporters_title.pack(pady=(5, 5), anchor='center')
+
+supporters_label = ctk.CTkLabel(master=about_scroll_frame, text="To become a Vapor Supporter, click the Ko-fi link above to become a member!",
+                                font=("Calibri", 14), justify="center")
+supporters_label.pack(pady=(5, 10), anchor='center')
+
+separator5 = ctk.CTkFrame(master=about_scroll_frame, height=2, fg_color="gray50")
+separator5.pack(fill="x", padx=40, pady=15)
 
 credits_title = ctk.CTkLabel(master=about_scroll_frame, text="Credits", font=("Calibri", 15, "bold"))
 credits_title.pack(pady=(5, 5), anchor='center')
@@ -1930,16 +1940,16 @@ credits_title.pack(pady=(5, 5), anchor='center')
 credits_frame = ctk.CTkFrame(master=about_scroll_frame, fg_color="transparent")
 credits_frame.pack(pady=2, anchor='center')
 
-credits_text_label = ctk.CTkLabel(master=credits_frame, text="Icons by ", font=("Calibri", 13))
+credits_text_label = ctk.CTkLabel(master=credits_frame, text="Icons by ", font=("Calibri", 14))
 credits_text_label.pack(side="left")
 
-icons8_link_label = ctk.CTkLabel(master=credits_frame, text="Icons8", font=("Calibri", 13, "underline"),
+icons8_link_label = ctk.CTkLabel(master=credits_frame, text="Icons8", font=("Calibri", 14, "underline"),
                                  text_color="#1DA1F2", cursor="hand2")
 icons8_link_label.pack(side="left")
 icons8_link_label.bind("<Button-1>", lambda e: os.startfile("https://icons8.com"))
 
-separator5 = ctk.CTkFrame(master=about_scroll_frame, height=2, fg_color="gray50")
-separator5.pack(fill="x", padx=40, pady=15)
+separator6 = ctk.CTkFrame(master=about_scroll_frame, height=2, fg_color="gray50")
+separator6.pack(fill="x", padx=40, pady=15)
 
 copyright_label = ctk.CTkLabel(master=about_scroll_frame,
                                text=f"(c) 2024-2026 Greg Morton (@Master00Sniper). All Rights Reserved.",
