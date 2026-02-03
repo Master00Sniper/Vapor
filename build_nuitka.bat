@@ -2,6 +2,12 @@
 REM Nuitka Build Script for Vapor
 REM This compiles Vapor to a native Windows executable
 
+REM Version info (keep in sync with updater.py CURRENT_VERSION)
+set VERSION=0.3.4
+set COMPANY=Morton Apps
+set PRODUCT=Vapor
+set COPYRIGHT=Copyright (c) 2024-2026 Greg Morton. All Rights Reserved.
+
 echo ==========================================
 echo Vapor Nuitka Build Script
 echo ==========================================
@@ -27,6 +33,12 @@ python -m nuitka ^
     --windows-icon-from-ico=Images/exe_icon.ico ^
     --output-filename=Vapor.exe ^
     --output-dir=dist ^
+    --company-name="%COMPANY%" ^
+    --product-name="%PRODUCT%" ^
+    --file-version=%VERSION% ^
+    --product-version=%VERSION% ^
+    --file-description="Vapor - Your Personal Gaming Assistant" ^
+    --copyright="%COPYRIGHT%" ^
     --enable-plugin=tk-inter ^
     --include-data-dir=Images=Images ^
     --include-data-dir=lib=lib ^
