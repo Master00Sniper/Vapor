@@ -2,9 +2,14 @@
 
 **Your Personal Gaming Assistant for Windows**
 
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![GitHub release](https://img.shields.io/github/v/release/Master00Sniper/Vapor)](https://github.com/Master00Sniper/Vapor/releases)
+
 Vapor is a lightweight Windows utility that watches for Steam game launches and applies your preferred settings automatically—so you can jump straight into the action.
 
 No more alt-tabbing to close chat apps, adjusting volume sliders, or switching power plans. Just configure Vapor once with your preferences, and it handles the routine stuff while you focus on playing.
+
+🌐 **Website:** [vaporapp.mortonapps.com](https://vaporapp.mortonapps.com)
 
 ## You're in Control
 
@@ -49,24 +54,48 @@ No kernel drivers. No system modifications. No surprises.
 ## Installation
 
 ### Download (Recommended)
-1. Download the latest release from the [Releases](https://github.com/Master00Sniper/Vapor/releases) page
+1. Download `Vapor.exe` from the [latest release](https://github.com/Master00Sniper/Vapor/releases/latest)
 2. Move Vapor.exe to your preferred location
 3. Double-click to start
 
 ### Run from Source
 1. Clone the repository:
-   ```
+   ```bash
    git clone https://github.com/Master00Sniper/Vapor.git
+   cd Vapor
    ```
 2. Install dependencies:
-   ```
+   ```bash
    pip install -r requirements.txt
    ```
 3. Run:
-   ```
+   ```bash
    python steam_game_detector.py
    ```
 
+### Build Executable
+To build Vapor.exe yourself:
+1. Install build dependencies:
+   ```bash
+   pip install nuitka ordered-set zstandard
+   ```
+2. Run the build script (requires Visual Studio Build Tools):
+   ```powershell
+   .\build_nuitka.ps1
+   ```
+3. Find the executable at `dist/Vapor.exe`
+
+## Privacy
+
+Vapor collects minimal anonymous usage statistics (app version, OS type, random installation ID) to help understand how many people use it. No personal data is ever collected. You can disable this in Settings > Preferences.
+
+See our [Privacy Policy](https://vaporapp.mortonapps.com/policies.html) for details.
+
+## Support
+
+- ☕ [Support on Ko-fi](https://ko-fi.com/master00sniper)
+- 🐛 [Report issues](https://github.com/Master00Sniper/Vapor/issues)
+
 ## License
 
-This project is licensed under the GNU General Public License v3.0 - See [LICENSE](LICENSE) for details.
+This project is licensed under the GNU General Public License v3.0 - see [LICENSE](LICENSE) for details.
