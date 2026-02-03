@@ -28,6 +28,9 @@ HEADERS = {
     "X-Vapor-Auth": "ombxslvdyyqvlkiiogwmjlkpocwqufaa"
 }
 
+# Telemetry heartbeat interval in seconds (1 hour = 3600, can be changed to 12h or 24h later)
+HEARTBEAT_INTERVAL = 3600
+
 # Tracks downloaded update waiting to be applied
 pending_update_path = None
 
@@ -445,7 +448,7 @@ Set WshShell = Nothing
 
 def periodic_update_check(stop_event, get_current_app_id_func, show_notification_func, check_interval=3600):
     """
-    Background thread that periodically checks for updates.
+    Background thread that periodically checks for updates and sends telemetry heartbeats.
 
     Args:
         stop_event: Threading event to signal shutdown
@@ -456,6 +459,8 @@ def periodic_update_check(stop_event, get_current_app_id_func, show_notification
     log(f"Update checker starting (first check in {check_interval // 60} minutes)...")
 
     check_count = 0
+    last_heartbeat_time = time.time()  # Track when we last sent a heartbeat
+
     while not stop_event.is_set():
         # Wait before checking (first check waits full interval, no immediate check on startup)
         log(f"Next check in {check_interval // 60} minutes")
@@ -465,6 +470,14 @@ def periodic_update_check(stop_event, get_current_app_id_func, show_notification
         try:
             check_count += 1
             log(f"Periodic check #{check_count}")
+
+            # Send telemetry heartbeat if enough time has passed
+            current_time = time.time()
+            if current_time - last_heartbeat_time >= HEARTBEAT_INTERVAL:
+                log("Sending telemetry heartbeat...")
+                send_telemetry("heartbeat")
+                last_heartbeat_time = current_time
+
             current_app_id = get_current_app_id_func() if get_current_app_id_func else 0
             check_for_updates(current_app_id, show_notification_func)
         except Exception as e:
