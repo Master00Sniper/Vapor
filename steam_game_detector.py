@@ -60,11 +60,61 @@ if '--ui' not in sys.argv:
 
 
 # =============================================================================
-# Splash Screen
+# Splash Screen with Background Initialization
 # =============================================================================
 
+import threading
+
+# Event to signal when splash screen has finished displaying
+_splash_complete = threading.Event()
+# Event to signal when background imports are done
+_imports_complete = threading.Event()
+
+
+def _do_background_imports():
+    """Import heavy modules in background while splash is showing."""
+    try:
+        # These imports take time - do them while splash is visible
+        global win32gui, customtkinter, winreg, requests, time, psutil, subprocess
+        global json, win32api, win32con, win32event, winerror, keyboard, pystray, item
+        global Image, ctypes, re, comtypes, CLSCTX_ALL, COINIT_MULTITHREADED
+        global AudioUtilities, IAudioEndpointVolume, CLSID_MMDeviceEnumerator
+        global EDataFlow, ERole, IMMDeviceEnumerator, Observer, FileSystemEventHandler
+        global win11toast, atexit, signal
+
+        import win32gui
+        import customtkinter
+        import winreg
+        import requests
+        import time
+        import psutil
+        import subprocess
+        import json
+        import win32api, win32con, win32event, winerror
+        import keyboard
+        import pystray
+        from pystray import MenuItem as item
+        from PIL import Image
+        import ctypes
+        import re
+        import comtypes
+        from comtypes import CLSCTX_ALL, COINIT_MULTITHREADED
+        from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
+        from pycaw.constants import CLSID_MMDeviceEnumerator, EDataFlow, ERole
+        from pycaw.pycaw import IMMDeviceEnumerator
+        from watchdog.observers import Observer
+        from watchdog.events import FileSystemEventHandler
+        import win11toast
+        import atexit
+        import signal
+    except Exception:
+        pass
+    finally:
+        _imports_complete.set()
+
+
 def show_splash_screen():
-    """Display a 2-second splash screen if splash_screen.png exists."""
+    """Display splash screen while doing initialization in background."""
     try:
         import tkinter as tk
         from PIL import Image, ImageTk
@@ -81,7 +131,15 @@ def show_splash_screen():
         splash_path = os.path.join(base_dir, 'Images', 'splash_screen.png')
 
         if not os.path.exists(splash_path):
-            return  # Skip if no splash image
+            # No splash image - just do imports and signal completion
+            _do_background_imports()
+            _imports_complete.wait()
+            _splash_complete.set()
+            return
+
+        # Start background imports before showing splash
+        import_thread = threading.Thread(target=_do_background_imports, daemon=True)
+        import_thread.start()
 
         # Create splash window
         splash = tk.Tk()
@@ -104,19 +162,55 @@ def show_splash_screen():
         label = tk.Label(splash, image=photo)
         label.pack()
 
-        # Close after 2 seconds
-        splash.after(2000, splash.destroy)
+        # Track minimum display time
+        min_time_reached = [False]
+
+        def on_min_time():
+            min_time_reached[0] = True
+            # If imports are also done, close splash
+            if _imports_complete.is_set():
+                splash.destroy()
+
+        def check_imports():
+            # If minimum time reached and imports done, close
+            if min_time_reached[0] and _imports_complete.is_set():
+                splash.destroy()
+            else:
+                # Check again in 50ms
+                splash.after(50, check_imports)
+
+        # Close after minimum 2 seconds AND imports complete
+        splash.after(2000, on_min_time)
+        splash.after(100, check_imports)  # Start checking for import completion
+
         splash.mainloop()
     except Exception:
-        pass  # Skip splash on any error
+        # On any error, ensure imports still happen
+        if not _imports_complete.is_set():
+            _do_background_imports()
+            _imports_complete.wait()
+    finally:
+        _splash_complete.set()
+
+
+def wait_for_splash_complete():
+    """Wait for splash screen to finish before proceeding. Used by settings window launch."""
+    _splash_complete.wait()
 
 
 # Only show splash for main app, not settings UI, and not when restarting elevated
 if '--ui' not in sys.argv and '--elevated' not in sys.argv:
     show_splash_screen()
+else:
+    # For settings UI or elevated restart, mark splash as complete immediately
+    _splash_complete.set()
+    _imports_complete.set()
+
+# Ensure background imports completed before proceeding
+_imports_complete.wait()
 
 # =============================================================================
-# Imports
+# Imports (fast since most are already loaded by background thread)
 # =============================================================================
 
 # GUI libraries (keep imports even if PyCharm marks as unused - needed for frozen exe)
@@ -777,6 +871,8 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
 
     # Launch settings on start if enabled, if first run, or if pending reopen
     if is_first_run or launch_settings_on_start or pending_settings_reopen:
+        # Wait for splash screen to finish before showing settings window
+        wait_for_splash_complete()
         log("Launching settings window on startup...", "INIT")
         try:
             if getattr(sys, 'frozen', False):
