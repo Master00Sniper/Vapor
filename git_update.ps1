@@ -41,7 +41,7 @@ Write-Host ""
 Write-Host "============================================" -ForegroundColor Cyan
 Write-Host "Building Vapor.exe with Nuitka..." -ForegroundColor Cyan
 Write-Host "============================================" -ForegroundColor Cyan
-& cmd /c "build_nuitka.bat"
+& .\build_nuitka.ps1
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "ERROR: Build failed!" -ForegroundColor Red
