@@ -81,6 +81,9 @@ DEFAULT_SETTINGS = {
     'enable_gpu_temp_alert': False,
     'gpu_temp_warning_threshold': 80,
     'gpu_temp_critical_threshold': 90,
+
+    # Telemetry
+    'enable_telemetry': True,
 }
 
 

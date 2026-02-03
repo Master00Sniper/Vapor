@@ -456,12 +456,12 @@ def load_settings():
 def save_settings(selected_notification_apps, customs, selected_resource_apps, resource_customs, launch_startup,
                   launch_settings_on_start, close_on_startup, close_on_hotkey, relaunch_on_exit,
                   resource_close_on_startup, resource_close_on_hotkey, resource_relaunch_on_exit,
-                  enable_playtime_summary, playtime_summary_mode, enable_debug_mode, system_audio_level,
-                  enable_system_audio, game_audio_level, enable_game_audio, enable_during_power, during_power_plan,
-                  enable_after_power, after_power_plan, enable_game_mode_start, enable_game_mode_end,
-                  enable_cpu_thermal, enable_gpu_thermal, enable_cpu_temp_alert, cpu_temp_warning_threshold,
-                  cpu_temp_critical_threshold, enable_gpu_temp_alert, gpu_temp_warning_threshold,
-                  gpu_temp_critical_threshold):
+                  enable_playtime_summary, playtime_summary_mode, enable_debug_mode, enable_telemetry,
+                  system_audio_level, enable_system_audio, game_audio_level, enable_game_audio,
+                  enable_during_power, during_power_plan, enable_after_power, after_power_plan,
+                  enable_game_mode_start, enable_game_mode_end, enable_cpu_thermal, enable_gpu_thermal,
+                  enable_cpu_temp_alert, cpu_temp_warning_threshold, cpu_temp_critical_threshold,
+                  enable_gpu_temp_alert, gpu_temp_warning_threshold, gpu_temp_critical_threshold):
     """Save all settings to the JSON configuration file."""
     # Build process lists from selected apps (UI-specific logic)
     notification_processes = []
@@ -495,6 +495,7 @@ def save_settings(selected_notification_apps, customs, selected_resource_apps, r
         'enable_playtime_summary': enable_playtime_summary,
         'playtime_summary_mode': playtime_summary_mode,
         'enable_debug_mode': enable_debug_mode,
+        'enable_telemetry': enable_telemetry,
         'system_audio_level': system_audio_level,
         'enable_system_audio': enable_system_audio,
         'game_audio_level': game_audio_level,
@@ -638,6 +639,7 @@ cpu_temp_critical_threshold = current_settings.get('cpu_temp_critical_threshold'
 enable_gpu_temp_alert = current_settings.get('enable_gpu_temp_alert', False)
 gpu_temp_warning_threshold = current_settings.get('gpu_temp_warning_threshold', 80)
 gpu_temp_critical_threshold = current_settings.get('gpu_temp_critical_threshold', 90)
+enable_telemetry = current_settings.get('enable_telemetry', True)
 
 # Get main process PID for communication with main app
 main_pid = None
@@ -880,6 +882,49 @@ debug_mode_var = tk.BooleanVar(value=enable_debug_mode)
 debug_mode_switch = ctk.CTkSwitch(master=general_frame, text="Enable Debug Console Window",
                                   variable=debug_mode_var, font=("Calibri", 14))
 debug_mode_switch.pack(pady=5, anchor='w')
+
+# Telemetry toggle with description
+telemetry_frame = ctk.CTkFrame(master=general_frame, fg_color="transparent")
+telemetry_frame.pack(pady=5, anchor='w')
+
+enable_telemetry_var = tk.BooleanVar(value=enable_telemetry)
+
+
+def on_telemetry_toggle():
+    """Show confirmation dialog when user tries to disable telemetry."""
+    if not enable_telemetry_var.get():
+        # User is trying to turn off telemetry - show confirmation
+        response = show_vapor_dialog(
+            title="Disable Usage Statistics?",
+            message="Anonymous usage statistics help the developer understand\n"
+                    "how many people are using Vapor.\n\n"
+                    "No personal data is ever collected - only:\n"
+                    "• App start and heartbeat events\n"
+                    "• Vapor version number\n"
+                    "• Operating system type\n"
+                    "• A random installation ID\n\n"
+                    "Are you sure you want to disable this?",
+            dialog_type="info",
+            buttons=[
+                {"text": "Leave It On", "value": False, "color": "green"},
+                {"text": "Stop Sending", "value": True, "color": "red"}
+            ],
+            parent=root
+        )
+        if not response:
+            # User chose to leave it on - revert the toggle
+            enable_telemetry_var.set(True)
+
+
+telemetry_switch = ctk.CTkSwitch(master=telemetry_frame, text="Send Anonymous Usage Statistics",
+                                 variable=enable_telemetry_var, font=("Calibri", 14),
+                                 command=on_telemetry_toggle)
+telemetry_switch.pack(side="left")
+
+telemetry_hint = ctk.CTkLabel(master=general_frame,
+                              text="No personal data is collected. Only used to see how many people use Vapor.",
+                              font=("Calibri", 11), text_color="gray50")
+telemetry_hint.pack(pady=(0, 5), anchor='w', padx=(48, 0))
 
 pref_sep2 = ctk.CTkFrame(master=pref_scroll_frame, height=2, fg_color="gray50")
 pref_sep2.pack(fill="x", padx=40, pady=15)
@@ -1426,7 +1471,7 @@ trouble_text = """If Vapor isn't working as expected, try these steps:
   *  Make sure Steam is running before launching games
   *  Check that the apps you want managed are toggled ON in the Notifications/Resources tabs
   *  Ensure Vapor is running (look for the icon in your system tray)
-  *  Try clicking "Reset to Defaults" below to restore default settings
+  *  Try clicking "Reset Settings File" or "Reset All Data" below to restore default settings
 
 If issues persist, enable Debug Mode in Preferences to see detailed logs."""
 
@@ -1441,8 +1486,10 @@ reset_title = ctk.CTkLabel(master=help_scroll_frame, text="Reset Settings", font
 reset_title.pack(pady=(10, 5), anchor='center')
 
 reset_hint = ctk.CTkLabel(master=help_scroll_frame,
-                          text="Restore all settings to their default values.",
-                          font=("Calibri", 12), text_color="gray60")
+                          text="Use \"Reset Settings File\" if Vapor is behaving unexpectedly or you want to start fresh.\n"
+                               "Use \"Reset All Data\" if you want to completely clear all Vapor data including\n"
+                               "temperature history and cached game images.",
+                          font=("Calibri", 12), text_color="gray60", justify="center")
 reset_hint.pack(pady=(0, 10), anchor='center')
 
 
@@ -1555,7 +1602,7 @@ def reset_all_data_and_restart():
 reset_buttons_frame = ctk.CTkFrame(master=help_scroll_frame, fg_color="transparent")
 reset_buttons_frame.pack(pady=(5, 20), anchor='center')
 
-rebuild_button = ctk.CTkButton(master=reset_buttons_frame, text="Reset Settings", command=reset_settings_and_restart,
+rebuild_button = ctk.CTkButton(master=reset_buttons_frame, text="Reset Settings File", command=reset_settings_and_restart,
                                corner_radius=10,
                                fg_color="#c9302c", hover_color="#a02622", text_color="white", width=160,
                                font=("Calibri", 14))
@@ -1563,7 +1610,7 @@ rebuild_button.pack(side='left', padx=5)
 
 reset_all_button = ctk.CTkButton(master=reset_buttons_frame, text="Reset All Data", command=reset_all_data_and_restart,
                                  corner_radius=10,
-                                 fg_color="#8b0000", hover_color="#5c0000", text_color="white", width=160,
+                                 fg_color="#c9302c", hover_color="#a02622", text_color="white", width=160,
                                  font=("Calibri", 14))
 reset_all_button.pack(side='left', padx=5)
 
@@ -1828,6 +1875,86 @@ submit_bug_button = ctk.CTkButton(master=help_scroll_frame, text="Submit Bug Rep
 submit_bug_button.pack(pady=(5, 20), anchor='center')
 
 # =============================================================================
+# Uninstall Section
+# =============================================================================
+
+help_sep6 = ctk.CTkFrame(master=help_scroll_frame, height=2, fg_color="gray50")
+help_sep6.pack(fill="x", padx=40, pady=15)
+
+uninstall_title = ctk.CTkLabel(master=help_scroll_frame, text="Uninstall Vapor", font=("Calibri", 17, "bold"))
+uninstall_title.pack(pady=(10, 5), anchor='center')
+
+uninstall_hint = ctk.CTkLabel(master=help_scroll_frame,
+                              text="Completely remove Vapor and all associated data from your system.",
+                              font=("Calibri", 12), text_color="gray60")
+uninstall_hint.pack(pady=(0, 10), anchor='center')
+
+
+def uninstall_vapor():
+    """Delete all Vapor data and close the application."""
+    debug_log("Uninstall Vapor requested", "Uninstall")
+    response = show_vapor_dialog(
+        title="Uninstall Vapor",
+        message="This will delete ALL Vapor data including:\n\n"
+                "• All settings\n"
+                "• All temperature history\n"
+                "• All cached game images\n"
+                "• All log files\n\n"
+                "After Vapor closes, you will need to manually delete\n"
+                "Vapor.exe to complete the uninstallation.\n\n"
+                "Are you sure you want to uninstall?",
+        dialog_type="warning",
+        buttons=[
+            {"text": "Uninstall", "value": True, "color": "red"},
+            {"text": "Cancel", "value": False, "color": "green"}
+        ],
+        parent=root
+    )
+
+    if response:
+        debug_log("User confirmed uninstall", "Uninstall")
+
+        # Delete the entire appdata/Vapor folder
+        try:
+            if os.path.exists(appdata_dir):
+                shutil.rmtree(appdata_dir)
+                debug_log(f"Deleted Vapor data folder: {appdata_dir}", "Uninstall")
+        except Exception as e:
+            debug_log(f"Error deleting Vapor data folder: {e}", "Uninstall")
+
+        # Show final message to user
+        show_vapor_dialog(
+            title="Uninstall Complete",
+            message="Vapor data has been deleted.\n\n"
+                    "To complete the uninstallation, please delete\n"
+                    "Vapor.exe from your system.",
+            dialog_type="info",
+            buttons=[{"text": "OK", "value": True, "color": "green"}],
+            parent=root
+        )
+
+        # Terminate main Vapor process and close
+        debug_log("Stopping Vapor after uninstall", "Uninstall")
+        if main_pid:
+            try:
+                debug_log(f"Terminating main Vapor process (PID: {main_pid})", "Uninstall")
+                main_process = psutil.Process(main_pid)
+                main_process.terminate()
+                debug_log("Main process terminated", "Uninstall")
+            except (psutil.NoSuchProcess, psutil.AccessDenied) as e:
+                debug_log(f"Could not terminate: {e}", "Uninstall")
+        root.destroy()
+    else:
+        debug_log("User cancelled uninstall", "Uninstall")
+
+
+uninstall_button = ctk.CTkButton(master=help_scroll_frame, text="Uninstall Vapor", command=uninstall_vapor,
+                                 corner_radius=10,
+                                 fg_color="#8b0000", hover_color="#5c0000", text_color="white", width=180,
+                                 font=("Calibri", 14))
+uninstall_button.pack(pady=(5, 30), anchor='center')
+
+# =============================================================================
 # About Tab
 # =============================================================================
 
@@ -1892,7 +2019,7 @@ if os.path.exists(kofi_icon_path):
     kofi_icon_label = ctk.CTkLabel(master=kofi_frame, image=kofi_icon, text="")
     kofi_icon_label.pack(side="left", padx=(0, 8))
 
-kofi_button = ctk.CTkButton(master=kofi_frame, text="Support Vapor's Development on Kofi",
+kofi_button = ctk.CTkButton(master=kofi_frame, text="Support Vapor's Development on Ko-fi",
                             command=lambda: os.startfile("https://ko-fi.com/master00sniper"),
                             corner_radius=10, fg_color="#72a4f2", hover_color="#5a8fd9",
                             text_color="white", width=250, font=("Calibri", 14, "bold"))
@@ -1952,7 +2079,7 @@ separator6 = ctk.CTkFrame(master=about_scroll_frame, height=2, fg_color="gray50"
 separator6.pack(fill="x", padx=40, pady=15)
 
 copyright_label = ctk.CTkLabel(master=about_scroll_frame,
-                               text=f"(c) 2024-2026 Greg Morton (@Master00Sniper). All Rights Reserved.",
+                               text=f"(c) 2024-2026 Greg Morton (@Master00Sniper). Licensed under GPL v3.",
                                font=("Calibri", 12))
 copyright_label.pack(pady=(5, 5), anchor='center')
 
@@ -2026,6 +2153,7 @@ def on_save():
     new_enable_playtime_summary = playtime_summary_var.get()
     new_playtime_summary_mode = playtime_summary_mode_var.get()
     new_enable_debug_mode = debug_mode_var.get()
+    new_enable_telemetry = enable_telemetry_var.get()
     new_system_audio_level = system_audio_slider_var.get()
     new_enable_system_audio = enable_system_audio_var.get()
     new_game_audio_level = game_audio_slider_var.get()
@@ -2061,12 +2189,12 @@ def on_save():
                   new_launch_startup, new_launch_settings_on_start, new_close_on_startup, new_close_on_hotkey,
                   new_relaunch_on_exit, new_resource_close_on_startup, new_resource_close_on_hotkey,
                   new_resource_relaunch_on_exit, new_enable_playtime_summary, new_playtime_summary_mode,
-                  new_enable_debug_mode, new_system_audio_level, new_enable_system_audio, new_game_audio_level,
-                  new_enable_game_audio, new_enable_during_power, new_during_power_plan, new_enable_after_power,
-                  new_after_power_plan, new_enable_game_mode_start, new_enable_game_mode_end, new_enable_cpu_thermal,
-                  new_enable_gpu_thermal, new_enable_cpu_temp_alert, new_cpu_temp_warning_threshold,
-                  new_cpu_temp_critical_threshold, new_enable_gpu_temp_alert, new_gpu_temp_warning_threshold,
-                  new_gpu_temp_critical_threshold)
+                  new_enable_debug_mode, new_enable_telemetry, new_system_audio_level, new_enable_system_audio,
+                  new_game_audio_level, new_enable_game_audio, new_enable_during_power, new_during_power_plan,
+                  new_enable_after_power, new_after_power_plan, new_enable_game_mode_start, new_enable_game_mode_end,
+                  new_enable_cpu_thermal, new_enable_gpu_thermal, new_enable_cpu_temp_alert,
+                  new_cpu_temp_warning_threshold, new_cpu_temp_critical_threshold, new_enable_gpu_temp_alert,
+                  new_gpu_temp_warning_threshold, new_gpu_temp_critical_threshold)
 
     # Check if CPU thermal is enabled and Vapor needs to restart with admin privileges
     if new_enable_cpu_thermal and not is_admin():
