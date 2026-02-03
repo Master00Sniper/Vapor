@@ -28,7 +28,7 @@ if (-not (Test-Path "RELEASE_NOTES.md")) {
 # Confirm before proceeding
 Write-Host "This will:"
 Write-Host "  1. Build Vapor.exe using Nuitka"
-Write-Host "  2. Create GitHub release v$VERSION"
+Write-Host "  2. Create GitHub release v$VERSION (with Vapor.exe and LICENSE)"
 Write-Host ""
 $confirm = Read-Host "Continue? (y/n)"
 if ($confirm -ne "y") {
@@ -62,7 +62,7 @@ Write-Host ""
 Write-Host "============================================" -ForegroundColor Cyan
 Write-Host "Creating GitHub release v$VERSION..." -ForegroundColor Cyan
 Write-Host "============================================" -ForegroundColor Cyan
-gh release create "v$VERSION" "dist/Vapor.exe" --repo Master00Sniper/Vapor --title "Vapor v$VERSION" --notes-file RELEASE_NOTES.md --target main
+gh release create "v$VERSION" "dist/Vapor.exe" "LICENSE" --repo Master00Sniper/Vapor --title "Vapor v$VERSION" --notes-file RELEASE_NOTES.md --target main
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "ERROR: Failed to create GitHub release!" -ForegroundColor Red
