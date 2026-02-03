@@ -888,8 +888,37 @@ telemetry_frame = ctk.CTkFrame(master=general_frame, fg_color="transparent")
 telemetry_frame.pack(pady=5, anchor='w')
 
 enable_telemetry_var = tk.BooleanVar(value=enable_telemetry)
+
+
+def on_telemetry_toggle():
+    """Show confirmation dialog when user tries to disable telemetry."""
+    if not enable_telemetry_var.get():
+        # User is trying to turn off telemetry - show confirmation
+        response = show_vapor_dialog(
+            title="Disable Usage Statistics?",
+            message="Anonymous usage statistics help the developer understand\n"
+                    "how many people are using Vapor.\n\n"
+                    "No personal data is ever collected - only:\n"
+                    "• App start and heartbeat events\n"
+                    "• Vapor version number\n"
+                    "• Operating system type\n"
+                    "• A random installation ID\n\n"
+                    "Are you sure you want to disable this?",
+            dialog_type="info",
+            buttons=[
+                {"text": "Leave It On", "value": False, "color": "green"},
+                {"text": "Stop Sending", "value": True, "color": "red"}
+            ],
+            parent=root
+        )
+        if not response:
+            # User chose to leave it on - revert the toggle
+            enable_telemetry_var.set(True)
+
+
 telemetry_switch = ctk.CTkSwitch(master=telemetry_frame, text="Send Anonymous Usage Statistics",
-                                 variable=enable_telemetry_var, font=("Calibri", 14))
+                                 variable=enable_telemetry_var, font=("Calibri", 14),
+                                 command=on_telemetry_toggle)
 telemetry_switch.pack(side="left")
 
 telemetry_hint = ctk.CTkLabel(master=general_frame,
