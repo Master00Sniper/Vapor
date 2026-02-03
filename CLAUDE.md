@@ -2,8 +2,11 @@
 
 ## Git Workflow
 
-- **IMPORTANT**: Always create feature branches from `dev` and push changes to `dev`
-- Do not push directly to `main` - changes should be merged via PR
+- **IMPORTANT**: Always use branch name `claude/dev-{sessionId}` for all work
+  - Example: `claude/dev-OsNc6` where `OsNc6` is the current session ID
+  - This keeps all Claude work on a consistent `dev` branch pattern
+- All PRs should target `main` (or `dev` if it exists)
+- Do not push directly to `main`
 - Use descriptive commit messages
 
 ## Build & Run
