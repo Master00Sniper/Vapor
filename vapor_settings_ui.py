@@ -1892,10 +1892,10 @@ if os.path.exists(kofi_icon_path):
     kofi_icon_label = ctk.CTkLabel(master=kofi_frame, image=kofi_icon, text="")
     kofi_icon_label.pack(side="left", padx=(0, 8))
 
-kofi_button = ctk.CTkButton(master=kofi_frame, text="Buy me a Coffee on Ko-fi",
+kofi_button = ctk.CTkButton(master=kofi_frame, text="Support Vapor's Development on Kofi",
                             command=lambda: os.startfile("https://ko-fi.com/master00sniper"),
-                            corner_radius=10, fg_color="#FF5E5B", hover_color="#d94a47",
-                            text_color="white", width=200, font=("Calibri", 14, "bold"))
+                            corner_radius=10, fg_color="#72a4f2", hover_color="#5a8fd9",
+                            text_color="white", width=250, font=("Calibri", 14, "bold"))
 kofi_button.pack(side="left")
 
 separator3 = ctk.CTkFrame(master=about_scroll_frame, height=2, fg_color="gray50")
