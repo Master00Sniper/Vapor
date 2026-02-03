@@ -1932,7 +1932,7 @@ Windows Game Mode integration, GPU/CPU temperature monitoring with customizable 
 and detailed session summaries showing playtime and peak temperatures."""
 
 description_label = ctk.CTkLabel(master=about_scroll_frame, text=description_text, font=("Calibri", 14),
-                                 wraplength=620, justify="center")
+                                 wraplength=550, justify="center")
 description_label.pack(pady=10, anchor='center')
 
 separator1 = ctk.CTkFrame(master=about_scroll_frame, height=2, fg_color="gray50")
@@ -1951,7 +1951,7 @@ epic gaming moments, and constantly having to adjust audio levels for games. I h
 enhances your gaming sessions as much as it has mine."""
 
 bio_label = ctk.CTkLabel(master=about_scroll_frame, text=bio_text, font=("Calibri", 14),
-                         wraplength=520, justify="center")
+                         wraplength=480, justify="center")
 bio_label.pack(pady=10, anchor='center')
 
 separator2 = ctk.CTkFrame(master=about_scroll_frame, height=2, fg_color="gray50")
@@ -2043,7 +2043,7 @@ including but not limited to the warranties of merchantability, fitness for a pa
 In no event shall the author be liable for any claim, damages, or other liability arising from the use of this software."""
 
 disclaimer_label = ctk.CTkLabel(master=about_scroll_frame, text=disclaimer_text, font=("Calibri", 11),
-                                wraplength=620, justify="center", text_color="gray60")
+                                wraplength=550, justify="center", text_color="gray60")
 disclaimer_label.pack(pady=(5, 20), anchor='center')
 
 # =============================================================================
