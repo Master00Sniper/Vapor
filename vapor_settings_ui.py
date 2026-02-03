@@ -1828,6 +1828,86 @@ submit_bug_button = ctk.CTkButton(master=help_scroll_frame, text="Submit Bug Rep
 submit_bug_button.pack(pady=(5, 20), anchor='center')
 
 # =============================================================================
+# Uninstall Section
+# =============================================================================
+
+help_sep6 = ctk.CTkFrame(master=help_scroll_frame, height=2, fg_color="gray50")
+help_sep6.pack(fill="x", padx=40, pady=15)
+
+uninstall_title = ctk.CTkLabel(master=help_scroll_frame, text="Uninstall Vapor", font=("Calibri", 17, "bold"))
+uninstall_title.pack(pady=(10, 5), anchor='center')
+
+uninstall_hint = ctk.CTkLabel(master=help_scroll_frame,
+                              text="Completely remove Vapor and all associated data from your system.",
+                              font=("Calibri", 12), text_color="gray60")
+uninstall_hint.pack(pady=(0, 10), anchor='center')
+
+
+def uninstall_vapor():
+    """Delete all Vapor data and close the application."""
+    debug_log("Uninstall Vapor requested", "Uninstall")
+    response = show_vapor_dialog(
+        title="Uninstall Vapor",
+        message="This will delete ALL Vapor data including:\n\n"
+                "• All settings\n"
+                "• All temperature history\n"
+                "• All cached game images\n"
+                "• All log files\n\n"
+                "After Vapor closes, you will need to manually delete\n"
+                "Vapor.exe to complete the uninstallation.\n\n"
+                "Are you sure you want to uninstall?",
+        dialog_type="warning",
+        buttons=[
+            {"text": "Uninstall", "value": True, "color": "red"},
+            {"text": "Cancel", "value": False, "color": "green"}
+        ],
+        parent=root
+    )
+
+    if response:
+        debug_log("User confirmed uninstall", "Uninstall")
+
+        # Delete the entire appdata/Vapor folder
+        try:
+            if os.path.exists(appdata_dir):
+                shutil.rmtree(appdata_dir)
+                debug_log(f"Deleted Vapor data folder: {appdata_dir}", "Uninstall")
+        except Exception as e:
+            debug_log(f"Error deleting Vapor data folder: {e}", "Uninstall")
+
+        # Show final message to user
+        show_vapor_dialog(
+            title="Uninstall Complete",
+            message="Vapor data has been deleted.\n\n"
+                    "To complete the uninstallation, please delete\n"
+                    "Vapor.exe from your system.",
+            dialog_type="info",
+            buttons=[{"text": "OK", "value": True, "color": "green"}],
+            parent=root
+        )
+
+        # Terminate main Vapor process and close
+        debug_log("Stopping Vapor after uninstall", "Uninstall")
+        if main_pid:
+            try:
+                debug_log(f"Terminating main Vapor process (PID: {main_pid})", "Uninstall")
+                main_process = psutil.Process(main_pid)
+                main_process.terminate()
+                debug_log("Main process terminated", "Uninstall")
+            except (psutil.NoSuchProcess, psutil.AccessDenied) as e:
+                debug_log(f"Could not terminate: {e}", "Uninstall")
+        root.destroy()
+    else:
+        debug_log("User cancelled uninstall", "Uninstall")
+
+
+uninstall_button = ctk.CTkButton(master=help_scroll_frame, text="Uninstall Vapor", command=uninstall_vapor,
+                                 corner_radius=10,
+                                 fg_color="#8b0000", hover_color="#5c0000", text_color="white", width=180,
+                                 font=("Calibri", 14))
+uninstall_button.pack(pady=(5, 30), anchor='center')
+
+# =============================================================================
 # About Tab
 # =============================================================================
 
