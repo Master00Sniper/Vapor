@@ -1426,7 +1426,7 @@ trouble_text = """If Vapor isn't working as expected, try these steps:
   *  Make sure Steam is running before launching games
   *  Check that the apps you want managed are toggled ON in the Notifications/Resources tabs
   *  Ensure Vapor is running (look for the icon in your system tray)
-  *  Try clicking "Reset to Defaults" below to restore default settings
+  *  Try clicking "Reset Settings File" or "Reset All Data" below to restore default settings
 
 If issues persist, enable Debug Mode in Preferences to see detailed logs."""
 
@@ -1441,8 +1441,10 @@ reset_title = ctk.CTkLabel(master=help_scroll_frame, text="Reset Settings", font
 reset_title.pack(pady=(10, 5), anchor='center')
 
 reset_hint = ctk.CTkLabel(master=help_scroll_frame,
-                          text="Restore all settings to their default values.",
-                          font=("Calibri", 12), text_color="gray60")
+                          text="Use \"Reset Settings File\" if Vapor is behaving unexpectedly or you want to start fresh.\n"
+                               "Use \"Reset All Data\" if you want to completely clear all Vapor data including\n"
+                               "temperature history and cached game images.",
+                          font=("Calibri", 12), text_color="gray60", justify="center")
 reset_hint.pack(pady=(0, 10), anchor='center')
 
 
@@ -1555,7 +1557,7 @@ def reset_all_data_and_restart():
 reset_buttons_frame = ctk.CTkFrame(master=help_scroll_frame, fg_color="transparent")
 reset_buttons_frame.pack(pady=(5, 20), anchor='center')
 
-rebuild_button = ctk.CTkButton(master=reset_buttons_frame, text="Reset Settings", command=reset_settings_and_restart,
+rebuild_button = ctk.CTkButton(master=reset_buttons_frame, text="Reset Settings File", command=reset_settings_and_restart,
                                corner_radius=10,
                                fg_color="#c9302c", hover_color="#a02622", text_color="white", width=160,
                                font=("Calibri", 14))
@@ -1563,7 +1565,7 @@ rebuild_button.pack(side='left', padx=5)
 
 reset_all_button = ctk.CTkButton(master=reset_buttons_frame, text="Reset All Data", command=reset_all_data_and_restart,
                                  corner_radius=10,
-                                 fg_color="#8b0000", hover_color="#5c0000", text_color="white", width=160,
+                                 fg_color="#c9302c", hover_color="#a02622", text_color="white", width=160,
                                  font=("Calibri", 14))
 reset_all_button.pack(side='left', padx=5)
 
