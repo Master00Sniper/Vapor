@@ -1952,7 +1952,7 @@ separator6 = ctk.CTkFrame(master=about_scroll_frame, height=2, fg_color="gray50"
 separator6.pack(fill="x", padx=40, pady=15)
 
 copyright_label = ctk.CTkLabel(master=about_scroll_frame,
-                               text=f"(c) 2024-2026 Greg Morton (@Master00Sniper). All Rights Reserved.",
+                               text=f"(c) 2024-2026 Greg Morton (@Master00Sniper). Licensed under GPL v3.",
                                font=("Calibri", 12))
 copyright_label.pack(pady=(5, 5), anchor='center')
 
