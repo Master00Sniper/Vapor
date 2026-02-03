@@ -14,7 +14,7 @@ import os
 
 GITHUB_OWNER = "Master00Sniper"
 GITHUB_REPO = "Vapor"
-CURRENT_VERSION = "0.3.5"  # Single source of truth for app version
+CURRENT_VERSION = "0.3.6"  # Single source of truth for app version
 
 # Cloudflare Worker proxy (handles GitHub API authentication)
 PROXY_BASE_URL = "https://vapor-proxy.mortonapps.com"
@@ -152,8 +152,18 @@ def send_telemetry(event="app_start"):
     - install_id: Anonymous unique installation identifier
 
     No personal information is collected.
+    Telemetry can be disabled in Settings > Preferences.
     """
     import threading
+
+    # Check if telemetry is enabled in settings
+    try:
+        from utils.settings import get_setting
+        if not get_setting('enable_telemetry', True):
+            log("Telemetry disabled by user setting", "TELEMETRY")
+            return
+    except Exception:
+        pass  # If settings can't be read, proceed with telemetry (default enabled)
 
     def _send():
         try:

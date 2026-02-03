@@ -25,10 +25,18 @@ if (-not (Test-Path "RELEASE_NOTES.md")) {
     exit 1
 }
 
+# Check if tag already exists
+$existingTag = git tag -l "v$VERSION"
+if ($existingTag) {
+    Write-Host "ERROR: Tag v$VERSION already exists!" -ForegroundColor Red
+    Write-Host "Either delete the existing tag or update the version in updater.py" -ForegroundColor Yellow
+    exit 1
+}
+
 # Confirm before proceeding
 Write-Host "This will:"
-Write-Host "  1. Build Vapor.exe using Nuitka"
-Write-Host "  2. Create GitHub release v$VERSION"
+Write-Host "  1. Create and push tag v$VERSION"
+Write-Host "  2. GitHub Actions will build Vapor.exe and create the release"
 Write-Host ""
 $confirm = Read-Host "Continue? (y/n)"
 if ($confirm -ne "y") {
@@ -36,40 +44,36 @@ if ($confirm -ne "y") {
     exit 0
 }
 
-# Run Nuitka build
+# Create and push the tag
 Write-Host ""
 Write-Host "============================================" -ForegroundColor Cyan
-Write-Host "Building Vapor.exe with Nuitka..." -ForegroundColor Cyan
+Write-Host "Creating tag v$VERSION..." -ForegroundColor Cyan
 Write-Host "============================================" -ForegroundColor Cyan
-& cmd /c "build_nuitka.bat"
 
+git tag "v$VERSION"
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "ERROR: Build failed!" -ForegroundColor Red
+    Write-Host "ERROR: Failed to create tag!" -ForegroundColor Red
     exit 1
 }
 
-# Check if Vapor.exe was created
-if (-not (Test-Path "dist\Vapor.exe")) {
-    Write-Host "ERROR: dist\Vapor.exe not found. Build may have failed." -ForegroundColor Red
-    exit 1
-}
-
-Write-Host ""
-Write-Host "Build successful!" -ForegroundColor Green
-Write-Host ""
-
-# Create GitHub release
-Write-Host "============================================" -ForegroundColor Cyan
-Write-Host "Creating GitHub release v$VERSION..." -ForegroundColor Cyan
-Write-Host "============================================" -ForegroundColor Cyan
-gh release create "v$VERSION" "dist/Vapor.exe" --repo Master00Sniper/Vapor --title "Vapor v$VERSION" --notes-file RELEASE_NOTES.md --target main
-
+Write-Host "Pushing tag to GitHub..."
+git push origin "v$VERSION"
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "ERROR: Failed to create GitHub release!" -ForegroundColor Red
+    Write-Host "ERROR: Failed to push tag!" -ForegroundColor Red
+    # Clean up local tag if push failed
+    git tag -d "v$VERSION"
     exit 1
 }
 
 Write-Host ""
 Write-Host "============================================" -ForegroundColor Green
-Write-Host "Done! Release v$VERSION created successfully." -ForegroundColor Green
+Write-Host "Tag v$VERSION pushed successfully!" -ForegroundColor Green
 Write-Host "============================================" -ForegroundColor Green
+Write-Host ""
+Write-Host "GitHub Actions is now building Vapor.exe..." -ForegroundColor Yellow
+Write-Host "Check progress at: https://github.com/Master00Sniper/Vapor/actions" -ForegroundColor Yellow
+Write-Host ""
+Write-Host "Once complete, the release will be created automatically with:"
+Write-Host "  - Title: Vapor v$VERSION"
+Write-Host "  - Description: Contents of RELEASE_NOTES.md"
+Write-Host "  - Files: Vapor.exe, LICENSE"
