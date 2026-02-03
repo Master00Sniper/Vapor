@@ -13,7 +13,15 @@
 
 - Install dependencies: `pip install -r requirements.txt`
 - Run from source: `python steam_game_detector.py`
-- Build executable: Run `build_nuitka.bat` (Windows only)
+- Build executable: Run `build_nuitka.ps1` (Windows only)
+- Create release: Run `git_update.ps1` (pushes tag, GitHub Actions builds & releases)
+
+## Release Notes
+
+- **IMPORTANT**: When making code changes, always update `RELEASE_NOTES.md` with a summary of what changed
+- Group changes under appropriate headings: `New Features`, `Improvements`, `Bug Fixes`, `Build System`, etc.
+- Keep entries concise but descriptive
+- The release notes will be automatically included in GitHub releases
 
 ## Project Structure
 
