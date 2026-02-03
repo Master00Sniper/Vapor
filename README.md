@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="Images/splash_screen.png" alt="Vapor Banner" width="400">
+  <img src="Images/vapor_banner.png" alt="Vapor Banner" width="600">
 </p>
 
 <h1 align="center">Vapor</h1>
