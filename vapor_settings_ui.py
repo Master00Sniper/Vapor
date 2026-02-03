@@ -1374,7 +1374,7 @@ displays a detailed session summary showing your playtime and performance stats.
 
 how_label = ctk.CTkLabel(master=help_scroll_frame, text=how_text, font=("Calibri", 14),
                          wraplength=580, justify="left")
-how_label.pack(pady=10, anchor='center')
+how_label.pack(pady=10, padx=(40, 10), anchor='w')
 
 help_sep2 = ctk.CTkFrame(master=help_scroll_frame, height=2, fg_color="gray50")
 help_sep2.pack(fill="x", padx=40, pady=15)
@@ -1391,7 +1391,7 @@ stream, or any focus session - even when you're not gaming."""
 
 shortcuts_label = ctk.CTkLabel(master=help_scroll_frame, text=shortcuts_text, font=("Calibri", 14),
                                wraplength=580, justify="left")
-shortcuts_label.pack(pady=10, anchor='center')
+shortcuts_label.pack(pady=10, padx=(40, 10), anchor='w')
 
 help_sep3 = ctk.CTkFrame(master=help_scroll_frame, height=2, fg_color="gray50")
 help_sep3.pack(fill="x", padx=40, pady=15)
@@ -1413,7 +1413,7 @@ temperatures reached during your gaming session."""
 
 thermal_help_label = ctk.CTkLabel(master=help_scroll_frame, text=thermal_help_text, font=("Calibri", 14),
                                    wraplength=580, justify="left")
-thermal_help_label.pack(pady=10, anchor='center')
+thermal_help_label.pack(pady=10, padx=(40, 10), anchor='w')
 
 help_sep3b = ctk.CTkFrame(master=help_scroll_frame, height=2, fg_color="gray50")
 help_sep3b.pack(fill="x", padx=40, pady=15)
@@ -1432,7 +1432,7 @@ If issues persist, enable Debug Mode in Preferences to see detailed logs."""
 
 trouble_label = ctk.CTkLabel(master=help_scroll_frame, text=trouble_text, font=("Calibri", 14),
                              wraplength=580, justify="left")
-trouble_label.pack(pady=10, anchor='center')
+trouble_label.pack(pady=10, padx=(40, 10), anchor='w')
 
 help_sep4 = ctk.CTkFrame(master=help_scroll_frame, height=2, fg_color="gray50")
 help_sep4.pack(fill="x", padx=40, pady=15)
