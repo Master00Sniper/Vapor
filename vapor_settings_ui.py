@@ -1922,17 +1922,12 @@ about_title.pack(pady=(10, 5), anchor='center')
 version_label = ctk.CTkLabel(master=about_scroll_frame, text=f"Version {CURRENT_VERSION}", font=("Calibri", 15))
 version_label.pack(pady=(0, 15), anchor='center')
 
-description_text = """Vapor is a free, open source, lightweight utility designed to enhance your gaming experience on Windows.
-It automatically detects when you launch a Steam game and optimizes your system by closing
-distracting notification apps and resource-heavy applications. When you're done gaming,
-Vapor seamlessly relaunches your closed apps, so you can pick up right where you left off.
+description_text = """Vapor is a free, open source utility designed to enhance your gaming experience on Windows. It detects when you launch a Steam game and optimizes your system by closing distracting apps. When you exit, Vapor relaunches everything so you can pick up where you left off.
 
-Features include customizable app management, audio controls, power plan switching,
-Windows Game Mode integration, GPU/CPU temperature monitoring with customizable alerts,
-and detailed session summaries showing playtime and peak temperatures."""
+Features include app management, audio controls, power plan switching, Game Mode, temperature monitoring with alerts, and session summaries."""
 
 description_label = ctk.CTkLabel(master=about_scroll_frame, text=description_text, font=("Calibri", 14),
-                                 wraplength=480, justify="center")
+                                 wraplength=400, justify="center")
 description_label.pack(pady=10, anchor='center')
 
 separator1 = ctk.CTkFrame(master=about_scroll_frame, height=2, fg_color="gray50")
@@ -1945,13 +1940,10 @@ developer_name = ctk.CTkLabel(master=about_scroll_frame, text="Greg Morton (@Mas
                               font=("Calibri", 17, "bold"))
 developer_name.pack(pady=(0, 10), anchor='center')
 
-bio_text = """I'm a passionate gamer, Sr. Systems Administrator by profession, wine enthusiast, and proud 
-small winery owner. Vapor was born from my own frustration with notifications interrupting
-epic gaming moments, and constantly having to adjust audio levels for games. I hope it
-enhances your gaming sessions as much as it has mine."""
+bio_text = """I'm a passionate gamer, Sr. Systems Administrator, wine enthusiast, and proud small winery owner. Vapor was born from my frustration with notifications interrupting epic gaming moments. I hope it enhances your sessions as much as it has mine."""
 
 bio_label = ctk.CTkLabel(master=about_scroll_frame, text=bio_text, font=("Calibri", 14),
-                         wraplength=480, justify="center")
+                         wraplength=400, justify="center")
 bio_label.pack(pady=10, anchor='center')
 
 separator2 = ctk.CTkFrame(master=about_scroll_frame, height=2, fg_color="gray50")
@@ -2043,7 +2035,7 @@ including but not limited to the warranties of merchantability, fitness for a pa
 In no event shall the author be liable for any claim, damages, or other liability arising from the use of this software."""
 
 disclaimer_label = ctk.CTkLabel(master=about_scroll_frame, text=disclaimer_text, font=("Calibri", 11),
-                                wraplength=550, justify="center", text_color="gray60")
+                                wraplength=400, justify="center", text_color="gray60")
 disclaimer_label.pack(pady=(5, 20), anchor='center')
 
 # =============================================================================
