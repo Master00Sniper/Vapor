@@ -1350,7 +1350,7 @@ help_title.pack(pady=(10, 5), anchor='center')
 
 help_description = ctk.CTkLabel(master=help_scroll_frame,
                                 text="Get help with Vapor, troubleshoot issues, and submit bug reports.",
-                                font=("Calibri", 13), text_color="gray60")
+                                font=("Calibri", 14), text_color="gray60")
 help_description.pack(pady=(0, 15), anchor='center')
 
 help_sep1 = ctk.CTkFrame(master=help_scroll_frame, height=2, fg_color="gray50")
@@ -1372,7 +1372,7 @@ a Steam game, Vapor automatically:
 When you exit your game, Vapor reverses these changes, relaunches your closed apps, and
 displays a detailed session summary showing your playtime and performance stats."""
 
-how_label = ctk.CTkLabel(master=help_scroll_frame, text=how_text, font=("Calibri", 13),
+how_label = ctk.CTkLabel(master=help_scroll_frame, text=how_text, font=("Calibri", 14),
                          wraplength=580, justify="left")
 how_label.pack(pady=10, anchor='center')
 
@@ -1389,7 +1389,7 @@ or Resources tab, pressing this combination will immediately close all toggled a
 in that category. This is useful for quickly silencing distractions before a meeting, 
 stream, or any focus session - even when you're not gaming."""
 
-shortcuts_label = ctk.CTkLabel(master=help_scroll_frame, text=shortcuts_text, font=("Calibri", 13),
+shortcuts_label = ctk.CTkLabel(master=help_scroll_frame, text=shortcuts_text, font=("Calibri", 14),
                                wraplength=580, justify="left")
 shortcuts_label.pack(pady=10, anchor='center')
 
@@ -1411,7 +1411,7 @@ they reach dangerous levels:
 Temperature data is also included in your post-game session summary, showing peak
 temperatures reached during your gaming session."""
 
-thermal_help_label = ctk.CTkLabel(master=help_scroll_frame, text=thermal_help_text, font=("Calibri", 13),
+thermal_help_label = ctk.CTkLabel(master=help_scroll_frame, text=thermal_help_text, font=("Calibri", 14),
                                    wraplength=580, justify="left")
 thermal_help_label.pack(pady=10, anchor='center')
 
@@ -1430,7 +1430,7 @@ trouble_text = """If Vapor isn't working as expected, try these steps:
 
 If issues persist, enable Debug Mode in Preferences to see detailed logs."""
 
-trouble_label = ctk.CTkLabel(master=help_scroll_frame, text=trouble_text, font=("Calibri", 13),
+trouble_label = ctk.CTkLabel(master=help_scroll_frame, text=trouble_text, font=("Calibri", 14),
                              wraplength=580, justify="left")
 trouble_label.pack(pady=10, anchor='center')
 
@@ -1441,8 +1441,10 @@ reset_title = ctk.CTkLabel(master=help_scroll_frame, text="Reset Settings", font
 reset_title.pack(pady=(10, 5), anchor='center')
 
 reset_hint = ctk.CTkLabel(master=help_scroll_frame,
-                          text="Restore all settings to their default values.",
-                          font=("Calibri", 12), text_color="gray60")
+                          text="Use \"Reset Settings File\" if Vapor is behaving unexpectedly or you want to start fresh.\n"
+                               "Use \"Reset All Data\" if you want to completely clear all Vapor data including\n"
+                               "temperature history and cached game images.",
+                          font=("Calibri", 13), text_color="gray60", justify="center")
 reset_hint.pack(pady=(0, 10), anchor='center')
 
 
@@ -1579,11 +1581,11 @@ bug_report_title.pack(pady=(10, 5), anchor='center')
 
 bug_report_hint = ctk.CTkLabel(master=help_scroll_frame,
                                text="Found a bug? Let us know! Your report will be submitted to GitHub Issues.",
-                               font=("Calibri", 12), text_color="gray60")
+                               font=("Calibri", 13), text_color="gray60")
 bug_report_hint.pack(pady=(0, 10), anchor='center')
 
 # Bug title entry
-bug_title_label = ctk.CTkLabel(master=help_scroll_frame, text="Title (brief summary)", font=("Calibri", 13))
+bug_title_label = ctk.CTkLabel(master=help_scroll_frame, text="Title (brief summary)", font=("Calibri", 14))
 bug_title_label.pack(pady=(5, 2), anchor='center')
 
 bug_title_entry = ctk.CTkEntry(master=help_scroll_frame, width=400, height=32, font=("Calibri", 13),
@@ -1592,7 +1594,7 @@ bug_title_entry.pack(pady=(0, 10), anchor='center')
 
 # Bug description textbox
 bug_desc_label = ctk.CTkLabel(master=help_scroll_frame, text="Description (steps to reproduce, expected vs actual behavior)",
-                              font=("Calibri", 13))
+                              font=("Calibri", 14))
 bug_desc_label.pack(pady=(5, 2), anchor='center')
 
 bug_desc_textbox = ctk.CTkTextbox(master=help_scroll_frame, width=400, height=120, font=("Calibri", 13),
@@ -1608,7 +1610,7 @@ include_system_info_var = ctk.BooleanVar(value=True)
 system_info_checkbox = ctk.CTkCheckBox(master=checkbox_frame,
                                         text="Include system information (OS, Vapor version, Python version)",
                                         variable=include_system_info_var,
-                                        font=("Calibri", 12))
+                                        font=("Calibri", 13))
 system_info_checkbox.pack(pady=(0, 8), anchor='w')
 
 # Recent logs checkbox
@@ -1616,18 +1618,18 @@ include_logs_var = ctk.BooleanVar(value=True)
 logs_checkbox = ctk.CTkCheckBox(master=checkbox_frame,
                                  text="Include recent logs (last 250 lines)",
                                  variable=include_logs_var,
-                                 font=("Calibri", 12))
+                                 font=("Calibri", 13))
 logs_checkbox.pack(pady=(0, 3), anchor='w')
 
 # Privacy disclaimer
 logs_disclaimer = ctk.CTkLabel(master=help_scroll_frame,
                                text="Your Windows username is redacted from logs, but other folder names\n"
                                     "in paths where Vapor is running may be visible in the public report.",
-                               font=("Calibri", 11), text_color="gray50")
+                               font=("Calibri", 12), text_color="gray50")
 logs_disclaimer.pack(pady=(0, 10), anchor='center')
 
 # Status label for feedback
-bug_status_label = ctk.CTkLabel(master=help_scroll_frame, text="", font=("Calibri", 12))
+bug_status_label = ctk.CTkLabel(master=help_scroll_frame, text="", font=("Calibri", 13))
 bug_status_label.pack(pady=(0, 5), anchor='center')
 
 
@@ -1826,6 +1828,86 @@ submit_bug_button = ctk.CTkButton(master=help_scroll_frame, text="Submit Bug Rep
                                   fg_color="#2563eb", hover_color="#1d4ed8", text_color="white", width=180,
                                   font=("Calibri", 14))
 submit_bug_button.pack(pady=(5, 20), anchor='center')
+
+# =============================================================================
+# Uninstall Section
+# =============================================================================
+
+help_sep6 = ctk.CTkFrame(master=help_scroll_frame, height=2, fg_color="gray50")
+help_sep6.pack(fill="x", padx=40, pady=15)
+
+uninstall_title = ctk.CTkLabel(master=help_scroll_frame, text="Uninstall Vapor", font=("Calibri", 17, "bold"))
+uninstall_title.pack(pady=(10, 5), anchor='center')
+
+uninstall_hint = ctk.CTkLabel(master=help_scroll_frame,
+                              text="Completely remove Vapor and all associated data from your system.",
+                              font=("Calibri", 13), text_color="gray60")
+uninstall_hint.pack(pady=(0, 10), anchor='center')
+
+
+def uninstall_vapor():
+    """Delete all Vapor data and close the application."""
+    debug_log("Uninstall Vapor requested", "Uninstall")
+    response = show_vapor_dialog(
+        title="Uninstall Vapor",
+        message="This will delete ALL Vapor data including:\n\n"
+                "• All settings\n"
+                "• All temperature history\n"
+                "• All cached game images\n"
+                "• All log files\n\n"
+                "After Vapor closes, you will need to manually delete\n"
+                "Vapor.exe to complete the uninstallation.\n\n"
+                "Are you sure you want to uninstall?",
+        dialog_type="warning",
+        buttons=[
+            {"text": "Uninstall", "value": True, "color": "red"},
+            {"text": "Cancel", "value": False, "color": "green"}
+        ],
+        parent=root
+    )
+
+    if response:
+        debug_log("User confirmed uninstall", "Uninstall")
+
+        # Delete the entire appdata/Vapor folder
+        try:
+            if os.path.exists(appdata_dir):
+                shutil.rmtree(appdata_dir)
+                debug_log(f"Deleted Vapor data folder: {appdata_dir}", "Uninstall")
+        except Exception as e:
+            debug_log(f"Error deleting Vapor data folder: {e}", "Uninstall")
+
+        # Show final message to user
+        show_vapor_dialog(
+            title="Uninstall Complete",
+            message="Vapor data has been deleted.\n\n"
+                    "To complete the uninstallation, please delete\n"
+                    "Vapor.exe from your system.",
+            dialog_type="info",
+            buttons=[{"text": "OK", "value": True, "color": "green"}],
+            parent=root
+        )
+
+        # Terminate main Vapor process and close
+        debug_log("Stopping Vapor after uninstall", "Uninstall")
+        if main_pid:
+            try:
+                debug_log(f"Terminating main Vapor process (PID: {main_pid})", "Uninstall")
+                main_process = psutil.Process(main_pid)
+                main_process.terminate()
+                debug_log("Main process terminated", "Uninstall")
+            except (psutil.NoSuchProcess, psutil.AccessDenied) as e:
+                debug_log(f"Could not terminate: {e}", "Uninstall")
+        root.destroy()
+    else:
+        debug_log("User cancelled uninstall", "Uninstall")
+
+
+uninstall_button = ctk.CTkButton(master=help_scroll_frame, text="Uninstall Vapor", command=uninstall_vapor,
+                                 corner_radius=10,
+                                 fg_color="#8b0000", hover_color="#5c0000", text_color="white", width=180,
+                                 font=("Calibri", 14))
+uninstall_button.pack(pady=(5, 30), anchor='center')
 
 # =============================================================================
 # About Tab
