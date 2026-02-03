@@ -1972,7 +1972,7 @@ description_text = """Vapor is a free, open source utility designed to enhance y
 Features include app management, audio controls, power plan switching, Game Mode, temperature monitoring with alerts, and session summaries."""
 
 description_label = ctk.CTkLabel(master=about_scroll_frame, text=description_text, font=("Calibri", 14),
-                                 wraplength=400, justify="center")
+                                 wraplength=450, justify="center")
 description_label.pack(pady=10, anchor='center')
 
 separator1 = ctk.CTkFrame(master=about_scroll_frame, height=2, fg_color="gray50")
@@ -1988,7 +1988,7 @@ developer_name.pack(pady=(0, 10), anchor='center')
 bio_text = """I'm a passionate gamer, Sr. Systems Administrator, wine enthusiast, and proud small winery owner. Vapor was born from my frustration with notifications interrupting epic gaming moments. I hope it enhances your sessions as much as it has mine."""
 
 bio_label = ctk.CTkLabel(master=about_scroll_frame, text=bio_text, font=("Calibri", 14),
-                         wraplength=400, justify="center")
+                         wraplength=450, justify="center")
 bio_label.pack(pady=10, anchor='center')
 
 separator2 = ctk.CTkFrame(master=about_scroll_frame, height=2, fg_color="gray50")
@@ -2083,7 +2083,7 @@ license_label.pack(pady=(0, 5), anchor='center')
 disclaimer_text = """This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GPL v3 license for details."""
 
 disclaimer_label = ctk.CTkLabel(master=about_scroll_frame, text=disclaimer_text, font=("Calibri", 11),
-                                wraplength=400, justify="center", text_color="gray50")
+                                wraplength=450, justify="center", text_color="gray50")
 disclaimer_label.pack(pady=(5, 20), anchor='center')
 
 # =============================================================================
