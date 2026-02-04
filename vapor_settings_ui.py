@@ -962,12 +962,12 @@ debug_mode_switch = ctk.CTkSwitch(master=general_frame, text="Enable Debug Conso
 # debug_mode_switch.pack(pady=5, anchor='w')  # Don't pack initially
 
 # =============================================================================
-# Konami Code Easter Egg (reveals debug toggle)
+# Konami Code Easter Egg (reveals debug toggle and telemetry opt-out)
 # =============================================================================
 
 _konami_sequence = ['Up', 'Up', 'Down', 'Down', 'Left', 'Right', 'Left', 'Right']
 _konami_index = [0]  # Use list to allow modification in nested function
-_debug_revealed = [False]
+_easter_egg_revealed = [False]
 
 
 def _shake_window(callback=None):
@@ -997,15 +997,18 @@ def _shake_window(callback=None):
     do_shake()
 
 
-def _reveal_debug_toggle():
-    """Reveal the debug toggle after shake animation."""
-    _debug_revealed[0] = True
+def _reveal_hidden_toggles():
+    """Reveal the debug toggle and telemetry opt-out after shake animation."""
+    _easter_egg_revealed[0] = True
     debug_mode_switch.pack(pady=5, anchor='w', after=startup_switch)
+    telemetry_frame.pack(pady=5, anchor='w')
+    telemetry_switch.pack(side="left")
+    telemetry_hint.pack(pady=(0, 5), anchor='w', padx=(48, 0))
 
 
 def _check_konami(event):
     """Check if the Konami code sequence is being entered on Preferences tab."""
-    if _debug_revealed[0]:
+    if _easter_egg_revealed[0]:
         return  # Already revealed, no need to check
 
     # Only respond when Preferences tab is active
@@ -1022,9 +1025,9 @@ def _check_konami(event):
     if key == expected:
         _konami_index[0] += 1
         if _konami_index[0] >= len(_konami_sequence):
-            # Konami code complete - shake window then reveal debug toggle
+            # Konami code complete - shake window then reveal hidden toggles
             _konami_index[0] = 0
-            _shake_window(callback=_reveal_debug_toggle)
+            _shake_window(callback=_reveal_hidden_toggles)
     else:
         # Reset sequence on wrong key
         _konami_index[0] = 0
@@ -1036,9 +1039,9 @@ root.bind('<Down>', _check_konami)
 root.bind('<Left>', _check_konami)
 root.bind('<Right>', _check_konami)
 
-# Telemetry toggle with description
+# Telemetry toggle with description (hidden by default - revealed by Konami code easter egg)
 telemetry_frame = ctk.CTkFrame(master=general_frame, fg_color="transparent")
-telemetry_frame.pack(pady=5, anchor='w')
+# telemetry_frame.pack(pady=5, anchor='w')  # Don't pack initially
 
 enable_telemetry_var = tk.BooleanVar(value=enable_telemetry)
 
@@ -1074,12 +1077,13 @@ def on_telemetry_toggle():
 telemetry_switch = ctk.CTkSwitch(master=telemetry_frame, text="Send Anonymous Usage Statistics",
                                  variable=enable_telemetry_var, font=("Calibri", 14),
                                  command=on_telemetry_toggle)
-telemetry_switch.pack(side="left")
+# Telemetry switch is hidden by default - revealed by Konami code easter egg (same as debug toggle)
+# telemetry_switch.pack(side="left")  # Don't pack initially
 
 telemetry_hint = ctk.CTkLabel(master=general_frame,
                               text="No personal data is collected. Only used to see how many people use Vapor.",
                               font=("Calibri", 11), text_color="gray50")
-telemetry_hint.pack(pady=(0, 5), anchor='w', padx=(48, 0))
+# telemetry_hint.pack(pady=(0, 5), anchor='w', padx=(48, 0))  # Don't pack initially
 
 pref_sep2 = ctk.CTkFrame(master=pref_scroll_frame, height=2, fg_color="gray50")
 pref_sep2.pack(fill="x", padx=40, pady=15)
