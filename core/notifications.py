@@ -228,15 +228,15 @@ won't see these messages. Vapor will still function normally.
 To enable notifications, go to:
 Windows Settings > System > Notifications"""
 
-    popup.geometry("500x340")
+    popup.geometry("500x380")
     popup.resizable(False, False)
 
     # Center on screen
     screen_width = popup.winfo_screenwidth()
     screen_height = popup.winfo_screenheight()
     x = (screen_width - 500) // 2
-    y = (screen_height - 340) // 2
-    popup.geometry(f"500x340+{x}+{y}")
+    y = (screen_height - 380) // 2
+    popup.geometry(f"500x380+{x}+{y}")
 
     # Title
     title_label = ctk.CTkLabel(
