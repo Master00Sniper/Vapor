@@ -2,9 +2,12 @@
 
 ## Git Workflow
 
-- **IMPORTANT**: Always use branch name `claude/dev-{sessionId}` for all work
-  - Example: `claude/dev-OsNc6` where `OsNc6` is the current session ID
-  - This keeps all Claude work on a consistent `dev` branch pattern
+- **IMPORTANT**: Use the branch name specified in the system instructions for the session
+  - The branch name is assigned by the system (e.g., `claude/session-setup-abc123`)
+  - Do NOT create your own branch name - always use what's provided
+- **IMPORTANT**: At the start of each new session, ensure you're working from the latest `main` branch
+  - Run `git fetch origin main && git reset --hard origin/main` if your branch is behind
+  - This ensures you don't overwrite changes that were merged since the branch was created
 - All PRs should target `main` (or `dev` if it exists)
 - Do not push directly to `main`
 - Use descriptive commit messages
@@ -21,7 +24,11 @@
 - **IMPORTANT**: When making changes to the Vapor application, update `RELEASE_NOTES.md`
 - **Only include changes that affect users**: New features, UI changes, bug fixes, settings changes
 - **Do NOT include**: Website changes, build script changes, CI/CD changes, documentation, CLAUDE.md updates
-- Group changes under headings: `New Features`, `Improvements`, `Bug Fixes`
+- Group changes under headings as appropriate:
+  - `New Features` - Entirely new functionality that didn't exist before
+  - `Improvements` - Enhancements to existing features (e.g., better UI, faster performance, more options)
+  - `Bug Fixes` - Fixes to broken functionality
+- Example: Adding a pulsing effect to the existing Save button is an **Improvement**, not a New Feature
 - Keep adding to the existing release notes while the version in `updater.py` stays the same
 - When the version in `updater.py` is incremented, start fresh release notes for the new version
 - The release notes will be automatically included in GitHub releases
