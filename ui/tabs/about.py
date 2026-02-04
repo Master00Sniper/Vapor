@@ -6,7 +6,6 @@ import customtkinter as ctk
 from PIL import Image
 
 from utils import base_dir
-from ui.state import configure_fast_scroll
 
 try:
     from updater import CURRENT_VERSION
@@ -26,7 +25,6 @@ def build_about_tab(parent_frame):
     """
     about_scroll_frame = ctk.CTkScrollableFrame(master=parent_frame, fg_color="transparent")
     about_scroll_frame.pack(fill="both", expand=True, padx=10, pady=10)
-    configure_fast_scroll(about_scroll_frame)
 
     about_title = ctk.CTkLabel(master=about_scroll_frame, text="Vapor - Open Beta Release", font=("Calibri", 29, "bold"))
     about_title.pack(pady=(10, 5), anchor='center')

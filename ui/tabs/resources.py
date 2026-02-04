@@ -8,7 +8,6 @@ from PIL import Image
 
 from ui.constants import BUILT_IN_RESOURCE_APPS
 import ui.state as state
-from ui.state import configure_fast_scroll
 
 
 def build_resources_tab(parent_frame):
@@ -23,7 +22,6 @@ def build_resources_tab(parent_frame):
     """
     res_scroll_frame = ctk.CTkScrollableFrame(master=parent_frame, fg_color="transparent")
     res_scroll_frame.pack(fill="both", expand=True, padx=10, pady=10)
-    configure_fast_scroll(res_scroll_frame)
 
     resource_title = ctk.CTkLabel(master=res_scroll_frame, text="Resource Management", font=("Calibri", 25, "bold"))
     resource_title.pack(pady=(10, 5), anchor='center')

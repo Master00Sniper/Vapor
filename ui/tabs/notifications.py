@@ -8,7 +8,6 @@ from PIL import Image
 
 from ui.constants import BUILT_IN_APPS
 import ui.state as state
-from ui.state import configure_fast_scroll
 
 
 def build_notifications_tab(parent_frame):
@@ -23,7 +22,6 @@ def build_notifications_tab(parent_frame):
     """
     notif_scroll_frame = ctk.CTkScrollableFrame(master=parent_frame, fg_color="transparent")
     notif_scroll_frame.pack(fill="both", expand=True, padx=10, pady=10)
-    configure_fast_scroll(notif_scroll_frame)
 
     notification_title = ctk.CTkLabel(master=notif_scroll_frame, text="Notification Management",
                                       font=("Calibri", 25, "bold"))

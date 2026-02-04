@@ -251,27 +251,3 @@ def load_settings_into_state(settings_dict):
     enable_gpu_temp_alert = settings_dict.get('enable_gpu_temp_alert', False)
     gpu_temp_warning_threshold = settings_dict.get('gpu_temp_warning_threshold', 80)
     gpu_temp_critical_threshold = settings_dict.get('gpu_temp_critical_threshold', 90)
-
-
-def configure_fast_scroll(scrollable_frame, scroll_units=4):
-    """
-    Configure faster mousewheel scrolling on a CTkScrollableFrame.
-
-    Args:
-        scrollable_frame: A CTkScrollableFrame instance
-        scroll_units: Number of units to scroll per mousewheel tick (default 4)
-    """
-    canvas = scrollable_frame._parent_canvas
-
-    def on_mousewheel(event):
-        # Scroll by multiple units (negative delta = scroll up on Windows)
-        # event.delta is typically 120 or -120 per tick
-        direction = -1 if event.delta > 0 else 1
-        canvas.yview_scroll(direction * scroll_units, "units")
-        return "break"  # Prevent default scroll behavior
-
-    # Bind directly to canvas - this should override default behavior
-    canvas.bind("<MouseWheel>", on_mousewheel)
-
-    # Also bind to the scrollable frame itself
-    scrollable_frame.bind("<MouseWheel>", on_mousewheel)
