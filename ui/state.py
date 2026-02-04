@@ -253,41 +253,25 @@ def load_settings_into_state(settings_dict):
     gpu_temp_critical_threshold = settings_dict.get('gpu_temp_critical_threshold', 90)
 
 
-def configure_fast_scroll(scrollable_frame, multiplier=4):
+def configure_fast_scroll(scrollable_frame, scroll_amount=80):
     """
     Configure faster mousewheel scrolling on a CTkScrollableFrame.
 
     Args:
         scrollable_frame: A CTkScrollableFrame instance
-        multiplier: How many times faster to scroll (default 4x)
+        scroll_amount: Pixels to scroll per mousewheel tick (default 80)
     """
     canvas = scrollable_frame._parent_canvas
 
     def on_mousewheel(event):
-        # Scroll by multiplied amount (negative delta = scroll down on Windows)
-        canvas.yview_scroll(int(-1 * (event.delta / 120) * multiplier), "units")
+        # Get current scroll position
+        # Scroll by fixed pixel amount (negative delta = scroll down on Windows)
+        direction = -1 if event.delta > 0 else 1
+        canvas.yview_scroll(direction * scroll_amount, "pixels")
         return "break"  # Prevent default scroll behavior
 
-    # Unbind any existing mousewheel bindings on the canvas
-    canvas.unbind_all("<MouseWheel>")
+    # Bind directly to canvas - this should override default behavior
+    canvas.bind("<MouseWheel>", on_mousewheel)
 
-    # Bind our custom handler to the root window for this scrollable frame
-    def on_mousewheel_global(event):
-        # Check if mouse is over this scrollable frame
-        try:
-            widget = event.widget
-            # Walk up the widget tree to see if we're inside this scrollable frame
-            while widget:
-                if widget == scrollable_frame or widget == canvas:
-                    canvas.yview_scroll(int(-1 * (event.delta / 120) * multiplier), "units")
-                    return "break"
-                widget = widget.master
-        except Exception:
-            pass
-        return None
-
-    # Store reference to avoid garbage collection
-    scrollable_frame._fast_scroll_handler = on_mousewheel_global
-
-    # Bind at root level
-    root.bind("<MouseWheel>", on_mousewheel_global, add=True)
+    # Also bind to the scrollable frame itself
+    scrollable_frame.bind("<MouseWheel>", on_mousewheel)
