@@ -242,7 +242,7 @@ Windows Settings > System > Notifications"""
     title_label = ctk.CTkLabel(
         master=popup,
         text=title_text,
-        font=("Calibri", 20, "bold")
+        font=("Calibri", 21, "bold")
     )
     title_label.pack(pady=(25, 15))
 
@@ -250,15 +250,19 @@ Windows Settings > System > Notifications"""
     message_label = ctk.CTkLabel(
         master=popup,
         text=message_text,
-        font=("Calibri", 12),
+        font=("Calibri", 14),
         justify="left",
         wraplength=450
     )
-    message_label.pack(pady=(0, 20), padx=25)
+    message_label.pack(pady=(0, 15), padx=25)
+
+    # Separator above buttons
+    separator = ctk.CTkFrame(master=popup, height=2, fg_color="gray50")
+    separator.pack(fill="x", padx=40, pady=(10, 0))
 
     # Button frame
     button_frame = ctk.CTkFrame(master=popup, fg_color="transparent")
-    button_frame.pack(pady=(0, 25))
+    button_frame.pack(pady=15)
 
     def on_ok():
         unregister_popup(popup)
@@ -274,11 +278,11 @@ Windows Settings > System > Notifications"""
         text="OK",
         command=on_ok,
         width=120,
-        height=35,
+        height=36,
         corner_radius=10,
-        fg_color="green",
-        hover_color="#228B22",
-        font=("Calibri", 14)
+        fg_color="#28a745",
+        hover_color="#218838",
+        font=("Calibri", 16)
     )
     ok_button.pack(side="left", padx=10)
 
@@ -287,11 +291,11 @@ Windows Settings > System > Notifications"""
         text="Don't Show Again",
         command=on_dont_show_again,
         width=150,
-        height=35,
+        height=36,
         corner_radius=10,
-        fg_color="gray",
-        hover_color="#555555",
-        font=("Calibri", 14)
+        fg_color="#6c757d",
+        hover_color="#5a6268",
+        font=("Calibri", 16)
     )
     dont_show_button.pack(side="left", padx=10)
 
@@ -454,11 +458,11 @@ def show_detailed_summary(session_data):
             text="OK",
             command=on_close,
             width=150,
-            height=35,
+            height=36,
             corner_radius=10,
-            fg_color="green",
-            hover_color="#228B22",
-            font=("Calibri", 15)
+            fg_color="#28a745",
+            hover_color="#218838",
+            font=("Calibri", 16)
         )
         ok_button.pack()
 

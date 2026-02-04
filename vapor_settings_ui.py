@@ -313,7 +313,7 @@ def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=N
     message_label = ctk.CTkLabel(
         master=content_frame,
         text=message,
-        font=("Calibri", 13),
+        font=("Calibri", 14),
         justify="left",
         wraplength=450
     )
@@ -362,11 +362,11 @@ def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=N
             text=btn_text,
             command=make_button_callback(btn_value),
             width=150,
-            height=35,
+            height=36,
             corner_radius=10,
             fg_color=fg_color,
             hover_color=hover_color,
-            font=("Calibri", 15)
+            font=("Calibri", 16)
         )
         btn.pack(side="left", padx=15)
 
