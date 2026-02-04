@@ -900,7 +900,7 @@ def _check_konami(event):
 
     # Only respond when Preferences tab is active
     try:
-        if tabview.get() != "  Preferences  ":
+        if tabview.get() != "Preferences ":
             _konami_index[0] = 0  # Reset if not on preferences tab
             return
     except Exception:
