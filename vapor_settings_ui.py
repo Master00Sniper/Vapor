@@ -669,8 +669,9 @@ resource_switch_vars = {}
 # Unsaved changes tracking
 _has_unsaved_changes = [False]
 _pulse_animation_id = [None]
-_pulse_colors = ["#28a745", "#3cb371", "#50c878", "#3cb371"]  # Green pulse cycle
+_pulse_colors = ["#FFD700", "#FFC107", "#FFB300", "#FFC107"]  # Gold pulse cycle
 _pulse_index = [0]
+_is_hovering_save = [False]
 
 def mark_dirty(*args):
     """Mark settings as having unsaved changes."""
@@ -685,18 +686,32 @@ def mark_clean():
     root.title("Vapor Settings")
     stop_save_button_pulse()
 
+def on_save_button_enter(event):
+    """Pause pulsing when hovering over save button."""
+    _is_hovering_save[0] = True
+    if _has_unsaved_changes[0]:
+        try:
+            save_button.configure(border_width=0)
+        except Exception:
+            pass
+
+def on_save_button_leave(event):
+    """Resume pulsing when leaving save button."""
+    _is_hovering_save[0] = False
+
 def start_save_button_pulse():
     """Start pulsing animation on save button border."""
     def pulse():
         if not _has_unsaved_changes[0]:
             return
-        _pulse_index[0] = (_pulse_index[0] + 1) % len(_pulse_colors)
-        color = _pulse_colors[_pulse_index[0]]
-        try:
-            save_button.configure(border_color=color, border_width=3)
-        except Exception:
-            pass
-        _pulse_animation_id[0] = root.after(300, pulse)
+        if not _is_hovering_save[0]:
+            _pulse_index[0] = (_pulse_index[0] + 1) % len(_pulse_colors)
+            color = _pulse_colors[_pulse_index[0]]
+            try:
+                save_button.configure(border_color=color, border_width=3)
+            except Exception:
+                pass
+        _pulse_animation_id[0] = root.after(150, pulse)
     pulse()
 
 def stop_save_button_pulse():
@@ -709,7 +724,7 @@ def stop_save_button_pulse():
         _pulse_animation_id[0] = None
     _pulse_index[0] = 0
     try:
-        save_button.configure(border_color="#28a745", border_width=0)
+        save_button.configure(border_color="#FFD700", border_width=0)
     except Exception:
         pass
 
@@ -2611,6 +2626,8 @@ def on_stop_vapor():
 save_button = ctk.CTkButton(master=button_frame, text="Save & Close", command=on_save_and_close, corner_radius=10,
                             fg_color="#28a745", hover_color="#218838", text_color="white", width=150, font=("Calibri", 15))
 save_button.grid(row=0, column=1, padx=15, sticky='ew')
+save_button.bind("<Enter>", on_save_button_enter)
+save_button.bind("<Leave>", on_save_button_leave)
 
 discard_button = ctk.CTkButton(master=button_frame, text="Discard & Close", command=on_discard_and_close,
                                corner_radius=10,
