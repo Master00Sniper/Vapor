@@ -9,6 +9,6 @@
 - Polished popup dialogs with larger text, consistent styling, and visual separators
 - Added helpful placeholder examples in Custom Processes fields
 - Standardized tab widths for a cleaner, more uniform appearance
-- Added unsaved changes indicator: title bar shows "Unsaved Changes" and Save button pulses green
+- Added unsaved changes indicator: title bar shows "Unsaved Changes" and Save button pulses gold
 
 ### Bug Fixes
