@@ -259,22 +259,35 @@ def configure_fast_scroll(scrollable_frame, multiplier=4):
 
     Args:
         scrollable_frame: A CTkScrollableFrame instance
-        multiplier: How many times faster to scroll (default 2x)
+        multiplier: How many times faster to scroll (default 4x)
     """
+    canvas = scrollable_frame._parent_canvas
+
     def on_mousewheel(event):
-        # Get the internal canvas from CTkScrollableFrame
-        canvas = scrollable_frame._parent_canvas
         # Scroll by multiplied amount (negative delta = scroll down on Windows)
         canvas.yview_scroll(int(-1 * (event.delta / 120) * multiplier), "units")
+        return "break"  # Prevent default scroll behavior
 
-    # Bind to the internal canvas
-    scrollable_frame._parent_canvas.bind("<MouseWheel>", on_mousewheel)
+    # Unbind any existing mousewheel bindings on the canvas
+    canvas.unbind_all("<MouseWheel>")
 
-    # Also bind to the frame inside the canvas for when mouse is over content
-    def bind_recursive(widget):
-        widget.bind("<MouseWheel>", on_mousewheel)
-        for child in widget.winfo_children():
-            bind_recursive(child)
+    # Bind our custom handler to the root window for this scrollable frame
+    def on_mousewheel_global(event):
+        # Check if mouse is over this scrollable frame
+        try:
+            widget = event.widget
+            # Walk up the widget tree to see if we're inside this scrollable frame
+            while widget:
+                if widget == scrollable_frame or widget == canvas:
+                    canvas.yview_scroll(int(-1 * (event.delta / 120) * multiplier), "units")
+                    return "break"
+                widget = widget.master
+        except Exception:
+            pass
+        return None
 
-    # Bind after a short delay to ensure all children are created
-    scrollable_frame.after(100, lambda: bind_recursive(scrollable_frame))
+    # Store reference to avoid garbage collection
+    scrollable_frame._fast_scroll_handler = on_mousewheel_global
+
+    # Bind at root level
+    root.bind("<MouseWheel>", on_mousewheel_global, add=True)
