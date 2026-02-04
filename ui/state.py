@@ -253,7 +253,7 @@ def load_settings_into_state(settings_dict):
     gpu_temp_critical_threshold = settings_dict.get('gpu_temp_critical_threshold', 90)
 
 
-def configure_fast_scroll(scrollable_frame, multiplier=2):
+def configure_fast_scroll(scrollable_frame, multiplier=4):
     """
     Configure faster mousewheel scrolling on a CTkScrollableFrame.
 
