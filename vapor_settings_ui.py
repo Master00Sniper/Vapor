@@ -670,15 +670,23 @@ resource_switch_vars = {}
 # Tab View Setup
 # =============================================================================
 
+# Tab names - standardized to 16 characters for consistent tab widths
+TAB_NOTIFICATIONS = " Notifications  "  # 13 chars centered in 16
+TAB_RESOURCES     = "   Resources    "  # 9 chars centered in 16
+TAB_THERMAL       = "    Thermal     "  # 7 chars centered in 16
+TAB_PREFERENCES   = "  Preferences   "  # 11 chars centered in 16
+TAB_HELP          = "      Help      "  # 4 chars centered in 16
+TAB_ABOUT         = "     About      "  # 5 chars centered in 16
+
 tabview = ctk.CTkTabview(master=root)
 tabview.pack(pady=10, padx=10, fill="both", expand=True)
 
-notifications_tab = tabview.add("Notifications")
-resources_tab = tabview.add(" Resources ")
-thermal_tab = tabview.add("  Thermal  ")
-preferences_tab = tabview.add("Preferences ")
-help_tab = tabview.add("   Help   ")
-about_tab = tabview.add("  About  ")
+notifications_tab = tabview.add(TAB_NOTIFICATIONS)
+resources_tab = tabview.add(TAB_RESOURCES)
+thermal_tab = tabview.add(TAB_THERMAL)
+preferences_tab = tabview.add(TAB_PREFERENCES)
+help_tab = tabview.add(TAB_HELP)
+about_tab = tabview.add(TAB_ABOUT)
 
 # =============================================================================
 # Notifications Tab
@@ -934,7 +942,7 @@ def _check_konami(event):
 
     # Only respond when Preferences tab is active
     try:
-        if tabview.get() != "Preferences ":
+        if tabview.get() != TAB_PREFERENCES:
             _konami_index[0] = 0  # Reset if not on preferences tab
             return
     except Exception:
