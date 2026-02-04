@@ -2,9 +2,9 @@
 
 ## Git Workflow
 
-- **IMPORTANT**: Use the branch name specified in the system instructions for the session
-  - The branch name is assigned by the system (e.g., `claude/session-setup-abc123`)
-  - Do NOT create your own branch name - always use what's provided
+- **IMPORTANT**: Use the branch naming convention `claude/dev-<sessionid>` for development branches
+  - The session ID is provided by the system in the branch name (e.g., if system says `claude/something-abc123`, use `claude/dev-abc123`)
+  - Always use the `claude/dev-` prefix followed by the session ID suffix
 - **IMPORTANT**: At the start of each new session, ensure you're working from the latest `main` branch
   - Run `git fetch origin main && git reset --hard origin/main` if your branch is behind
   - This ensures you don't overwrite changes that were merged since the branch was created
