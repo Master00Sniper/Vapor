@@ -822,7 +822,7 @@ custom_label = ctk.CTkLabel(master=notif_scroll_frame,
 custom_label.pack(pady=(0, 10), anchor='center')
 
 custom_entry = ctk.CTkEntry(master=notif_scroll_frame, width=550, font=("Calibri", 14),
-                            placeholder_text="Enter custom process names...")
+                            placeholder_text="e.g., Viber.exe, Skype.exe, Zoom.exe")
 custom_entry.insert(0, ','.join(custom_processes))
 custom_entry.pack(pady=(0, 20), anchor='center')
 
@@ -1456,7 +1456,7 @@ custom_resource_label = ctk.CTkLabel(master=res_scroll_frame,
 custom_resource_label.pack(pady=(0, 10), anchor='center')
 
 custom_resource_entry = ctk.CTkEntry(master=res_scroll_frame, width=550, font=("Calibri", 14),
-                                     placeholder_text="Enter custom process names...")
+                                     placeholder_text="e.g., Spotify.exe, OBS64.exe, vlc.exe")
 custom_resource_entry.insert(0, ','.join(custom_resource_processes))
 custom_resource_entry.pack(pady=(0, 20), anchor='center')
 
@@ -2090,7 +2090,7 @@ if os.path.exists(kofi_icon_path):
 
 kofi_button = ctk.CTkButton(master=kofi_frame, text="Support Vapor's Development on Ko-fi",
                             command=lambda: os.startfile("https://ko-fi.com/master00sniper"),
-                            corner_radius=10, fg_color="#72a4f2", hover_color="#5a8fd9",
+                            corner_radius=10, fg_color="#2563eb", hover_color="#1d4ed8",
                             text_color="white", width=250, font=("Calibri", 14, "bold"))
 kofi_button.pack(side="left")
 
@@ -2167,8 +2167,11 @@ disclaimer_label.pack(pady=(5, 20), anchor='center')
 # Bottom Button Bar
 # =============================================================================
 
+bottom_separator = ctk.CTkFrame(master=root, height=2, fg_color="gray50")
+bottom_separator.pack(fill="x", padx=40, pady=(10, 0))
+
 button_frame = ctk.CTkFrame(master=root, fg_color="transparent")
-button_frame.pack(pady=20, fill='x', padx=40)
+button_frame.pack(pady=15, fill='x', padx=40)
 
 button_frame.grid_columnconfigure(0, weight=1)
 button_frame.grid_columnconfigure(1, weight=0)
