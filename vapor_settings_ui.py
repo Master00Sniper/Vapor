@@ -893,6 +893,39 @@ _konami_index = [0]  # Use list to allow modification in nested function
 _debug_revealed = [False]
 
 
+def _shake_window(callback=None):
+    """Shake the window briefly as visual feedback."""
+    original_x = root.winfo_x()
+    original_y = root.winfo_y()
+    shake_distance = 8
+    shake_speed = 30  # milliseconds between movements
+
+    shake_sequence = [
+        (shake_distance, 0), (-shake_distance, 0),
+        (shake_distance, 0), (-shake_distance, 0),
+        (0, 0)  # Return to original position
+    ]
+
+    def do_shake(index=0):
+        if index < len(shake_sequence):
+            dx, dy = shake_sequence[index]
+            root.geometry(f"+{original_x + dx}+{original_y + dy}")
+            root.after(shake_speed, lambda: do_shake(index + 1))
+        else:
+            # Ensure window is back to original position
+            root.geometry(f"+{original_x}+{original_y}")
+            if callback:
+                callback()
+
+    do_shake()
+
+
+def _reveal_debug_toggle():
+    """Reveal the debug toggle after shake animation."""
+    _debug_revealed[0] = True
+    debug_mode_switch.pack(pady=5, anchor='w', after=startup_switch)
+
+
 def _check_konami(event):
     """Check if the Konami code sequence is being entered on Preferences tab."""
     if _debug_revealed[0]:
@@ -912,10 +945,9 @@ def _check_konami(event):
     if key == expected:
         _konami_index[0] += 1
         if _konami_index[0] >= len(_konami_sequence):
-            # Konami code complete - reveal debug toggle
-            _debug_revealed[0] = True
-            debug_mode_switch.pack(pady=5, anchor='w', after=startup_switch)
+            # Konami code complete - shake window then reveal debug toggle
             _konami_index[0] = 0
+            _shake_window(callback=_reveal_debug_toggle)
     else:
         # Reset sequence on wrong key
         _konami_index[0] = 0
