@@ -881,7 +881,51 @@ startup_switch.pack(pady=5, anchor='w')
 debug_mode_var = tk.BooleanVar(value=enable_debug_mode)
 debug_mode_switch = ctk.CTkSwitch(master=general_frame, text="Enable Debug Console Window",
                                   variable=debug_mode_var, font=("Calibri", 14))
-debug_mode_switch.pack(pady=5, anchor='w')
+# Debug switch is hidden by default - revealed by Konami code easter egg
+# debug_mode_switch.pack(pady=5, anchor='w')  # Don't pack initially
+
+# =============================================================================
+# Konami Code Easter Egg (reveals debug toggle)
+# =============================================================================
+
+_konami_sequence = ['Up', 'Up', 'Down', 'Down', 'Left', 'Right', 'Left', 'Right']
+_konami_index = [0]  # Use list to allow modification in nested function
+_debug_revealed = [False]
+
+
+def _check_konami(event):
+    """Check if the Konami code sequence is being entered on Preferences tab."""
+    if _debug_revealed[0]:
+        return  # Already revealed, no need to check
+
+    # Only respond when Preferences tab is active
+    try:
+        if tabview.get() != "  Preferences  ":
+            _konami_index[0] = 0  # Reset if not on preferences tab
+            return
+    except Exception:
+        return
+
+    key = event.keysym
+    expected = _konami_sequence[_konami_index[0]]
+
+    if key == expected:
+        _konami_index[0] += 1
+        if _konami_index[0] >= len(_konami_sequence):
+            # Konami code complete - reveal debug toggle
+            _debug_revealed[0] = True
+            debug_mode_switch.pack(pady=5, anchor='w', after=startup_switch)
+            _konami_index[0] = 0
+    else:
+        # Reset sequence on wrong key
+        _konami_index[0] = 0
+
+
+# Bind arrow key events to root window (works regardless of focus)
+root.bind('<Up>', _check_konami)
+root.bind('<Down>', _check_konami)
+root.bind('<Left>', _check_konami)
+root.bind('<Right>', _check_konami)
 
 # Telemetry toggle with description
 telemetry_frame = ctk.CTkFrame(master=general_frame, fg_color="transparent")
@@ -1473,7 +1517,7 @@ trouble_text = """If Vapor isn't working as expected, try these steps:
   *  Ensure Vapor is running (look for the icon in your system tray)
   *  Try clicking "Reset Settings File" or "Reset All Data" below to restore default settings
 
-If issues persist, enable Debug Mode in Preferences to see detailed logs."""
+If issues persist, submit a bug report below with logs attached."""
 
 trouble_label = ctk.CTkLabel(master=help_scroll_frame, text=trouble_text, font=("Calibri", 14),
                              wraplength=580, justify="left")
