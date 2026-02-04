@@ -116,8 +116,8 @@ _easter_egg_revealed = [False]
 
 # Save button pulse animation state
 _pulse_animation_id = None
-_pulse_direction = 1
-_pulse_intensity = 0
+_pulse_phase = 0  # 0-100 for cycling through colors
+_pulse_paused = False  # Pause during hover
 
 
 def mark_dirty(*args):
@@ -148,28 +148,46 @@ def is_dirty():
 
 def start_save_button_pulse():
     """Start the gold pulse animation on the save button border."""
-    global _pulse_animation_id, _pulse_direction, _pulse_intensity
+    global _pulse_animation_id, _pulse_phase, _pulse_paused
     if save_button is None:
         return
 
+    # Color keyframes for the animation cycle (gold -> bright gold -> orange -> gold)
+    # Each color is (R, G, B)
+    colors = [
+        (0xd4, 0xa0, 0x17),  # Gold
+        (0xff, 0xd7, 0x00),  # Bright gold
+        (0xff, 0xb3, 0x00),  # Orange-gold
+        (0xff, 0xd7, 0x00),  # Bright gold
+        (0xd4, 0xa0, 0x17),  # Gold
+        (0xb8, 0x86, 0x0b),  # Dark gold
+    ]
+
     def pulse():
-        global _pulse_animation_id, _pulse_direction, _pulse_intensity
+        global _pulse_animation_id, _pulse_phase, _pulse_paused
         if not _is_dirty:
             return
 
-        _pulse_intensity += _pulse_direction * 0.05
-        if _pulse_intensity >= 1:
-            _pulse_intensity = 1
-            _pulse_direction = -1
-        elif _pulse_intensity <= 0:
-            _pulse_intensity = 0
-            _pulse_direction = 1
+        if _pulse_paused:
+            # Keep checking but don't animate
+            _pulse_animation_id = root.after(30, pulse)
+            return
 
-        # Interpolate border color from transparent to gold (#d4a017)
-        # Use intensity to control alpha-like effect by blending with background
-        r = int(0x2d + (0xd4 - 0x2d) * _pulse_intensity)
-        g = int(0x8a + (0xa0 - 0x8a) * _pulse_intensity)
-        b = int(0x4e + (0x17 - 0x4e) * _pulse_intensity)
+        # Advance phase (0-100)
+        _pulse_phase = (_pulse_phase + 4) % 100
+
+        # Map phase to color index with interpolation
+        num_colors = len(colors)
+        position = (_pulse_phase / 100) * num_colors
+        idx1 = int(position) % num_colors
+        idx2 = (idx1 + 1) % num_colors
+        t = position - int(position)  # Interpolation factor 0-1
+
+        # Interpolate between adjacent colors
+        c1, c2 = colors[idx1], colors[idx2]
+        r = int(c1[0] + (c2[0] - c1[0]) * t)
+        g = int(c1[1] + (c2[1] - c1[1]) * t)
+        b = int(c1[2] + (c2[2] - c1[2]) * t)
         border_color = f'#{r:02x}{g:02x}{b:02x}'
 
         try:
@@ -177,24 +195,51 @@ def start_save_button_pulse():
         except Exception:
             pass
 
-        _pulse_animation_id = root.after(50, pulse)
+        _pulse_animation_id = root.after(30, pulse)  # Faster: 30ms instead of 50ms
 
     if _pulse_animation_id is None:
-        _pulse_direction = 1
-        _pulse_intensity = 0
+        _pulse_phase = 0
+        _pulse_paused = False
+        # Bind hover events to pause/resume animation
+        try:
+            save_button.bind("<Enter>", _on_save_button_enter)
+            save_button.bind("<Leave>", _on_save_button_leave)
+        except Exception:
+            pass
         pulse()
+
+
+def _on_save_button_enter(event):
+    """Pause pulse animation on hover."""
+    global _pulse_paused
+    _pulse_paused = True
+    # Set a static gold border during hover
+    if save_button and _is_dirty:
+        try:
+            save_button.configure(border_color="#ffd700", border_width=3)
+        except Exception:
+            pass
+
+
+def _on_save_button_leave(event):
+    """Resume pulse animation after hover."""
+    global _pulse_paused
+    _pulse_paused = False
 
 
 def stop_save_button_pulse():
     """Stop the save button pulse animation and reset border."""
-    global _pulse_animation_id
+    global _pulse_animation_id, _pulse_paused
     if _pulse_animation_id is not None:
         if root:
             root.after_cancel(_pulse_animation_id)
         _pulse_animation_id = None
+    _pulse_paused = False
     if save_button:
         try:
             save_button.configure(border_width=0)
+            save_button.unbind("<Enter>")
+            save_button.unbind("<Leave>")
         except Exception:
             pass
 
