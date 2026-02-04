@@ -781,9 +781,9 @@ close_startup_label.grid(row=0, column=0, pady=8, padx=10, sticky='w')
 
 close_startup_var = tk.StringVar(value="Enabled" if close_on_startup else "Disabled")
 ctk.CTkRadioButton(master=options_frame, text="Enabled", variable=close_startup_var, value="Enabled",
-                   font=("Calibri", 14)).grid(row=0, column=1, pady=8, padx=15)
+                   font=("Calibri", 14), command=mark_dirty).grid(row=0, column=1, pady=8, padx=15)
 ctk.CTkRadioButton(master=options_frame, text="Disabled", variable=close_startup_var, value="Disabled",
-                   font=("Calibri", 14)).grid(row=0, column=2, pady=8, padx=15)
+                   font=("Calibri", 14), command=mark_dirty).grid(row=0, column=2, pady=8, padx=15)
 
 close_hotkey_label = ctk.CTkLabel(master=options_frame, text="Close Apps With Hotkey (Ctrl+Alt+K):",
                                   font=("Calibri", 14))
@@ -791,9 +791,9 @@ close_hotkey_label.grid(row=1, column=0, pady=8, padx=10, sticky='w')
 
 close_hotkey_var = tk.StringVar(value="Enabled" if close_on_hotkey else "Disabled")
 ctk.CTkRadioButton(master=options_frame, text="Enabled", variable=close_hotkey_var, value="Enabled",
-                   font=("Calibri", 14)).grid(row=1, column=1, pady=8, padx=15)
+                   font=("Calibri", 14), command=mark_dirty).grid(row=1, column=1, pady=8, padx=15)
 ctk.CTkRadioButton(master=options_frame, text="Disabled", variable=close_hotkey_var, value="Disabled",
-                   font=("Calibri", 14)).grid(row=1, column=2, pady=8, padx=15)
+                   font=("Calibri", 14), command=mark_dirty).grid(row=1, column=2, pady=8, padx=15)
 
 relaunch_exit_label = ctk.CTkLabel(master=options_frame, text="Relaunch Apps When Game Ends:",
                                    font=("Calibri", 14))
@@ -801,9 +801,9 @@ relaunch_exit_label.grid(row=2, column=0, pady=8, padx=10, sticky='w')
 
 relaunch_exit_var = tk.StringVar(value="Enabled" if relaunch_on_exit else "Disabled")
 ctk.CTkRadioButton(master=options_frame, text="Enabled", variable=relaunch_exit_var, value="Enabled",
-                   font=("Calibri", 14)).grid(row=2, column=1, pady=8, padx=15)
+                   font=("Calibri", 14), command=mark_dirty).grid(row=2, column=1, pady=8, padx=15)
 ctk.CTkRadioButton(master=options_frame, text="Disabled", variable=relaunch_exit_var, value="Disabled",
-                   font=("Calibri", 14)).grid(row=2, column=2, pady=8, padx=15)
+                   font=("Calibri", 14), command=mark_dirty).grid(row=2, column=2, pady=8, padx=15)
 
 notif_sep2 = ctk.CTkFrame(master=notif_scroll_frame, height=2, fg_color="gray50")
 notif_sep2.pack(fill="x", padx=40, pady=15)
@@ -1406,9 +1406,9 @@ resource_close_startup_label.grid(row=0, column=0, pady=8, padx=10, sticky='w')
 
 resource_close_startup_var = tk.StringVar(value="Enabled" if resource_close_on_startup else "Disabled")
 ctk.CTkRadioButton(master=resource_options_frame, text="Enabled", variable=resource_close_startup_var, value="Enabled",
-                   font=("Calibri", 14)).grid(row=0, column=1, pady=8, padx=15)
+                   font=("Calibri", 14), command=mark_dirty).grid(row=0, column=1, pady=8, padx=15)
 ctk.CTkRadioButton(master=resource_options_frame, text="Disabled", variable=resource_close_startup_var,
-                   value="Disabled", font=("Calibri", 14)).grid(row=0, column=2, pady=8, padx=15)
+                   value="Disabled", font=("Calibri", 14), command=mark_dirty).grid(row=0, column=2, pady=8, padx=15)
 
 resource_close_hotkey_label = ctk.CTkLabel(master=resource_options_frame,
                                            text="Close Apps With Hotkey (Ctrl+Alt+K):", font=("Calibri", 14))
@@ -1416,9 +1416,9 @@ resource_close_hotkey_label.grid(row=1, column=0, pady=8, padx=10, sticky='w')
 
 resource_close_hotkey_var = tk.StringVar(value="Enabled" if resource_close_on_hotkey else "Disabled")
 ctk.CTkRadioButton(master=resource_options_frame, text="Enabled", variable=resource_close_hotkey_var, value="Enabled",
-                   font=("Calibri", 14)).grid(row=1, column=1, pady=8, padx=15)
+                   font=("Calibri", 14), command=mark_dirty).grid(row=1, column=1, pady=8, padx=15)
 ctk.CTkRadioButton(master=resource_options_frame, text="Disabled", variable=resource_close_hotkey_var, value="Disabled",
-                   font=("Calibri", 14)).grid(row=1, column=2, pady=8, padx=15)
+                   font=("Calibri", 14), command=mark_dirty).grid(row=1, column=2, pady=8, padx=15)
 
 resource_relaunch_exit_label = ctk.CTkLabel(master=resource_options_frame,
                                             text="Relaunch Apps When Game Ends:",
@@ -1427,9 +1427,9 @@ resource_relaunch_exit_label.grid(row=2, column=0, pady=8, padx=10, sticky='w')
 
 resource_relaunch_exit_var = tk.StringVar(value="Enabled" if resource_relaunch_on_exit else "Disabled")
 ctk.CTkRadioButton(master=resource_options_frame, text="Enabled", variable=resource_relaunch_exit_var, value="Enabled",
-                   font=("Calibri", 14)).grid(row=2, column=1, pady=8, padx=15)
+                   font=("Calibri", 14), command=mark_dirty).grid(row=2, column=1, pady=8, padx=15)
 ctk.CTkRadioButton(master=resource_options_frame, text="Disabled", variable=resource_relaunch_exit_var,
-                   value="Disabled", font=("Calibri", 14)).grid(row=2, column=2, pady=8, padx=15)
+                   value="Disabled", font=("Calibri", 14), command=mark_dirty).grid(row=2, column=2, pady=8, padx=15)
 
 res_sep2 = ctk.CTkFrame(master=res_scroll_frame, height=2, fg_color="gray50")
 res_sep2.pack(fill="x", padx=40, pady=15)
