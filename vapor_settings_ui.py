@@ -666,6 +666,53 @@ elif len(sys.argv) > 1:
 switch_vars = {}
 resource_switch_vars = {}
 
+# Unsaved changes tracking
+_has_unsaved_changes = [False]
+_pulse_animation_id = [None]
+_pulse_colors = ["#28a745", "#3cb371", "#50c878", "#3cb371"]  # Green pulse cycle
+_pulse_index = [0]
+
+def mark_dirty(*args):
+    """Mark settings as having unsaved changes."""
+    if not _has_unsaved_changes[0]:
+        _has_unsaved_changes[0] = True
+        root.title("Vapor Settings - Unsaved Changes")
+        start_save_button_pulse()
+
+def mark_clean():
+    """Mark settings as saved (no unsaved changes)."""
+    _has_unsaved_changes[0] = False
+    root.title("Vapor Settings")
+    stop_save_button_pulse()
+
+def start_save_button_pulse():
+    """Start pulsing animation on save button border."""
+    def pulse():
+        if not _has_unsaved_changes[0]:
+            return
+        _pulse_index[0] = (_pulse_index[0] + 1) % len(_pulse_colors)
+        color = _pulse_colors[_pulse_index[0]]
+        try:
+            save_button.configure(border_color=color, border_width=3)
+        except Exception:
+            pass
+        _pulse_animation_id[0] = root.after(300, pulse)
+    pulse()
+
+def stop_save_button_pulse():
+    """Stop the pulsing animation and reset button."""
+    if _pulse_animation_id[0]:
+        try:
+            root.after_cancel(_pulse_animation_id[0])
+        except Exception:
+            pass
+        _pulse_animation_id[0] = None
+    _pulse_index[0] = 0
+    try:
+        save_button.configure(border_color="#28a745", border_width=0)
+    except Exception:
+        pass
+
 # =============================================================================
 # Tab View Setup
 # =============================================================================
@@ -780,7 +827,8 @@ for i in range(4):
 
     var = tk.BooleanVar(value=display_name in selected_notification_apps)
     switch_vars[display_name] = var
-    switch = ctk.CTkSwitch(master=row_frame, text=display_name, variable=var, font=("Calibri", 14))
+    switch = ctk.CTkSwitch(master=row_frame, text=display_name, variable=var, font=("Calibri", 14),
+                           command=mark_dirty)
     switch.pack(side="left")
 
 for i in range(4, 8):
@@ -800,7 +848,8 @@ for i in range(4, 8):
 
     var = tk.BooleanVar(value=display_name in selected_notification_apps)
     switch_vars[display_name] = var
-    switch = ctk.CTkSwitch(master=row_frame, text=display_name, variable=var, font=("Calibri", 14))
+    switch = ctk.CTkSwitch(master=row_frame, text=display_name, variable=var, font=("Calibri", 14),
+                           command=mark_dirty)
     switch.pack(side="left")
 
 
@@ -809,6 +858,7 @@ def on_all_apps_toggle():
     state = all_apps_var.get()
     for var in switch_vars.values():
         var.set(state)
+    mark_dirty()
 
 
 all_apps_var = tk.BooleanVar(value=all(display_name in selected_notification_apps for display_name in
@@ -833,6 +883,7 @@ custom_entry = ctk.CTkEntry(master=notif_scroll_frame, width=550, font=("Calibri
                             placeholder_text="e.g., Viber.exe, Skype.exe, Zoom.exe")
 custom_entry.insert(0, ','.join(custom_processes))
 custom_entry.pack(pady=(0, 20), anchor='center')
+custom_entry.bind("<KeyRelease>", mark_dirty)
 
 # =============================================================================
 # Preferences Tab
@@ -860,12 +911,14 @@ general_frame.pack(pady=5, padx=40, anchor='center')
 
 launch_settings_on_start_var = tk.BooleanVar(value=launch_settings_on_start)
 launch_settings_on_start_switch = ctk.CTkSwitch(master=general_frame, text="Open Settings Window on Vapor Start",
-                                                variable=launch_settings_on_start_var, font=("Calibri", 14))
+                                                variable=launch_settings_on_start_var, font=("Calibri", 14),
+                                                command=mark_dirty)
 launch_settings_on_start_switch.pack(pady=5, anchor='w')
 
 playtime_summary_var = tk.BooleanVar(value=enable_playtime_summary)
 playtime_summary_switch = ctk.CTkSwitch(master=general_frame, text="Show Playtime Summary After Gaming",
-                                        variable=playtime_summary_var, font=("Calibri", 14))
+                                        variable=playtime_summary_var, font=("Calibri", 14),
+                                        command=mark_dirty)
 playtime_summary_switch.pack(pady=5, anchor='w')
 
 # Playtime summary mode selection (Brief vs Detailed)
@@ -878,18 +931,18 @@ summary_mode_label.pack(side="left", padx=(0, 10))
 
 playtime_summary_mode_var = tk.StringVar(value=playtime_summary_mode)
 ctk.CTkRadioButton(master=summary_mode_frame, text="Brief", variable=playtime_summary_mode_var,
-                   value="brief", font=("Calibri", 13)).pack(side="left", padx=10)
+                   value="brief", font=("Calibri", 13), command=mark_dirty).pack(side="left", padx=10)
 ctk.CTkRadioButton(master=summary_mode_frame, text="Detailed", variable=playtime_summary_mode_var,
-                   value="detailed", font=("Calibri", 13)).pack(side="left", padx=10)
+                   value="detailed", font=("Calibri", 13), command=mark_dirty).pack(side="left", padx=10)
 
 startup_var = tk.BooleanVar(value=launch_at_startup)
 startup_switch = ctk.CTkSwitch(master=general_frame, text="Launch Vapor at System Startup", variable=startup_var,
-                               font=("Calibri", 14))
+                               font=("Calibri", 14), command=mark_dirty)
 startup_switch.pack(pady=5, anchor='w')
 
 debug_mode_var = tk.BooleanVar(value=enable_debug_mode)
 debug_mode_switch = ctk.CTkSwitch(master=general_frame, text="Enable Debug Console Window",
-                                  variable=debug_mode_var, font=("Calibri", 14))
+                                  variable=debug_mode_var, font=("Calibri", 14), command=mark_dirty)
 # Debug switch is hidden by default - revealed by Konami code easter egg
 # debug_mode_switch.pack(pady=5, anchor='w')  # Don't pack initially
 
@@ -999,6 +1052,8 @@ def on_telemetry_toggle():
         if not response:
             # User chose to leave it on - revert the toggle
             enable_telemetry_var.set(True)
+            return  # No change was made
+    mark_dirty()
 
 
 telemetry_switch = ctk.CTkSwitch(master=telemetry_frame, text="Send Anonymous Usage Statistics",
@@ -1044,13 +1099,14 @@ system_current_value_label.pack(anchor='center')
 def update_system_audio_label(value):
     """Update the system audio percentage display."""
     system_current_value_label.configure(text=f"{int(value)}%")
+    mark_dirty()
 
 
 system_audio_slider.configure(command=update_system_audio_label)
 
 enable_system_audio_var = tk.BooleanVar(value=enable_system_audio)
 enable_system_audio_switch = ctk.CTkSwitch(master=system_audio_column, text="Enable", variable=enable_system_audio_var,
-                                           font=("Calibri", 14))
+                                           font=("Calibri", 14), command=mark_dirty)
 enable_system_audio_switch.pack(pady=8, anchor='center')
 
 game_audio_column = ctk.CTkFrame(master=audio_frame, fg_color="transparent")
@@ -1071,13 +1127,14 @@ game_current_value_label.pack(anchor='center')
 def update_game_audio_label(value):
     """Update the game audio percentage display."""
     game_current_value_label.configure(text=f"{int(value)}%")
+    mark_dirty()
 
 
 game_audio_slider.configure(command=update_game_audio_label)
 
 enable_game_audio_var = tk.BooleanVar(value=enable_game_audio)
 enable_game_audio_switch = ctk.CTkSwitch(master=game_audio_column, text="Enable", variable=enable_game_audio_var,
-                                         font=("Calibri", 14))
+                                         font=("Calibri", 14), command=mark_dirty)
 enable_game_audio_switch.pack(pady=8, anchor='center')
 
 # Note about exclusive audio mode - centered below both columns
@@ -1111,12 +1168,12 @@ during_power_label.pack(anchor='center')
 during_power_var = tk.StringVar(value=during_power_plan)
 during_power_combobox = ctk.CTkComboBox(master=during_power_column,
                                         values=["High Performance", "Balanced", "Power saver"],
-                                        variable=during_power_var, width=160)
+                                        variable=during_power_var, width=160, command=mark_dirty)
 during_power_combobox.pack(pady=5, anchor='center')
 
 enable_during_power_var = tk.BooleanVar(value=enable_during_power)
 enable_during_power_switch = ctk.CTkSwitch(master=during_power_column, text="Enable", variable=enable_during_power_var,
-                                           font=("Calibri", 14))
+                                           font=("Calibri", 14), command=mark_dirty)
 enable_during_power_switch.pack(pady=8, anchor='center')
 
 after_power_column = ctk.CTkFrame(master=power_frame, fg_color="transparent")
@@ -1128,12 +1185,12 @@ after_power_label.pack(anchor='center')
 after_power_var = tk.StringVar(value=after_power_plan)
 after_power_combobox = ctk.CTkComboBox(master=after_power_column,
                                        values=["High Performance", "Balanced", "Power saver"],
-                                       variable=after_power_var, width=160)
+                                       variable=after_power_var, width=160, command=mark_dirty)
 after_power_combobox.pack(pady=5, anchor='center')
 
 enable_after_power_var = tk.BooleanVar(value=enable_after_power)
 enable_after_power_switch = ctk.CTkSwitch(master=after_power_column, text="Enable", variable=enable_after_power_var,
-                                          font=("Calibri", 14))
+                                          font=("Calibri", 14), command=mark_dirty)
 enable_after_power_switch.pack(pady=8, anchor='center')
 
 pref_sep4 = ctk.CTkFrame(master=pref_scroll_frame, height=2, fg_color="gray50")
@@ -1152,12 +1209,14 @@ game_mode_frame.pack(pady=10, anchor='center')
 
 enable_game_mode_start_var = tk.BooleanVar(value=enable_game_mode_start)
 enable_game_mode_start_switch = ctk.CTkSwitch(master=game_mode_frame, text="Enable Game Mode When Game Starts",
-                                              variable=enable_game_mode_start_var, font=("Calibri", 14))
+                                              variable=enable_game_mode_start_var, font=("Calibri", 14),
+                                              command=mark_dirty)
 enable_game_mode_start_switch.pack(pady=5, anchor='w')
 
 enable_game_mode_end_var = tk.BooleanVar(value=enable_game_mode_end)
 enable_game_mode_end_switch = ctk.CTkSwitch(master=game_mode_frame, text="Disable Game Mode When Game Ends",
-                                            variable=enable_game_mode_end_var, font=("Calibri", 14))
+                                            variable=enable_game_mode_end_var, font=("Calibri", 14),
+                                            command=mark_dirty)
 enable_game_mode_end_switch.pack(pady=5, anchor='w')
 
 # =============================================================================
@@ -1192,12 +1251,14 @@ thermal_frame.pack(pady=10, anchor='center')
 
 enable_gpu_thermal_var = tk.BooleanVar(value=enable_gpu_thermal)
 enable_gpu_thermal_switch = ctk.CTkSwitch(master=thermal_frame, text="Capture GPU Temperature",
-                                          variable=enable_gpu_thermal_var, font=("Calibri", 14))
+                                          variable=enable_gpu_thermal_var, font=("Calibri", 14),
+                                          command=mark_dirty)
 enable_gpu_thermal_switch.pack(pady=5, anchor='w')
 
 enable_cpu_thermal_var = tk.BooleanVar(value=enable_cpu_thermal)
 enable_cpu_thermal_switch = ctk.CTkSwitch(master=thermal_frame, text="Capture CPU Temperature",
-                                          variable=enable_cpu_thermal_var, font=("Calibri", 14))
+                                          variable=enable_cpu_thermal_var, font=("Calibri", 14),
+                                          command=mark_dirty)
 enable_cpu_thermal_switch.pack(pady=(5, 0), anchor='w')
 
 cpu_thermal_note = ctk.CTkLabel(master=thermal_frame, text="(requires admin, will auto-install driver)",
@@ -1229,7 +1290,8 @@ gpu_alert_row.pack(pady=5, fill='x')
 
 enable_gpu_temp_alert_var = tk.BooleanVar(value=enable_gpu_temp_alert)
 enable_gpu_temp_alert_switch = ctk.CTkSwitch(master=gpu_alert_row, text="Enable",
-                                              variable=enable_gpu_temp_alert_var, font=("Calibri", 14))
+                                              variable=enable_gpu_temp_alert_var, font=("Calibri", 14),
+                                              command=mark_dirty)
 enable_gpu_temp_alert_switch.pack(side='left', padx=(0, 20))
 
 gpu_warning_label = ctk.CTkLabel(master=gpu_alert_row, text="Warning:", font=("Calibri", 14))
@@ -1239,6 +1301,7 @@ gpu_temp_warning_threshold_var = tk.StringVar(value=str(gpu_temp_warning_thresho
 gpu_warning_entry = ctk.CTkEntry(master=gpu_alert_row, textvariable=gpu_temp_warning_threshold_var,
                                   width=50, font=("Calibri", 14))
 gpu_warning_entry.pack(side='left', padx=(0, 3))
+gpu_warning_entry.bind("<KeyRelease>", mark_dirty)
 
 gpu_warning_unit = ctk.CTkLabel(master=gpu_alert_row, text="°C", font=("Calibri", 14))
 gpu_warning_unit.pack(side='left', padx=(0, 15))
@@ -1250,6 +1313,7 @@ gpu_temp_critical_threshold_var = tk.StringVar(value=str(gpu_temp_critical_thres
 gpu_critical_entry = ctk.CTkEntry(master=gpu_alert_row, textvariable=gpu_temp_critical_threshold_var,
                                    width=50, font=("Calibri", 14))
 gpu_critical_entry.pack(side='left', padx=(0, 3))
+gpu_critical_entry.bind("<KeyRelease>", mark_dirty)
 
 gpu_critical_unit = ctk.CTkLabel(master=gpu_alert_row, text="°C", font=("Calibri", 14))
 gpu_critical_unit.pack(side='left')
@@ -1263,7 +1327,8 @@ cpu_alert_row.pack(pady=5, fill='x')
 
 enable_cpu_temp_alert_var = tk.BooleanVar(value=enable_cpu_temp_alert)
 enable_cpu_temp_alert_switch = ctk.CTkSwitch(master=cpu_alert_row, text="Enable",
-                                              variable=enable_cpu_temp_alert_var, font=("Calibri", 14))
+                                              variable=enable_cpu_temp_alert_var, font=("Calibri", 14),
+                                              command=mark_dirty)
 enable_cpu_temp_alert_switch.pack(side='left', padx=(0, 20))
 
 cpu_warning_label = ctk.CTkLabel(master=cpu_alert_row, text="Warning:", font=("Calibri", 14))
@@ -1273,6 +1338,7 @@ cpu_temp_warning_threshold_var = tk.StringVar(value=str(cpu_temp_warning_thresho
 cpu_warning_entry = ctk.CTkEntry(master=cpu_alert_row, textvariable=cpu_temp_warning_threshold_var,
                                   width=50, font=("Calibri", 14))
 cpu_warning_entry.pack(side='left', padx=(0, 3))
+cpu_warning_entry.bind("<KeyRelease>", mark_dirty)
 
 cpu_warning_unit = ctk.CTkLabel(master=cpu_alert_row, text="°C", font=("Calibri", 14))
 cpu_warning_unit.pack(side='left', padx=(0, 15))
@@ -1284,6 +1350,7 @@ cpu_temp_critical_threshold_var = tk.StringVar(value=str(cpu_temp_critical_thres
 cpu_critical_entry = ctk.CTkEntry(master=cpu_alert_row, textvariable=cpu_temp_critical_threshold_var,
                                    width=50, font=("Calibri", 14))
 cpu_critical_entry.pack(side='left', padx=(0, 3))
+cpu_critical_entry.bind("<KeyRelease>", mark_dirty)
 
 cpu_critical_unit = ctk.CTkLabel(master=cpu_alert_row, text="°C", font=("Calibri", 14))
 cpu_critical_unit.pack(side='left')
@@ -1391,7 +1458,8 @@ for i in range(4):
 
     var = tk.BooleanVar(value=display_name in selected_resource_apps)
     resource_switch_vars[display_name] = var
-    switch = ctk.CTkSwitch(master=row_frame, text=display_name, variable=var, font=("Calibri", 14))
+    switch = ctk.CTkSwitch(master=row_frame, text=display_name, variable=var, font=("Calibri", 14),
+                           command=mark_dirty)
     switch.pack(side="left")
 
 # Cloud/Media column (indices 4-7)
@@ -1412,7 +1480,8 @@ for i in range(4, 8):
 
     var = tk.BooleanVar(value=display_name in selected_resource_apps)
     resource_switch_vars[display_name] = var
-    switch = ctk.CTkSwitch(master=row_frame, text=display_name, variable=var, font=("Calibri", 14))
+    switch = ctk.CTkSwitch(master=row_frame, text=display_name, variable=var, font=("Calibri", 14),
+                           command=mark_dirty)
     switch.pack(side="left")
 
 # Gaming Utilities column (indices 8-11)
@@ -1433,7 +1502,8 @@ for i in range(8, 12):
 
     var = tk.BooleanVar(value=display_name in selected_resource_apps)
     resource_switch_vars[display_name] = var
-    switch = ctk.CTkSwitch(master=row_frame, text=display_name, variable=var, font=("Calibri", 14))
+    switch = ctk.CTkSwitch(master=row_frame, text=display_name, variable=var, font=("Calibri", 14),
+                           command=mark_dirty)
     switch.pack(side="left")
 
 
@@ -1442,6 +1512,7 @@ def on_resource_all_apps_toggle():
     state = resource_all_apps_var.get()
     for var in resource_switch_vars.values():
         var.set(state)
+    mark_dirty()
 
 
 resource_all_apps_var = tk.BooleanVar(value=all(display_name in selected_resource_apps for display_name in
@@ -1467,6 +1538,7 @@ custom_resource_entry = ctk.CTkEntry(master=res_scroll_frame, width=550, font=("
                                      placeholder_text="e.g., Spotify.exe, OBS64.exe, vlc.exe")
 custom_resource_entry.insert(0, ','.join(custom_resource_processes))
 custom_resource_entry.pack(pady=(0, 20), anchor='center')
+custom_resource_entry.bind("<KeyRelease>", mark_dirty)
 
 # =============================================================================
 # Help Tab
