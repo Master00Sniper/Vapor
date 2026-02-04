@@ -40,5 +40,8 @@ sys.path.append(application_path)
 
 from ui.app import run_settings_ui
 
-if __name__ == "__main__":
-    run_settings_ui()
+# Run the settings UI when this module is imported or executed directly.
+# The main Vapor process uses `import vapor_settings_ui` to launch the UI,
+# so we need to call run_settings_ui() at module load time, not just when
+# run as __main__.
+run_settings_ui()
