@@ -8,5 +8,6 @@
 - Improved button colors with clearer visual hierarchy (green=safe, orange=caution, red=destructive)
 - Polished popup dialogs with larger text, consistent styling, and visual separators
 - Added helpful placeholder examples in Custom Processes fields
+- Standardized tab widths for a cleaner, more uniform appearance
 
 ### Bug Fixes
