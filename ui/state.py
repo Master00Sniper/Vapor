@@ -147,7 +147,7 @@ def is_dirty():
 
 
 def start_save_button_pulse():
-    """Start the gold pulse animation on the save button."""
+    """Start the gold pulse animation on the save button border."""
     global _pulse_animation_id, _pulse_direction, _pulse_intensity
     if save_button is None:
         return
@@ -165,14 +165,15 @@ def start_save_button_pulse():
             _pulse_intensity = 0
             _pulse_direction = 1
 
-        # Interpolate between green (#2d8a4e) and gold (#d4a017)
+        # Interpolate border color from transparent to gold (#d4a017)
+        # Use intensity to control alpha-like effect by blending with background
         r = int(0x2d + (0xd4 - 0x2d) * _pulse_intensity)
         g = int(0x8a + (0xa0 - 0x8a) * _pulse_intensity)
         b = int(0x4e + (0x17 - 0x4e) * _pulse_intensity)
-        color = f'#{r:02x}{g:02x}{b:02x}'
+        border_color = f'#{r:02x}{g:02x}{b:02x}'
 
         try:
-            save_button.configure(fg_color=color)
+            save_button.configure(border_color=border_color, border_width=3)
         except Exception:
             pass
 
@@ -185,7 +186,7 @@ def start_save_button_pulse():
 
 
 def stop_save_button_pulse():
-    """Stop the save button pulse animation and reset to green."""
+    """Stop the save button pulse animation and reset border."""
     global _pulse_animation_id
     if _pulse_animation_id is not None:
         if root:
@@ -193,7 +194,7 @@ def stop_save_button_pulse():
         _pulse_animation_id = None
     if save_button:
         try:
-            save_button.configure(fg_color="#2d8a4e")
+            save_button.configure(border_width=0)
         except Exception:
             pass
 
