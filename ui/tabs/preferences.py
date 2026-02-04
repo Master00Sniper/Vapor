@@ -6,6 +6,7 @@ import tkinter as tk
 import customtkinter as ctk
 
 import ui.state as state
+from ui.state import configure_fast_scroll
 from ui.constants import TAB_PREFERENCES
 from ui.dialogs import show_vapor_dialog
 
@@ -86,6 +87,7 @@ def build_preferences_tab(parent_frame):
     """
     pref_scroll_frame = ctk.CTkScrollableFrame(master=parent_frame, fg_color="transparent")
     pref_scroll_frame.pack(fill="both", expand=True, padx=10, pady=10)
+    configure_fast_scroll(pref_scroll_frame)
 
     preferences_title = ctk.CTkLabel(master=pref_scroll_frame, text="Preferences", font=("Calibri", 25, "bold"))
     preferences_title.pack(pady=(10, 5), anchor='center')

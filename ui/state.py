@@ -251,3 +251,30 @@ def load_settings_into_state(settings_dict):
     enable_gpu_temp_alert = settings_dict.get('enable_gpu_temp_alert', False)
     gpu_temp_warning_threshold = settings_dict.get('gpu_temp_warning_threshold', 80)
     gpu_temp_critical_threshold = settings_dict.get('gpu_temp_critical_threshold', 90)
+
+
+def configure_fast_scroll(scrollable_frame, multiplier=2):
+    """
+    Configure faster mousewheel scrolling on a CTkScrollableFrame.
+
+    Args:
+        scrollable_frame: A CTkScrollableFrame instance
+        multiplier: How many times faster to scroll (default 2x)
+    """
+    def on_mousewheel(event):
+        # Get the internal canvas from CTkScrollableFrame
+        canvas = scrollable_frame._parent_canvas
+        # Scroll by multiplied amount (negative delta = scroll down on Windows)
+        canvas.yview_scroll(int(-1 * (event.delta / 120) * multiplier), "units")
+
+    # Bind to the internal canvas
+    scrollable_frame._parent_canvas.bind("<MouseWheel>", on_mousewheel)
+
+    # Also bind to the frame inside the canvas for when mouse is over content
+    def bind_recursive(widget):
+        widget.bind("<MouseWheel>", on_mousewheel)
+        for child in widget.winfo_children():
+            bind_recursive(child)
+
+    # Bind after a short delay to ensure all children are created
+    scrollable_frame.after(100, lambda: bind_recursive(scrollable_frame))

@@ -15,6 +15,7 @@ from utils import log as debug_log, appdata_dir, SETTINGS_FILE
 from platform_utils import is_admin, is_pawnio_installed
 from ui.dialogs import show_vapor_dialog
 import ui.state as state
+from ui.state import configure_fast_scroll
 
 try:
     from updater import CURRENT_VERSION
@@ -34,6 +35,7 @@ def build_help_tab(parent_frame):
     """
     help_scroll_frame = ctk.CTkScrollableFrame(master=parent_frame, fg_color="transparent")
     help_scroll_frame.pack(fill="both", expand=True, padx=10, pady=10)
+    configure_fast_scroll(help_scroll_frame)
 
     help_title = ctk.CTkLabel(master=help_scroll_frame, text="Help, Support & Bug Reports", font=("Calibri", 25, "bold"))
     help_title.pack(pady=(10, 5), anchor='center')

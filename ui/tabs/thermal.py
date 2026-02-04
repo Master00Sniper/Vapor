@@ -5,6 +5,7 @@ import tkinter as tk
 import customtkinter as ctk
 
 import ui.state as state
+from ui.state import configure_fast_scroll
 
 
 def build_thermal_tab(parent_frame):
@@ -19,6 +20,7 @@ def build_thermal_tab(parent_frame):
     """
     thermal_scroll_frame = ctk.CTkScrollableFrame(master=parent_frame, fg_color="transparent")
     thermal_scroll_frame.pack(fill="both", expand=True, padx=10, pady=10)
+    configure_fast_scroll(thermal_scroll_frame)
 
     thermal_main_title = ctk.CTkLabel(master=thermal_scroll_frame, text="Thermal Management", font=("Calibri", 25, "bold"))
     thermal_main_title.pack(pady=(10, 5), anchor='center')
