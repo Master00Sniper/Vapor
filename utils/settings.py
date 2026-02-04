@@ -11,26 +11,14 @@ from utils.logging import log
 # =============================================================================
 
 DEFAULT_SETTINGS = {
-    # Notification apps
-    'notification_processes': [
-        'WhatsApp.Root.exe', 'Telegram.exe', 'ms-teams.exe',
-        'Messenger.exe', 'slack.exe', 'Signal.exe', 'WeChat.exe'
-    ],
-    'selected_notification_apps': [
-        'WhatsApp', 'Telegram', 'Microsoft Teams', 'Facebook Messenger',
-        'Slack', 'Signal', 'WeChat'
-    ],
+    # Notification apps (all off by default - user opts in)
+    'notification_processes': [],
+    'selected_notification_apps': [],
     'custom_processes': [],
 
-    # Resource apps
-    'resource_processes': [
-        'spotify.exe', 'OneDrive.exe', 'GoogleDriveFS.exe',
-        'Dropbox.exe', 'wallpaper64.exe'
-    ],
-    'selected_resource_apps': [
-        'Spotify', 'OneDrive', 'Google Drive', 'Dropbox',
-        'Wallpaper Engine', 'iCUE', 'Razer Synapse', 'NZXT CAM'
-    ],
+    # Resource apps (all off by default - user opts in)
+    'resource_processes': [],
+    'selected_resource_apps': [],
     'custom_resource_processes': [],
 
     # Startup behavior
