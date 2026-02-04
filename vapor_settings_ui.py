@@ -346,13 +346,14 @@ def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=N
         btn_value = btn_config.get("value", None)
         btn_color = btn_config.get("color", "gray")
 
-        # Map color names to actual colors (matching Vapor settings UI style)
+        # Map color names to actual colors with hover states
         color_map = {
-            "green": ("green", "#228B22"),      # Match Save & Close button
-            "red": ("#c9302c", "#a02622"),      # Match Stop Vapor button
-            "gray": ("gray", "#555555"),
-            "blue": ("#3498db", "#2980b9"),
-            "orange": ("#f39c12", "#d68910")
+            "green": ("#28a745", "#218838"),      # Positive/confirm actions
+            "red": ("#c9302c", "#a02622"),        # Destructive actions
+            "darkred": ("#8b0000", "#5c0000"),    # Very destructive actions
+            "gray": ("#6c757d", "#5a6268"),       # Neutral/cancel actions
+            "blue": ("#2563eb", "#1d4ed8"),       # Informational actions
+            "orange": ("#e67e22", "#d35400")      # Warning/caution actions
         }
         fg_color, hover_color = color_map.get(btn_color, ("gray", "#555555"))
 
@@ -1580,8 +1581,8 @@ def reset_settings_and_restart():
                 "Are you sure?",
         dialog_type="warning",
         buttons=[
-            {"text": "Reset & Stop", "value": True, "color": "red"},
-            {"text": "Cancel", "value": False, "color": "green"}
+            {"text": "Reset & Stop", "value": True, "color": "orange"},
+            {"text": "Cancel", "value": False, "color": "gray"}
         ],
         parent=root
     )
@@ -1626,7 +1627,7 @@ def reset_all_data_and_restart():
         dialog_type="warning",
         buttons=[
             {"text": "Delete All & Stop", "value": True, "color": "red"},
-            {"text": "Cancel", "value": False, "color": "green"}
+            {"text": "Cancel", "value": False, "color": "gray"}
         ],
         parent=root
     )
@@ -1680,7 +1681,7 @@ reset_buttons_frame.pack(pady=(5, 20), anchor='center')
 
 rebuild_button = ctk.CTkButton(master=reset_buttons_frame, text="Reset Settings File", command=reset_settings_and_restart,
                                corner_radius=10,
-                               fg_color="#c9302c", hover_color="#a02622", text_color="white", width=160,
+                               fg_color="#e67e22", hover_color="#d35400", text_color="white", width=160,
                                font=("Calibri", 14))
 rebuild_button.pack(side='left', padx=5)
 
@@ -1981,7 +1982,7 @@ def uninstall_vapor():
                 "Are you sure you want to uninstall?",
         dialog_type="warning",
         buttons=[
-            {"text": "Uninstall", "value": True, "color": "red"},
+            {"text": "Uninstall", "value": True, "color": "darkred"},
             {"text": "Cancel", "value": False, "color": "green"}
         ],
         parent=root
@@ -2525,16 +2526,16 @@ def on_stop_vapor():
 
 
 save_button = ctk.CTkButton(master=button_frame, text="Save & Close", command=on_save_and_close, corner_radius=10,
-                            fg_color="green", text_color="white", width=150, font=("Calibri", 15))
+                            fg_color="#28a745", hover_color="#218838", text_color="white", width=150, font=("Calibri", 15))
 save_button.grid(row=0, column=1, padx=15, sticky='ew')
 
 discard_button = ctk.CTkButton(master=button_frame, text="Discard & Close", command=on_discard_and_close,
                                corner_radius=10,
-                               fg_color="gray", text_color="white", width=150, font=("Calibri", 15))
+                               fg_color="#6c757d", hover_color="#5a6268", text_color="white", width=150, font=("Calibri", 15))
 discard_button.grid(row=0, column=2, padx=15, sticky='ew')
 
 stop_button = ctk.CTkButton(master=button_frame, text="Stop Vapor", command=on_stop_vapor, corner_radius=10,
-                            fg_color="red", text_color="white", width=150, font=("Calibri", 15))
+                            fg_color="#e67e22", hover_color="#d35400", text_color="white", width=150, font=("Calibri", 15))
 stop_button.grid(row=0, column=3, padx=15, sticky='ew')
 
 # Make the X button work like Discard & Close
