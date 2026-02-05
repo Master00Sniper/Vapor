@@ -203,22 +203,10 @@ def get_gpu_temperature():
     return None
 
 
-# Sensor names to exclude from CPU temperature readings (non-core temps)
-_EXCLUDED_CPU_SENSORS = ["ccd", "l3", "cache", "package", "tctl", "tdie", "average", "hot spot"]
-
-
-def _is_excluded_cpu_sensor(sensor_name):
-    """Check if a CPU sensor should be excluded (CCD, L3 Cache, Package, etc.)."""
-    if not sensor_name:
-        return False
-    name_lower = sensor_name.lower()
-    return any(excluded in name_lower for excluded in _EXCLUDED_CPU_SENSORS)
-
-
 def get_cpu_temperature():
     """
     Get current CPU temperature in Celsius.
-    Returns the highest CPU core temperature (excludes CCD, L3 Cache, Package, etc.).
+    Returns the highest temperature reported across all CPU temperature sensors.
     Tries HardwareMonitor package, LibreHardwareMonitor (bundled), and WMI fallbacks.
     Returns None if temperature cannot be read.
     """
@@ -241,15 +229,12 @@ def get_cpu_temperature():
             # Update all hardware using visitor
             HWMON_COMPUTER.Accept(HardwareUpdateVisitor())
 
-            # Find the highest CPU core temperature (exclude CCD, L3, Package, etc.)
+            # Find the highest CPU temperature across all sensors
             max_temp = None
             for hardware in HWMON_COMPUTER.Hardware:
                 if hardware.HardwareType == HardwareType.Cpu:
                     for sensor in hardware.Sensors:
                         if sensor.SensorType == SensorType.Temperature:
-                            sensor_name = str(sensor.Name) if sensor.Name else ""
-                            if _is_excluded_cpu_sensor(sensor_name):
-                                continue
                             try:
                                 value = sensor.Value
                                 if value is not None and float(value) > 0:
@@ -261,9 +246,6 @@ def get_cpu_temperature():
                     for subhardware in hardware.SubHardware:
                         for sensor in subhardware.Sensors:
                             if sensor.SensorType == SensorType.Temperature:
-                                sensor_name = str(sensor.Name) if sensor.Name else ""
-                                if _is_excluded_cpu_sensor(sensor_name):
-                                    continue
                                 try:
                                     value = sensor.Value
                                     if value is not None and float(value) > 0:
@@ -301,15 +283,12 @@ def get_cpu_temperature():
                 for subhardware in hardware.SubHardware:
                     subhardware.Update()
 
-            # Find the highest CPU core temperature (exclude CCD, L3, Package, etc.)
+            # Find the highest CPU temperature across all sensors
             max_temp = None
             for hardware in LHM_COMPUTER.Hardware:
                 if hardware.HardwareType == HardwareType.Cpu:
                     for sensor in hardware.Sensors:
                         if sensor.SensorType == SensorType.Temperature:
-                            sensor_name = str(sensor.Name) if sensor.Name else ""
-                            if _is_excluded_cpu_sensor(sensor_name):
-                                continue
                             try:
                                 value = sensor.Value
                                 # Handle .NET nullable - try GetValueOrDefault if available
@@ -326,9 +305,6 @@ def get_cpu_temperature():
                     for subhardware in hardware.SubHardware:
                         for sensor in subhardware.Sensors:
                             if sensor.SensorType == SensorType.Temperature:
-                                sensor_name = str(sensor.Name) if sensor.Name else ""
-                                if _is_excluded_cpu_sensor(sensor_name):
-                                    continue
                                 try:
                                     value = sensor.Value
                                     if hasattr(value, 'GetValueOrDefault'):
@@ -349,15 +325,13 @@ def get_cpu_temperature():
     # Fallback: Try WMI with external LibreHardwareMonitor/OpenHardwareMonitor
     global CPU_TEMP_ERRORS_LOGGED
     if WMI_AVAILABLE:
-        # Try LibreHardwareMonitor WMI - find highest CPU core temp
+        # Try LibreHardwareMonitor WMI - find highest CPU temp
         try:
             w = wmi.WMI(namespace="root\\LibreHardwareMonitor")
             sensors = w.Sensor()
             max_temp = None
             for sensor in sensors:
                 if sensor.SensorType == "Temperature" and "CPU" in sensor.Name:
-                    if _is_excluded_cpu_sensor(sensor.Name):
-                        continue
                     if sensor.Value and sensor.Value > 0:
                         temp = int(sensor.Value)
                         if max_temp is None or temp > max_temp:
@@ -367,15 +341,13 @@ def get_cpu_temperature():
         except Exception:
             pass  # WMI namespace not available
 
-        # Try OpenHardwareMonitor WMI - find highest CPU core temp
+        # Try OpenHardwareMonitor WMI - find highest CPU temp
         try:
             w = wmi.WMI(namespace="root\\OpenHardwareMonitor")
             sensors = w.Sensor()
             max_temp = None
             for sensor in sensors:
                 if sensor.SensorType == "Temperature" and "CPU" in sensor.Name:
-                    if _is_excluded_cpu_sensor(sensor.Name):
-                        continue
                     if sensor.Value and sensor.Value > 0:
                         temp = int(sensor.Value)
                         if max_temp is None or temp > max_temp:
