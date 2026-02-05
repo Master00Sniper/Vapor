@@ -105,6 +105,8 @@ if not HWMON_AVAILABLE:
             clr.AddReference(lhm_dll_path)
             from LibreHardwareMonitor.Hardware import Computer, HardwareType, SensorType
             LHM_AVAILABLE = True
+        else:
+            _lhm_import_error = f"DLL not found at {lhm_dll_path}"
     except Exception as e:
         _lhm_import_error = str(e)
 
