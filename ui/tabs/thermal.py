@@ -21,6 +21,21 @@ _cpu_temp_label = None
 _gpu_temp_status = None
 _cpu_temp_status = None
 
+# Temperature color thresholds
+TEMP_COLOR_GREEN = "#2ecc71"   # Under 65°C
+TEMP_COLOR_YELLOW = "#f1c40f"  # 66-80°C
+TEMP_COLOR_RED = "#e74c3c"     # 81°C and above
+
+
+def _get_temp_color(temp):
+    """Get the color for a temperature value based on thresholds."""
+    if temp <= 65:
+        return TEMP_COLOR_GREEN
+    elif temp <= 80:
+        return TEMP_COLOR_YELLOW
+    else:
+        return TEMP_COLOR_RED
+
 
 def _update_temperature_display():
     """Update the live temperature display every 10 seconds."""
@@ -38,7 +53,8 @@ def _update_temperature_display():
         if state.enable_gpu_thermal_var and state.enable_gpu_thermal_var.get():
             gpu_temp = get_gpu_temperature()
             if gpu_temp is not None:
-                _gpu_temp_label.configure(text=f"{gpu_temp}°C", text_color="#4ecdc4")
+                temp_color = _get_temp_color(gpu_temp)
+                _gpu_temp_label.configure(text=f"{gpu_temp}°C", text_color=temp_color)
                 _gpu_temp_status.configure(text="")
             else:
                 _gpu_temp_label.configure(text="--", text_color="gray50")
@@ -53,7 +69,8 @@ def _update_temperature_display():
             if is_admin():
                 cpu_temp = get_cpu_temperature()
                 if cpu_temp is not None:
-                    _cpu_temp_label.configure(text=f"{cpu_temp}°C", text_color="#ff6b6b")
+                    temp_color = _get_temp_color(cpu_temp)
+                    _cpu_temp_label.configure(text=f"{cpu_temp}°C", text_color=temp_color)
                     _cpu_temp_status.configure(text="")
                 else:
                     _cpu_temp_label.configure(text="--", text_color="gray50")
