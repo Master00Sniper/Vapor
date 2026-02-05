@@ -38,10 +38,19 @@ def add_button_press_effect(button, border_width=3, border_color="#ffffff"):
         except Exception:
             pass
 
-    # Bind events - use add="+" to not override existing bindings
+    # CTkButton uses an internal canvas - bind to both the button and its canvas
     button.bind("<Button-1>", on_press, add="+")
     button.bind("<ButtonRelease-1>", on_release, add="+")
     button.bind("<Leave>", on_release, add="+")
+
+    # Also try binding to the internal canvas widget if it exists
+    try:
+        if hasattr(button, '_canvas'):
+            button._canvas.bind("<Button-1>", on_press, add="+")
+            button._canvas.bind("<ButtonRelease-1>", on_release, add="+")
+            button._canvas.bind("<Leave>", on_release, add="+")
+    except Exception:
+        pass
 
 
 # Tab names - standardized to 16 characters for consistent tab widths
