@@ -12,7 +12,8 @@ import psutil
 
 from utils import (
     base_dir, appdata_dir, SETTINGS_FILE, PROTECTED_PROCESSES, log as debug_log,
-    load_settings as load_settings_dict, save_settings as save_settings_dict, set_setting
+    load_settings as load_settings_dict, save_settings as save_settings_dict, set_setting,
+    GAME_STARTED_SIGNAL_FILE
 )
 from platform_utils import (
     is_admin, is_pawnio_installed, clear_pawnio_cache, install_pawnio_with_elevation
@@ -445,6 +446,26 @@ def check_main_process():
     state.root.after(1000, check_main_process)
 
 
+def check_game_started_signal():
+    """Check if a game has started and auto-save/close settings if so."""
+    try:
+        if os.path.exists(GAME_STARTED_SIGNAL_FILE):
+            debug_log("Game started signal detected - auto-saving and closing settings", "Settings")
+            # Remove the signal file
+            try:
+                os.remove(GAME_STARTED_SIGNAL_FILE)
+            except Exception:
+                pass
+            # Save and close
+            on_save_and_close()
+            return
+    except Exception as e:
+        debug_log(f"Error checking game started signal: {e}", "Settings")
+
+    # Check again in 1 second
+    state.root.after(1000, check_game_started_signal)
+
+
 def check_pending_pawnio_install():
     """Check if PawnIO installation was pending after admin restart."""
     debug_log("Checking for pending PawnIO installation...", "Startup")
@@ -735,6 +756,9 @@ def run_settings_ui():
     # Start main process monitoring
     if state.main_pid:
         state.root.after(1000, check_main_process)
+
+    # Start game started signal monitoring (auto-save/close when game starts)
+    state.root.after(1000, check_game_started_signal)
 
     # Check for pending PawnIO installation
     state.root.after(500, check_pending_pawnio_install)

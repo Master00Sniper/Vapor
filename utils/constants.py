@@ -30,6 +30,7 @@ os.makedirs(appdata_dir, exist_ok=True)
 SETTINGS_FILE = os.path.join(appdata_dir, 'vapor_settings.json')
 DEBUG_LOG_FILE = os.path.join(appdata_dir, 'vapor_logs.log')
 TRAY_ICON_PATH = os.path.join(base_dir, 'Images', 'tray_icon.png')
+GAME_STARTED_SIGNAL_FILE = os.path.join(appdata_dir, 'game_started.signal')
 
 # =============================================================================
 # Logging Configuration

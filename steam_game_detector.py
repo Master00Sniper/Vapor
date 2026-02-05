@@ -432,7 +432,8 @@ from utils import (
     base_dir, appdata_dir, SETTINGS_FILE, DEBUG_LOG_FILE,
     MAX_LOG_SIZE, TRAY_ICON_PATH, PROTECTED_PROCESSES, log,
     load_settings as load_settings_dict, save_settings as save_settings_dict,
-    create_default_settings as create_default_settings_shared, DEFAULT_SETTINGS
+    create_default_settings as create_default_settings_shared, DEFAULT_SETTINGS,
+    GAME_STARTED_SIGNAL_FILE
 )
 
 # Import platform utilities (admin checks, PawnIO driver)
@@ -1116,6 +1117,14 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
                     log("=" * 40, "GAME")
                     log(f"GAME STARTED: {game_name} (AppID {current_app_id})", "GAME")
                     log("=" * 40, "GAME")
+
+                    # Signal settings UI to close (if open)
+                    try:
+                        with open(GAME_STARTED_SIGNAL_FILE, 'w') as f:
+                            f.write(str(current_app_id))
+                        log("Created game started signal for settings UI", "GAME")
+                    except Exception as e:
+                        log(f"Failed to create game started signal: {e}", "GAME")
 
                     if previous_app_id == 0:
                         start_time = time.time()
