@@ -263,85 +263,6 @@ def get_preloaded_header_image():
 
 
 # =============================================================================
-# Background Image Caching
-# =============================================================================
-
-def get_cached_background_image_path(app_id):
-    """Get the path to the cached background image for a game."""
-    return os.path.join(HEADER_IMAGE_CACHE_DIR, f"{app_id}_bg.jpg")
-
-
-def cache_game_background_image(app_id):
-    """Download and cache the game background image for later use.
-
-    Tries Steam library hero image first, then falls back to page background.
-    """
-    if app_id == 0:
-        return
-
-    cache_path = get_cached_background_image_path(app_id)
-
-    # Skip if already cached
-    if os.path.exists(cache_path):
-        log(f"Background image already cached for AppID {app_id}", "CACHE")
-        return
-
-    # Try library hero image first (better quality)
-    urls_to_try = [
-        f"https://cdn.akamai.steamstatic.com/steam/apps/{app_id}/library_hero.jpg",
-        f"https://steamcdn-a.akamaihd.net/steam/apps/{app_id}/page_bg_generated_v6b.jpg",
-    ]
-
-    for url in urls_to_try:
-        try:
-            response = requests.get(url, timeout=10)
-            if response.status_code == 200:
-                with open(cache_path, 'wb') as f:
-                    f.write(response.content)
-                log(f"Cached background image for AppID {app_id}", "CACHE")
-                return
-        except Exception:
-            continue
-
-    log(f"No background image available for AppID {app_id}", "CACHE")
-
-
-# Pre-loaded background image for instant popup display
-_preloaded_background_image = None
-_preloaded_background_image_lock = threading.Lock()
-
-
-def preload_background_image(app_id):
-    """Pre-load the background image into memory for instant display."""
-    global _preloaded_background_image
-    from PIL import Image
-
-    if app_id == 0:
-        return
-
-    cache_path = get_cached_background_image_path(app_id)
-    if not os.path.exists(cache_path):
-        return
-
-    try:
-        pil_image = Image.open(cache_path)
-        with _preloaded_background_image_lock:
-            _preloaded_background_image = pil_image
-        log(f"Pre-loaded background image for AppID {app_id}", "CACHE")
-    except Exception as e:
-        log(f"Failed to pre-load background image: {e}", "ERROR")
-
-
-def get_preloaded_background_image():
-    """Get the pre-loaded background image (or None if not available)."""
-    global _preloaded_background_image
-    with _preloaded_background_image_lock:
-        img = _preloaded_background_image
-        _preloaded_background_image = None  # Clear after use
-        return img
-
-
-# =============================================================================
 # Session Popup Preparation
 # =============================================================================
 
@@ -365,13 +286,11 @@ def warmup_customtkinter():
 def prepare_session_popup(app_id):
     """Background task to prepare everything needed for the session popup.
 
-    Called when a game starts. Downloads/caches images, pre-loads them into memory,
+    Called when a game starts. Downloads/caches the header image, pre-loads it into memory,
     fetches game details from Steam and SteamSpy, and warms up CustomTkinter so the popup
     appears instantly when the game ends.
     """
     cache_game_header_image(app_id)
-    cache_game_background_image(app_id)
     preload_header_image(app_id)
-    preload_background_image(app_id)
     preload_game_details(app_id)
     warmup_customtkinter()
