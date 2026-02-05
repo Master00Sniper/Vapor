@@ -38,7 +38,7 @@ def _get_temp_color(temp):
 
 
 def _update_temperature_display():
-    """Update the live temperature display every 10 seconds."""
+    """Update the live temperature display every second."""
     global _temp_update_job, _gpu_temp_label, _cpu_temp_label
     global _gpu_temp_status, _cpu_temp_status
 
@@ -82,8 +82,8 @@ def _update_temperature_display():
             _cpu_temp_label.configure(text="--", text_color="gray50")
             _cpu_temp_status.configure(text="(disabled)")
 
-    # Schedule next update in 10 seconds
-    _temp_update_job = state.root.after(10000, _update_temperature_display)
+    # Schedule next update in 1 second
+    _temp_update_job = state.root.after(1000, _update_temperature_display)
 
 
 def _stop_temperature_updates():
@@ -131,7 +131,7 @@ def build_thermal_tab(parent_frame):
     current_temps_title.pack(pady=(10, 5), anchor='center')
 
     current_temps_hint = ctk.CTkLabel(master=thermal_scroll_frame,
-                                       text="Live readings updated every 10 seconds.",
+                                       text="Live readings updated every second.",
                                        font=("Calibri", 12), text_color="gray60")
     current_temps_hint.pack(pady=(0, 10), anchor='center')
 
