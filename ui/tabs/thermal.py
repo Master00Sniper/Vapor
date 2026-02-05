@@ -5,6 +5,79 @@ import tkinter as tk
 import customtkinter as ctk
 
 import ui.state as state
+from platform_utils import is_admin
+
+# Try to import temperature functions
+try:
+    from core.temperature import get_gpu_temperature, get_cpu_temperature
+    TEMP_FUNCTIONS_AVAILABLE = True
+except ImportError:
+    TEMP_FUNCTIONS_AVAILABLE = False
+
+# Module-level references for temperature display update
+_temp_update_job = None
+_gpu_temp_label = None
+_cpu_temp_label = None
+_gpu_temp_status = None
+_cpu_temp_status = None
+
+
+def _update_temperature_display():
+    """Update the live temperature display every 10 seconds."""
+    global _temp_update_job, _gpu_temp_label, _cpu_temp_label
+    global _gpu_temp_status, _cpu_temp_status
+
+    if not TEMP_FUNCTIONS_AVAILABLE:
+        return
+
+    if state.root is None:
+        return
+
+    # Update GPU temperature
+    if _gpu_temp_label and _gpu_temp_status:
+        if state.enable_gpu_thermal_var and state.enable_gpu_thermal_var.get():
+            gpu_temp = get_gpu_temperature()
+            if gpu_temp is not None:
+                _gpu_temp_label.configure(text=f"{gpu_temp}°C", text_color="#4ecdc4")
+                _gpu_temp_status.configure(text="")
+            else:
+                _gpu_temp_label.configure(text="--", text_color="gray50")
+                _gpu_temp_status.configure(text="(unavailable)")
+        else:
+            _gpu_temp_label.configure(text="--", text_color="gray50")
+            _gpu_temp_status.configure(text="(disabled)")
+
+    # Update CPU temperature
+    if _cpu_temp_label and _cpu_temp_status:
+        if state.enable_cpu_thermal_var and state.enable_cpu_thermal_var.get():
+            if is_admin():
+                cpu_temp = get_cpu_temperature()
+                if cpu_temp is not None:
+                    _cpu_temp_label.configure(text=f"{cpu_temp}°C", text_color="#ff6b6b")
+                    _cpu_temp_status.configure(text="")
+                else:
+                    _cpu_temp_label.configure(text="--", text_color="gray50")
+                    _cpu_temp_status.configure(text="(unavailable)")
+            else:
+                _cpu_temp_label.configure(text="--", text_color="gray50")
+                _cpu_temp_status.configure(text="(requires admin)")
+        else:
+            _cpu_temp_label.configure(text="--", text_color="gray50")
+            _cpu_temp_status.configure(text="(disabled)")
+
+    # Schedule next update in 10 seconds
+    _temp_update_job = state.root.after(10000, _update_temperature_display)
+
+
+def _stop_temperature_updates():
+    """Stop the temperature update loop."""
+    global _temp_update_job
+    if _temp_update_job and state.root:
+        try:
+            state.root.after_cancel(_temp_update_job)
+        except Exception:
+            pass
+        _temp_update_job = None
 
 
 def build_thermal_tab(parent_frame):
@@ -17,6 +90,8 @@ def build_thermal_tab(parent_frame):
     Returns:
         dict: References to widgets that need to be accessed elsewhere
     """
+    global _gpu_temp_label, _cpu_temp_label, _gpu_temp_status, _cpu_temp_status
+
     thermal_scroll_frame = ctk.CTkScrollableFrame(master=parent_frame, fg_color="transparent")
     thermal_scroll_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
@@ -27,6 +102,55 @@ def build_thermal_tab(parent_frame):
                                             text="Monitor and track CPU and GPU temperatures during gaming sessions.",
                                             font=("Calibri", 13), text_color="gray60")
     thermal_main_description.pack(pady=(0, 15), anchor='center')
+
+    # ==========================================================================
+    # Current Temperatures Section (Live Display)
+    # ==========================================================================
+    thermal_sep0 = ctk.CTkFrame(master=thermal_scroll_frame, height=2, fg_color="gray50")
+    thermal_sep0.pack(fill="x", padx=40, pady=10)
+
+    current_temps_title = ctk.CTkLabel(master=thermal_scroll_frame, text="Current Temperatures",
+                                        font=("Calibri", 17, "bold"))
+    current_temps_title.pack(pady=(10, 5), anchor='center')
+
+    current_temps_hint = ctk.CTkLabel(master=thermal_scroll_frame,
+                                       text="Live readings updated every 10 seconds.",
+                                       font=("Calibri", 12), text_color="gray60")
+    current_temps_hint.pack(pady=(0, 10), anchor='center')
+
+    # Temperature display frame
+    current_temps_frame = ctk.CTkFrame(master=thermal_scroll_frame, fg_color="transparent")
+    current_temps_frame.pack(pady=10, anchor='center')
+
+    # GPU Temperature display
+    gpu_display_frame = ctk.CTkFrame(master=current_temps_frame, fg_color="transparent")
+    gpu_display_frame.pack(side='left', padx=30)
+
+    gpu_icon_label = ctk.CTkLabel(master=gpu_display_frame, text="GPU", font=("Calibri", 14, "bold"))
+    gpu_icon_label.pack()
+
+    _gpu_temp_label = ctk.CTkLabel(master=gpu_display_frame, text="--", font=("Calibri", 32, "bold"),
+                                    text_color="gray50")
+    _gpu_temp_label.pack()
+
+    _gpu_temp_status = ctk.CTkLabel(master=gpu_display_frame, text="(disabled)",
+                                     font=("Calibri", 11), text_color="gray50")
+    _gpu_temp_status.pack()
+
+    # CPU Temperature display
+    cpu_display_frame = ctk.CTkFrame(master=current_temps_frame, fg_color="transparent")
+    cpu_display_frame.pack(side='left', padx=30)
+
+    cpu_icon_label = ctk.CTkLabel(master=cpu_display_frame, text="CPU", font=("Calibri", 14, "bold"))
+    cpu_icon_label.pack()
+
+    _cpu_temp_label = ctk.CTkLabel(master=cpu_display_frame, text="--", font=("Calibri", 32, "bold"),
+                                    text_color="gray50")
+    _cpu_temp_label.pack()
+
+    _cpu_temp_status = ctk.CTkLabel(master=cpu_display_frame, text="(disabled)",
+                                     font=("Calibri", 11), text_color="gray50")
+    _cpu_temp_status.pack()
 
     thermal_sep1 = ctk.CTkFrame(master=thermal_scroll_frame, height=2, fg_color="gray50")
     thermal_sep1.pack(fill="x", padx=40, pady=10)
@@ -153,5 +277,10 @@ def build_thermal_tab(parent_frame):
                                        text="Each alert level triggers once per gaming session.",
                                        font=("Calibri", 11), text_color="gray60")
     thermal_alerts_note.pack(pady=(15, 0), anchor='w')
+
+    # Start the live temperature update loop
+    if TEMP_FUNCTIONS_AVAILABLE:
+        # Initial update after a short delay (let UI finish building)
+        state.root.after(500, _update_temperature_display)
 
     return {}
