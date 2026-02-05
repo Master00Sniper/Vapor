@@ -36,23 +36,22 @@ if '--ui' not in sys.argv:
             import shutil
             import tempfile
             temp_dir = tempfile.gettempdir()
-            current_dir = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else None
+            # Use realpath to resolve 8.3 short names (like ONXXXX~1) to full names
+            current_dir = os.path.realpath(os.path.dirname(sys.executable)) if getattr(sys, 'frozen', False) else None
 
             for item in os.listdir(temp_dir):
                 # Nuitka onefile folders start with "onefile_"
                 if item.startswith('onefile_'):
-                    folder_path = os.path.join(temp_dir, item)
+                    folder_path = os.path.realpath(os.path.join(temp_dir, item))
                     # Don't delete our own folder
-                    if current_dir and os.path.normpath(folder_path) == os.path.normpath(current_dir):
+                    if current_dir and folder_path.lower() == current_dir.lower():
                         continue
                     # Only delete if it's a directory
                     if os.path.isdir(folder_path):
                         # Check if this is a Vapor folder by looking for our specific files
-                        vapor_marker = os.path.join(folder_path, 'steam_game_detector.py.dist-info')
-                        vapor_exe = os.path.join(folder_path, 'vapor.exe')
                         images_folder = os.path.join(folder_path, 'Images')
                         # Only delete if it looks like a Vapor installation
-                        if os.path.exists(images_folder) or os.path.exists(vapor_marker) or os.path.exists(vapor_exe):
+                        if os.path.exists(images_folder):
                             try:
                                 shutil.rmtree(folder_path)
                             except (PermissionError, OSError):
