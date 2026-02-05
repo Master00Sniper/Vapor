@@ -31,28 +31,36 @@ except Exception:
     PYADL_AVAILABLE = False
 
 # CPU temperature via WMI (requires LibreHardwareMonitor or OpenHardwareMonitor running)
+WMI_AVAILABLE = False
+_wmi_import_error = None
 try:
     import wmi
+    # Test that WMI actually works by creating an instance
+    _test_wmi = wmi.WMI()
+    del _test_wmi
     WMI_AVAILABLE = True
-except ImportError:
-    WMI_AVAILABLE = False
+except Exception as e:
+    # Catch all exceptions - in compiled builds, may fail with COM errors, not just ImportError
+    _wmi_import_error = str(e)
 
 # HardwareMonitor package (PyPI) - handles LibreHardwareMonitor + PawnIO driver
 # Note: This may fail in PyInstaller builds if DLLs aren't bundled, falls back to manual DLL loading
 HWMON_AVAILABLE = False
 HWMON_COMPUTER = None
 CPU_TEMP_ERRORS_LOGGED = False  # Only log WMI/fallback errors once
+_hwmon_import_error = None
 try:
     from HardwareMonitor.Hardware import Computer, IVisitor, IComputer, IHardware, IParameter, ISensor
     from HardwareMonitor.Hardware import HardwareType, SensorType
     HWMON_AVAILABLE = True
-except Exception:
+except Exception as e:
     # Catches ImportError, FileNotFoundException, and any .NET exceptions
-    pass
+    _hwmon_import_error = str(e)
 
 # Fallback: LibreHardwareMonitorLib via pythonnet (bundled DLL approach)
 LHM_AVAILABLE = False
 LHM_COMPUTER = None
+_lhm_import_error = None
 if not HWMON_AVAILABLE:
     try:
         import clr
@@ -99,8 +107,8 @@ if not HWMON_AVAILABLE:
             clr.AddReference(lhm_dll_path)
             from LibreHardwareMonitor.Hardware import Computer, HardwareType, SensorType
             LHM_AVAILABLE = True
-    except Exception:
-        pass
+    except Exception as e:
+        _lhm_import_error = str(e)
 
 
 # Visitor class for HardwareMonitor package (only defined if package available)

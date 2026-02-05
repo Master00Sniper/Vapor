@@ -6,8 +6,11 @@ from core.temperature import (
     NVML_AVAILABLE,
     PYADL_AVAILABLE,
     WMI_AVAILABLE,
+    _wmi_import_error,
     HWMON_AVAILABLE,
+    _hwmon_import_error,
     LHM_AVAILABLE,
+    _lhm_import_error,
     # Temperature functions
     get_gpu_temperature,
     get_cpu_temperature,

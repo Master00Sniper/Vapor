@@ -323,7 +323,10 @@ import win11toast
 # Core modules
 from core import (
     # Temperature monitoring
-    NVML_AVAILABLE, PYADL_AVAILABLE, WMI_AVAILABLE, HWMON_AVAILABLE, LHM_AVAILABLE,
+    NVML_AVAILABLE, PYADL_AVAILABLE,
+    WMI_AVAILABLE, _wmi_import_error,
+    HWMON_AVAILABLE, _hwmon_import_error,
+    LHM_AVAILABLE, _lhm_import_error,
     get_gpu_temperature, get_cpu_temperature, show_temperature_alert,
     TemperatureTracker, temperature_tracker,
     TEMP_HISTORY_DIR, get_temp_history_path, load_temp_history, save_temp_history, get_lifetime_max_temps,
@@ -1401,7 +1404,13 @@ if __name__ == '__main__':
 
             # Log temperature monitoring library availability
             log(f"Temperature libraries - NVIDIA: {NVML_AVAILABLE}, AMD: {PYADL_AVAILABLE}, "
-                f"LHM DLL: {LHM_AVAILABLE}, WMI: {WMI_AVAILABLE}", "TEMP")
+                f"HWMON: {HWMON_AVAILABLE}, LHM DLL: {LHM_AVAILABLE}, WMI: {WMI_AVAILABLE}", "TEMP")
+            if not HWMON_AVAILABLE and _hwmon_import_error:
+                log(f"HardwareMonitor unavailable: {_hwmon_import_error}", "TEMP")
+            if not LHM_AVAILABLE and _lhm_import_error:
+                log(f"LHM DLL unavailable: {_lhm_import_error}", "TEMP")
+            if not WMI_AVAILABLE and _wmi_import_error:
+                log(f"WMI unavailable: {_wmi_import_error}", "TEMP")
             log(f"Admin privileges: {is_admin()}", "INIT")
 
             # Send anonymous telemetry (startup ping)
