@@ -8,17 +8,17 @@ from utils import base_dir
 # Button Press Effect
 # =============================================================================
 
-def add_button_press_effect(button, border_width=2, border_color="#1a1a1a"):
+def add_button_press_effect(button, border_width=3, border_color="#ffffff"):
     """
-    Add a visual press effect to a CTkButton using a dark border.
+    Add a visual press effect to a CTkButton using a visible border.
 
-    On press: adds a dark border to create an "inset" look
+    On press: adds a white border to create a "pressed" look
     On release: removes the border
 
     Args:
         button: CTkButton instance
-        border_width: Width of the pressed border (default 2px)
-        border_color: Color of the pressed border (default dark gray)
+        border_width: Width of the pressed border (default 3px)
+        border_color: Color of the pressed border (default white for visibility)
     """
     # Store original border settings
     original_border_width = button.cget('border_width')
@@ -27,12 +27,14 @@ def add_button_press_effect(button, border_width=2, border_color="#1a1a1a"):
     def on_press(event):
         try:
             button.configure(border_width=border_width, border_color=border_color)
+            button.update_idletasks()  # Force visual refresh
         except Exception:
             pass
 
     def on_release(event):
         try:
             button.configure(border_width=original_border_width, border_color=original_border_color)
+            button.update_idletasks()  # Force visual refresh
         except Exception:
             pass
 
