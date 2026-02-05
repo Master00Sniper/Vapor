@@ -206,6 +206,7 @@ def get_gpu_temperature():
 def get_cpu_temperature():
     """
     Get current CPU temperature in Celsius.
+    Iterates through all CPU cores and returns the hottest temperature found.
     Tries HardwareMonitor package, LibreHardwareMonitor (bundled), and WMI fallbacks.
     Returns None if temperature cannot be read.
     """
@@ -228,7 +229,8 @@ def get_cpu_temperature():
             # Update all hardware using visitor
             HWMON_COMPUTER.Accept(HardwareUpdateVisitor())
 
-            # Look for CPU temperature
+            # Find the hottest CPU temperature across all cores
+            max_temp = None
             for hardware in HWMON_COMPUTER.Hardware:
                 if hardware.HardwareType == HardwareType.Cpu:
                     # Check all temperature sensors
@@ -237,7 +239,9 @@ def get_cpu_temperature():
                             try:
                                 value = sensor.Value
                                 if value is not None and float(value) > 0:
-                                    return int(float(value))
+                                    temp = int(float(value))
+                                    if max_temp is None or temp > max_temp:
+                                        max_temp = temp
                             except Exception:
                                 pass
                     # Check subhardware
@@ -247,9 +251,13 @@ def get_cpu_temperature():
                                 try:
                                     value = sensor.Value
                                     if value is not None and float(value) > 0:
-                                        return int(float(value))
+                                        temp = int(float(value))
+                                        if max_temp is None or temp > max_temp:
+                                            max_temp = temp
                                 except Exception:
                                     pass
+            if max_temp is not None:
+                return max_temp
         except Exception as e:
             log(f"HardwareMonitor read failed: {e}", "TEMP")
 
@@ -277,7 +285,8 @@ def get_cpu_temperature():
                 for subhardware in hardware.SubHardware:
                     subhardware.Update()
 
-            # Look for CPU temperature
+            # Find the hottest CPU temperature across all cores
+            max_temp = None
             for hardware in LHM_COMPUTER.Hardware:
                 if hardware.HardwareType == HardwareType.Cpu:
                     # Check all temperature sensors
@@ -292,7 +301,9 @@ def get_cpu_temperature():
                                 elif hasattr(value, 'Value'):
                                     value = value.Value
                                 if value is not None and float(value) > 0:
-                                    return int(float(value))
+                                    temp = int(float(value))
+                                    if max_temp is None or temp > max_temp:
+                                        max_temp = temp
                             except Exception:
                                 pass
                     # Check subhardware
@@ -306,40 +317,48 @@ def get_cpu_temperature():
                                     elif hasattr(value, 'Value'):
                                         value = value.Value
                                     if value is not None and float(value) > 0:
-                                        return int(float(value))
+                                        temp = int(float(value))
+                                        if max_temp is None or temp > max_temp:
+                                            max_temp = temp
                                 except Exception:
                                     pass
+            if max_temp is not None:
+                return max_temp
         except Exception as e:
             log(f"LibreHardwareMonitorLib read failed: {e}", "TEMP")
 
     # Fallback: Try WMI with external LibreHardwareMonitor/OpenHardwareMonitor
     global CPU_TEMP_ERRORS_LOGGED
     if WMI_AVAILABLE:
-        # Try LibreHardwareMonitor WMI
+        # Try LibreHardwareMonitor WMI - find hottest CPU temp
         try:
             w = wmi.WMI(namespace="root\\LibreHardwareMonitor")
             sensors = w.Sensor()
+            max_temp = None
             for sensor in sensors:
                 if sensor.SensorType == "Temperature" and "CPU" in sensor.Name:
-                    if "Package" in sensor.Name or "Core" in sensor.Name:
-                        return int(sensor.Value)
-            for sensor in sensors:
-                if sensor.SensorType == "Temperature" and "CPU" in sensor.Name:
-                    return int(sensor.Value)
+                    if sensor.Value and sensor.Value > 0:
+                        temp = int(sensor.Value)
+                        if max_temp is None or temp > max_temp:
+                            max_temp = temp
+            if max_temp is not None:
+                return max_temp
         except Exception:
             pass  # WMI namespace not available
 
-        # Try OpenHardwareMonitor WMI
+        # Try OpenHardwareMonitor WMI - find hottest CPU temp
         try:
             w = wmi.WMI(namespace="root\\OpenHardwareMonitor")
             sensors = w.Sensor()
+            max_temp = None
             for sensor in sensors:
                 if sensor.SensorType == "Temperature" and "CPU" in sensor.Name:
-                    if "Package" in sensor.Name or "Core" in sensor.Name:
-                        return int(sensor.Value)
-            for sensor in sensors:
-                if sensor.SensorType == "Temperature" and "CPU" in sensor.Name:
-                    return int(sensor.Value)
+                    if sensor.Value and sensor.Value > 0:
+                        temp = int(sensor.Value)
+                        if max_temp is None or temp > max_temp:
+                            max_temp = temp
+            if max_temp is not None:
+                return max_temp
         except Exception:
             pass  # WMI namespace not available
 
