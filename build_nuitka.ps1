@@ -58,6 +58,7 @@ $nuitkaArgs = @(
     "--include-data-dir=Images=Images",
     "--include-data-dir=lib=lib",
     "--include-data-dir=sounds=sounds",
+    "--include-data-files=lib/*.dll=lib/",
     "--include-data-files=install_pawnio.ps1=install_pawnio.ps1",
     "--include-module=vapor_settings_ui",
     "--include-module=updater",
