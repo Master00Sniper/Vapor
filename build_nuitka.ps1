@@ -74,6 +74,7 @@ $nuitkaArgs = @(
     "--include-module=win32com.client",
     "--include-module=pywintypes",
     "--include-module=pythoncom",
+    "--include-package=pywin32_system32",
     "--include-module=comtypes",
     "--include-module=comtypes.client",
     "--include-module=pycaw",
