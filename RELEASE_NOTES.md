@@ -10,7 +10,9 @@
 - Settings window automatically saves and closes when a game starts (reduces resource usage during gaming)
 - Telemetry opt-out option is now hidden behind a Konami code easter egg (up up down down left right left right on Preferences tab)
 - All notification and resource apps are now toggled off by default (users opt-in to which apps they want managed)
+- Automatic cleanup of leftover temp folders from previous sessions
 
 ### Bug Fixes
 
 - Fixed fuzzy taskbar icon by adding higher resolution sizes (up to 256x256) to the application icon
+- Fixed CPU temperature monitoring not working in compiled builds
