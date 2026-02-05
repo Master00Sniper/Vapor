@@ -2,7 +2,7 @@
 
 ### New Features
 
-- Live temperature display on Thermal tab shows current GPU and CPU temps, updated every 10 seconds
+- Live temperature display on Thermal tab shows current GPU and CPU temps, updated every second
 
 ### Improvements
 
