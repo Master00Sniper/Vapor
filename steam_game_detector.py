@@ -60,6 +60,76 @@ if '--ui' not in sys.argv:
 
 
 # =============================================================================
+# Early Admin Check (before splash screen for faster startup)
+# =============================================================================
+# Only check for main app, not settings UI or already elevated
+if '--ui' not in sys.argv and '--elevated' not in sys.argv:
+    import ctypes
+    import json
+
+    def _early_is_admin():
+        """Quick admin check using only ctypes (no heavy imports)."""
+        try:
+            return ctypes.windll.shell32.IsUserAnAdmin() != 0
+        except Exception:
+            return False
+
+    def _early_needs_admin():
+        """Check if CPU thermal monitoring requires admin elevation."""
+        try:
+            # Build settings path (same logic as utils/constants.py)
+            appdata_dir = os.path.join(os.getenv('APPDATA'), 'Vapor')
+            settings_file = os.path.join(appdata_dir, 'vapor_settings.json')
+
+            if os.path.exists(settings_file):
+                with open(settings_file, 'r') as f:
+                    settings = json.load(f)
+                return settings.get('enable_cpu_thermal', False)
+        except Exception:
+            pass
+        return False
+
+    def _early_request_elevation():
+        """Request admin elevation before splash screen."""
+        try:
+            if getattr(sys, 'frozen', False):
+                if hasattr(sys, '_MEIPASS'):
+                    executable = sys.executable
+                    work_dir = os.path.dirname(sys.executable)
+                else:
+                    executable = sys.argv[0]
+                    work_dir = os.path.dirname(sys.argv[0])
+                existing_params = ' '.join(sys.argv[1:])
+                params = f'{existing_params} --elevated'.strip()
+            else:
+                python_dir = os.path.dirname(sys.executable)
+                pythonw_exe = os.path.join(python_dir, 'pythonw.exe')
+                executable = pythonw_exe if os.path.exists(pythonw_exe) else sys.executable
+                script_path = os.path.abspath(__file__)
+                params = f'"{script_path}" --elevated'
+                work_dir = os.path.dirname(script_path)
+
+            result = ctypes.windll.shell32.ShellExecuteW(
+                None, "runas", executable, params, work_dir, 1
+            )
+            return result > 32  # Success if > 32
+        except Exception:
+            return False
+
+    # Check if we need admin BEFORE showing splash
+    if not _early_is_admin() and _early_needs_admin():
+        if _early_request_elevation():
+            # Release mutex before exiting so elevated instance can acquire it
+            if VAPOR_MUTEX:
+                try:
+                    import win32api
+                    win32api.CloseHandle(VAPOR_MUTEX)
+                except Exception:
+                    pass
+            sys.exit(0)  # Exit - elevated instance will start fresh with splash
+
+
+# =============================================================================
 # Splash Screen with Background Initialization
 # =============================================================================
 
@@ -1326,23 +1396,8 @@ if __name__ == '__main__':
                 log("First run detected - creating default settings file", "INIT")
                 create_default_settings()
 
-            # Check if CPU thermal monitoring is enabled and we need admin privileges
-            if os.path.exists(SETTINGS_FILE):
-                try:
-                    with open(SETTINGS_FILE, 'r') as f:
-                        startup_settings = json.load(f)
-                    if startup_settings.get('enable_cpu_thermal', False) and not is_admin():
-                        log("CPU thermal monitoring enabled but not running as admin - requesting elevation", "INIT")
-                        if request_admin_restart():
-                            # Release mutex before exiting so elevated instance can acquire it
-                            if VAPOR_MUTEX:
-                                try:
-                                    win32api.CloseHandle(VAPOR_MUTEX)
-                                except Exception:
-                                    pass
-                            sys.exit(0)  # Exit current instance, elevated one will start
-                except Exception as e:
-                    log(f"Error checking thermal settings: {e}", "ERROR")
+            # Note: Admin elevation check now happens BEFORE splash screen for faster startup
+            # (see "Early Admin Check" section near top of file)
 
             # Log temperature monitoring library availability
             log(f"Temperature libraries - NVIDIA: {NVML_AVAILABLE}, AMD: {PYADL_AVAILABLE}, "
