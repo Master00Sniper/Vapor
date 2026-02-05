@@ -21,14 +21,13 @@ def restart_vapor(main_pid, require_admin=False, delay_seconds=3):
         delay_seconds: Seconds to wait before starting new process (default 3).
                       Use longer delays after driver installations.
 
-    Uses a delayed start via PowerShell to avoid MEI folder cleanup errors.
+    Uses a delayed start via PowerShell to allow clean shutdown.
     The caller is responsible for cleanly exiting after this function returns.
     """
     debug_log(f"Restarting Vapor (main_pid={main_pid}, require_admin={require_admin}, delay={delay_seconds}s)", "Restart")
 
     # Check if main_pid is our own process - if so, don't terminate it
-    # We'll exit cleanly after launching the new process, which allows
-    # PyInstaller to properly clean up the MEI folder
+    # We'll exit cleanly after launching the new process
     current_pid = os.getpid()
     should_terminate_main = main_pid and main_pid != current_pid
 
@@ -57,24 +56,12 @@ def restart_vapor(main_pid, require_admin=False, delay_seconds=3):
         working_dir = os.path.dirname(executable)
         debug_log(f"Using VAPOR_EXE_PATH: {executable}", "Restart")
     elif getattr(sys, 'frozen', False):
-        # Fallback: try to find Vapor.exe
-        # For Nuitka, sys.argv[0] should be the actual Vapor.exe path
-        if not hasattr(sys, '_MEIPASS') and os.path.exists(sys.argv[0]):
+        # Nuitka: sys.argv[0] is the actual Vapor.exe path
+        if os.path.exists(sys.argv[0]):
             executable = sys.argv[0]
             working_dir = os.path.dirname(executable)
-            debug_log(f"Using sys.argv[0] for Nuitka: {executable}", "Restart")
+            debug_log(f"Using sys.argv[0]: {executable}", "Restart")
         else:
-            # PyInstaller fallback: try common locations
-            possible_paths = [
-                os.path.join(os.path.dirname(os.path.dirname(sys.executable)), 'Vapor.exe'),
-                os.path.join(os.getcwd(), 'Vapor.exe'),
-            ]
-            for path in possible_paths:
-                if os.path.exists(path):
-                    executable = path
-                    working_dir = os.path.dirname(executable)
-                    break
-        if not executable:
             debug_log("ERROR: Could not find Vapor.exe for restart", "Restart")
             return False
     else:
@@ -96,15 +83,7 @@ def restart_vapor(main_pid, require_admin=False, delay_seconds=3):
     debug_log(f"Executable: {executable}", "Restart")
     debug_log(f"Working dir: {working_dir}", "Restart")
     debug_log(f"Already admin: {is_admin()}", "Restart")
-
-    # Log PyInstaller-related environment and paths for debugging
-    debug_log(f"sys.executable: {sys.executable}", "Restart")
-    debug_log(f"sys.frozen: {getattr(sys, 'frozen', False)}", "Restart")
-    debug_log(f"sys._MEIPASS: {getattr(sys, '_MEIPASS', 'N/A')}", "Restart")
-    debug_log(f"ENV _MEIPASS: {os.environ.get('_MEIPASS', 'N/A')}", "Restart")
-    debug_log(f"ENV _MEIPASS2: {os.environ.get('_MEIPASS2', 'N/A')}", "Restart")
-    debug_log(f"ENV VAPOR_EXE_PATH: {os.environ.get('VAPOR_EXE_PATH', 'N/A')}", "Restart")
-    debug_log(f"TEMP dir: {os.environ.get('TEMP', 'N/A')}", "Restart")
+    debug_log(f"sys.argv[0]: {sys.argv[0]}", "Restart")
     debug_log(f"Current PID: {os.getpid()}", "Restart")
 
     try:

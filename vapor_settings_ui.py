@@ -25,10 +25,7 @@ if win32api.GetLastError() == winerror.ERROR_ALREADY_EXISTS:
 # =============================================================================
 
 if getattr(sys, 'frozen', False):
-    if hasattr(sys, '_MEIPASS'):
-        application_path = sys._MEIPASS
-    else:
-        application_path = os.path.dirname(sys.executable)
+    application_path = os.path.dirname(sys.executable)
 else:
     application_path = os.path.dirname(os.path.abspath(__file__))
 os.chdir(application_path)

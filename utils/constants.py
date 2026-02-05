@@ -8,14 +8,9 @@ import sys
 # Path Configuration
 # =============================================================================
 
-# Base directory - handles frozen (PyInstaller/Nuitka) and script execution
+# Base directory - handles frozen (Nuitka) and script execution
 if getattr(sys, 'frozen', False):
-    # PyInstaller sets _MEIPASS, Nuitka doesn't
-    if hasattr(sys, '_MEIPASS'):
-        base_dir = sys._MEIPASS
-    else:
-        # Nuitka - use executable directory
-        base_dir = os.path.dirname(sys.executable)
+    base_dir = os.path.dirname(sys.executable)
 else:
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 

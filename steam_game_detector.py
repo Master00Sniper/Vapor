@@ -27,36 +27,43 @@ if '--ui' not in sys.argv:
         sys.exit(0)
 
 
-    def cleanup_stale_mei_folders():
+    def cleanup_stale_nuitka_folders():
         """
-        Remove leftover PyInstaller _MEI folders from previous crashes.
-        Must run early to prevent the PyInstaller warning dialog.
+        Remove leftover Nuitka onefile folders from previous Vapor crashes.
+        Only cleans up Vapor folders (identified by containing steam_game_detector files).
         """
         try:
             import shutil
             import tempfile
             temp_dir = tempfile.gettempdir()
-            current_mei = getattr(sys, '_MEIPASS', None)
+            current_dir = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else None
 
             for item in os.listdir(temp_dir):
-                if item.startswith('_MEI'):
-                    mei_path = os.path.join(temp_dir, item)
+                # Nuitka onefile folders start with "onefile_"
+                if item.startswith('onefile_'):
+                    folder_path = os.path.join(temp_dir, item)
                     # Don't delete our own folder
-                    if current_mei and mei_path == current_mei:
+                    if current_dir and os.path.normpath(folder_path) == os.path.normpath(current_dir):
                         continue
                     # Only delete if it's a directory
-                    if os.path.isdir(mei_path):
-                        try:
-                            shutil.rmtree(mei_path)
-                        except (PermissionError, OSError):
-                            # Folder is in use by another process, skip it
-                            pass
+                    if os.path.isdir(folder_path):
+                        # Check if this is a Vapor folder by looking for our specific files
+                        vapor_marker = os.path.join(folder_path, 'steam_game_detector.py.dist-info')
+                        vapor_exe = os.path.join(folder_path, 'vapor.exe')
+                        images_folder = os.path.join(folder_path, 'Images')
+                        # Only delete if it looks like a Vapor installation
+                        if os.path.exists(images_folder) or os.path.exists(vapor_marker) or os.path.exists(vapor_exe):
+                            try:
+                                shutil.rmtree(folder_path)
+                            except (PermissionError, OSError):
+                                # Folder is in use by another process, skip it
+                                pass
         except Exception:
             pass  # Don't let cleanup errors prevent app from starting
 
 
     if getattr(sys, 'frozen', False):
-        cleanup_stale_mei_folders()
+        cleanup_stale_nuitka_folders()
 
 
 # =============================================================================
@@ -93,12 +100,9 @@ if '--ui' not in sys.argv and '--elevated' not in sys.argv:
         """Request admin elevation before splash screen."""
         try:
             if getattr(sys, 'frozen', False):
-                if hasattr(sys, '_MEIPASS'):
-                    executable = sys.executable
-                    work_dir = os.path.dirname(sys.executable)
-                else:
-                    executable = sys.argv[0]
-                    work_dir = os.path.dirname(sys.argv[0])
+                # Nuitka: use sys.argv[0] for the executable path
+                executable = sys.argv[0]
+                work_dir = os.path.dirname(sys.argv[0])
                 existing_params = ' '.join(sys.argv[1:])
                 params = f'{existing_params} --elevated'.strip()
             else:
@@ -189,12 +193,9 @@ def show_splash_screen():
         import tkinter as tk
         from PIL import Image, ImageTk
 
-        # Determine base directory
+        # Determine base directory (Nuitka or script execution)
         if getattr(sys, 'frozen', False):
-            if hasattr(sys, '_MEIPASS'):
-                base_dir = sys._MEIPASS
-            else:
-                base_dir = os.path.dirname(sys.executable)
+            base_dir = os.path.dirname(sys.executable)
         else:
             base_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -365,14 +366,9 @@ def request_admin_restart():
     try:
         # Get the executable path and working directory
         if getattr(sys, 'frozen', False):
-            # PyInstaller: sys.executable is Vapor.exe
-            # Nuitka: sys.executable is python.exe in temp, use sys.argv[0] instead
-            if hasattr(sys, '_MEIPASS'):
-                executable = sys.executable
-                work_dir = os.path.dirname(sys.executable)
-            else:
-                executable = sys.argv[0]
-                work_dir = os.path.dirname(sys.argv[0])
+            # Nuitka: use sys.argv[0] for the executable path
+            executable = sys.argv[0]
+            work_dir = os.path.dirname(sys.argv[0])
             # Add --elevated flag to skip splash screen on restart
             existing_params = ' '.join(sys.argv[1:])
             params = f'{existing_params} --elevated'.strip()
@@ -491,10 +487,7 @@ except (AttributeError, ValueError):
 
 # Set working directory for frozen executable compatibility
 if getattr(sys, 'frozen', False):
-    if hasattr(sys, '_MEIPASS'):
-        application_path = sys._MEIPASS
-    else:
-        application_path = os.path.dirname(sys.executable)
+    application_path = os.path.dirname(sys.executable)
 else:
     application_path = os.path.dirname(os.path.abspath(__file__))
 os.chdir(application_path)
@@ -950,9 +943,8 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
         log("Launching settings window on startup...", "INIT")
         try:
             if getattr(sys, 'frozen', False):
-                # PyInstaller uses sys.executable, Nuitka uses sys.argv[0]
-                exe_path = sys.executable if hasattr(sys, '_MEIPASS') else sys.argv[0]
-                subprocess.Popen([exe_path, '--ui', str(os.getpid())])
+                # Nuitka: use sys.argv[0] for the executable path
+                subprocess.Popen([sys.argv[0], '--ui', str(os.getpid())])
             else:
                 subprocess.Popen([sys.executable, __file__, '--ui', str(os.getpid())])
         except Exception as e:
@@ -1266,9 +1258,8 @@ def open_settings(icon, query):
     log("Opening settings UI...", "UI")
     try:
         if getattr(sys, 'frozen', False):
-            # PyInstaller uses sys.executable, Nuitka uses sys.argv[0]
-            exe_path = sys.executable if hasattr(sys, '_MEIPASS') else sys.argv[0]
-            proc = subprocess.Popen([exe_path, '--ui', str(os.getpid())])
+            # Nuitka: use sys.argv[0] for the executable path
+            proc = subprocess.Popen([sys.argv[0], '--ui', str(os.getpid())])
         else:
             proc = subprocess.Popen([sys.executable, __file__, '--ui', str(os.getpid())])
         _child_processes.append(proc)
@@ -1361,12 +1352,8 @@ if __name__ == '__main__':
 
         # Pass the actual Vapor executable path for restart functionality
         if getattr(sys, 'frozen', False):
-            # PyInstaller: sys.executable is Vapor.exe
-            # Nuitka: sys.executable is python.exe in temp, use sys.argv[0] instead
-            if hasattr(sys, '_MEIPASS'):
-                os.environ['VAPOR_EXE_PATH'] = sys.executable
-            else:
-                os.environ['VAPOR_EXE_PATH'] = sys.argv[0]
+            # Nuitka: use sys.argv[0] for the executable path
+            os.environ['VAPOR_EXE_PATH'] = sys.argv[0]
         else:
             # When running from source, pass the script path
             os.environ['VAPOR_EXE_PATH'] = os.path.abspath(__file__)
@@ -1381,16 +1368,12 @@ if __name__ == '__main__':
             stop_event = threading.Event()
             _stop_event = stop_event  # Make accessible to signal handler (module-level var)
 
-            # Log PyInstaller details for debugging restart issues
+            # Log startup details for debugging
             log(f"=== Vapor Startup ===", "INIT")
             log(f"PID: {os.getpid()}", "INIT")
             log(f"sys.executable: {sys.executable}", "INIT")
             log(f"sys.frozen: {getattr(sys, 'frozen', False)}", "INIT")
-            log(f"sys._MEIPASS: {getattr(sys, '_MEIPASS', 'N/A')}", "INIT")
-            log(f"ENV _MEIPASS: {os.environ.get('_MEIPASS', 'N/A')}", "INIT")
-            log(f"ENV _MEIPASS2: {os.environ.get('_MEIPASS2', 'N/A')}", "INIT")
-            log(f"ENV VAPOR_EXE_PATH: {os.environ.get('VAPOR_EXE_PATH', 'N/A')}", "INIT")
-            log(f"TEMP: {os.environ.get('TEMP', 'N/A')}", "INIT")
+            log(f"sys.argv[0]: {sys.argv[0]}", "INIT")
             log(f"Working dir: {os.getcwd()}", "INIT")
 
             # Check if this is the first run (no settings file exists)

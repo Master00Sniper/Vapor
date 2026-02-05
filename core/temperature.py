@@ -44,7 +44,7 @@ except Exception as e:
     _wmi_import_error = str(e)
 
 # HardwareMonitor package (PyPI) - handles LibreHardwareMonitor + PawnIO driver
-# Note: This may fail in PyInstaller builds if DLLs aren't bundled, falls back to manual DLL loading
+# Note: This may fail in compiled builds if DLLs aren't bundled, falls back to manual DLL loading
 HWMON_AVAILABLE = False
 HWMON_COMPUTER = None
 CPU_TEMP_ERRORS_LOGGED = False  # Only log WMI/fallback errors once
@@ -67,10 +67,8 @@ if not HWMON_AVAILABLE:
         import System
         from System.Reflection import Assembly
 
-        # Determine frozen base directory (PyInstaller or Nuitka)
+        # Determine frozen base directory (Nuitka)
         def get_frozen_base():
-            if hasattr(sys, '_MEIPASS'):
-                return sys._MEIPASS
             return os.path.dirname(sys.executable)
 
         # Determine lib folder path
