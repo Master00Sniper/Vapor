@@ -5,7 +5,6 @@ import os
 import customtkinter as ctk
 
 from utils import base_dir
-from ui.constants import add_button_press_effect
 
 
 def set_vapor_icon(window):
@@ -167,7 +166,6 @@ def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=N
             font=("Calibri", 16)
         )
         btn.pack(side="left", padx=15)
-        add_button_press_effect(btn)
 
     # Handle window close button (X)
     dialog.protocol("WM_DELETE_WINDOW", lambda: (result.__setitem__(0, None), dialog.destroy()))

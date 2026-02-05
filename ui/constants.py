@@ -4,55 +4,6 @@
 import os
 from utils import base_dir
 
-# =============================================================================
-# Button Press Effect
-# =============================================================================
-
-def add_button_press_effect(button, border_width=3, border_color="#ffffff"):
-    """
-    Add a visual press effect to a CTkButton using a visible border.
-
-    On press: adds a white border to create a "pressed" look
-    On release: removes the border
-
-    Args:
-        button: CTkButton instance
-        border_width: Width of the pressed border (default 3px)
-        border_color: Color of the pressed border (default white for visibility)
-    """
-    # Store original border settings
-    original_border_width = button.cget('border_width')
-    original_border_color = button.cget('border_color')
-
-    def on_press(event):
-        try:
-            button.configure(border_width=border_width, border_color=border_color)
-            button.update_idletasks()  # Force visual refresh
-        except Exception:
-            pass
-
-    def on_release(event):
-        try:
-            button.configure(border_width=original_border_width, border_color=original_border_color)
-            button.update_idletasks()  # Force visual refresh
-        except Exception:
-            pass
-
-    # CTkButton uses an internal canvas - bind to both the button and its canvas
-    button.bind("<Button-1>", on_press, add="+")
-    button.bind("<ButtonRelease-1>", on_release, add="+")
-    button.bind("<Leave>", on_release, add="+")
-
-    # Also try binding to the internal canvas widget if it exists
-    try:
-        if hasattr(button, '_canvas'):
-            button._canvas.bind("<Button-1>", on_press, add="+")
-            button._canvas.bind("<ButtonRelease-1>", on_release, add="+")
-            button._canvas.bind("<Leave>", on_release, add="+")
-    except Exception:
-        pass
-
-
 # Tab names - standardized to 16 characters for consistent tab widths
 TAB_NOTIFICATIONS = " Notifications  "  # 13 chars centered in 16
 TAB_RESOURCES     = "   Resources    "  # 9 chars centered in 16

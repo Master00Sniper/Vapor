@@ -6,7 +6,6 @@ import customtkinter as ctk
 from PIL import Image
 
 from utils import base_dir
-from ui.constants import add_button_press_effect
 
 try:
     from updater import CURRENT_VERSION
@@ -83,7 +82,6 @@ Features include app management, audio controls, power plan switching, Game Mode
                                 corner_radius=10, fg_color="#2563eb", hover_color="#1d4ed8",
                                 text_color="white", width=250, font=("Calibri", 14, "bold"))
     kofi_button.pack(side="left")
-    add_button_press_effect(kofi_button)
 
     separator3 = ctk.CTkFrame(master=about_scroll_frame, height=2, fg_color="gray50")
     separator3.pack(fill="x", padx=40, pady=15)

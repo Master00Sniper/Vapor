@@ -23,8 +23,7 @@ import ui.state as state
 from ui.constants import (
     TAB_NOTIFICATIONS, TAB_RESOURCES, TAB_THERMAL,
     TAB_PREFERENCES, TAB_HELP, TAB_ABOUT,
-    BUILT_IN_APPS, BUILT_IN_RESOURCE_APPS,
-    add_button_press_effect
+    BUILT_IN_APPS, BUILT_IN_RESOURCE_APPS
 )
 from ui.dialogs import show_vapor_dialog, set_vapor_icon
 from ui.restart import restart_vapor
@@ -750,11 +749,6 @@ def run_settings_ui():
         text_color="white", width=150, font=("Calibri", 15)
     )
     stop_button.grid(row=0, column=3, padx=15, sticky='ew')
-
-    # Add button press effect to main buttons
-    add_button_press_effect(state.save_button)
-    add_button_press_effect(discard_button)
-    add_button_press_effect(stop_button)
 
     # Make X button work like Discard & Close
     state.root.protocol("WM_DELETE_WINDOW", on_discard_and_close)
