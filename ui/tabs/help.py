@@ -14,6 +14,7 @@ import requests
 from utils import log as debug_log, appdata_dir, SETTINGS_FILE
 from platform_utils import is_admin, is_pawnio_installed
 from ui.dialogs import show_vapor_dialog
+from ui.constants import add_button_press_effect
 import ui.state as state
 
 try:
@@ -257,12 +258,14 @@ If issues persist, submit a bug report below with logs attached."""
                                    fg_color="#e67e22", hover_color="#d35400", text_color="white", width=160,
                                    font=("Calibri", 14))
     rebuild_button.pack(side='left', padx=5)
+    add_button_press_effect(rebuild_button)
 
     reset_all_button = ctk.CTkButton(master=reset_buttons_frame, text="Reset All Data",
                                      command=reset_all_data_and_restart, corner_radius=10,
                                      fg_color="#c9302c", hover_color="#a02622", text_color="white", width=160,
                                      font=("Calibri", 14))
     reset_all_button.pack(side='left', padx=5)
+    add_button_press_effect(reset_all_button)
 
     # =========================================================================
     # Bug Report Section
@@ -472,6 +475,7 @@ If issues persist, submit a bug report below with logs attached."""
                                       corner_radius=10, fg_color="#2563eb", hover_color="#1d4ed8",
                                       text_color="white", width=180, font=("Calibri", 14))
     submit_bug_button.pack(pady=(5, 20), anchor='center')
+    add_button_press_effect(submit_bug_button)
 
     # =========================================================================
     # Uninstall Section
@@ -544,5 +548,6 @@ If issues persist, submit a bug report below with logs attached."""
                                      corner_radius=10, fg_color="#8b0000", hover_color="#5c0000",
                                      text_color="white", width=180, font=("Calibri", 14))
     uninstall_button.pack(pady=(5, 30), anchor='center')
+    add_button_press_effect(uninstall_button)
 
     return {}

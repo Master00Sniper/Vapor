@@ -4,6 +4,44 @@
 import os
 from utils import base_dir
 
+# =============================================================================
+# Button Press Effect
+# =============================================================================
+
+def add_button_press_effect(button, border_width=2, border_color="#1a1a1a"):
+    """
+    Add a visual press effect to a CTkButton using a dark border.
+
+    On press: adds a dark border to create an "inset" look
+    On release: removes the border
+
+    Args:
+        button: CTkButton instance
+        border_width: Width of the pressed border (default 2px)
+        border_color: Color of the pressed border (default dark gray)
+    """
+    # Store original border settings
+    original_border_width = button.cget('border_width')
+    original_border_color = button.cget('border_color')
+
+    def on_press(event):
+        try:
+            button.configure(border_width=border_width, border_color=border_color)
+        except Exception:
+            pass
+
+    def on_release(event):
+        try:
+            button.configure(border_width=original_border_width, border_color=original_border_color)
+        except Exception:
+            pass
+
+    # Bind events - use add="+" to not override existing bindings
+    button.bind("<Button-1>", on_press, add="+")
+    button.bind("<ButtonRelease-1>", on_release, add="+")
+    button.bind("<Leave>", on_release, add="+")
+
+
 # Tab names - standardized to 16 characters for consistent tab widths
 TAB_NOTIFICATIONS = " Notifications  "  # 13 chars centered in 16
 TAB_RESOURCES     = "   Resources    "  # 9 chars centered in 16
