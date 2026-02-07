@@ -175,13 +175,18 @@ def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=N
     dialog.update_idletasks()
     dialog.deiconify()
 
-    # Set icon AFTER deiconify to override CTkToplevel's internal icon setting
+    # Schedule icon setting after CTkToplevel finishes its internal setup
+    # CTkToplevel sets its icon asynchronously, so we need to override it after
     icon_path = os.path.join(base_dir, 'Images', 'exe_icon.ico')
     if os.path.exists(icon_path):
-        try:
-            dialog.iconbitmap(icon_path)
-        except Exception:
-            pass
+        def set_icon():
+            try:
+                if dialog.winfo_exists():
+                    dialog.iconbitmap(icon_path)
+            except Exception:
+                pass
+        dialog.after(1, set_icon)
+        dialog.after(50, set_icon)
 
     dialog.lift()
     dialog.attributes('-topmost', True)
