@@ -54,22 +54,17 @@ def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=N
     """
     result = [None]  # Use list to allow modification in nested function
 
-    # Create popup window - make invisible immediately to prevent any flash
-    dialog = ctk.CTkToplevel(parent) if parent else ctk.CTk()
-    dialog.attributes('-alpha', 0)  # Make fully transparent before anything renders
-    dialog.withdraw()  # Hide immediately before window manager can display it
-
     # Calculate size based on message length
     width = 500
     height = 320 + (message.count('\n') * 12)
     height = min(height, 500)  # Cap max height
 
-    # Set geometry while withdrawn
-    screen_width = dialog.winfo_screenwidth()
-    screen_height = dialog.winfo_screenheight()
-    x = (screen_width - width) // 2
-    y = (screen_height - height) // 2
-    dialog.geometry(f"{width}x{height}+{x}+{y}")
+    # Create popup window - use overrideredirect and off-screen position to prevent any flash
+    # This must happen before CTkToplevel can render anything visible
+    dialog = ctk.CTkToplevel(parent) if parent else ctk.CTk()
+    dialog.overrideredirect(True)  # Remove window decorations to prevent any flash
+    dialog.geometry(f"{width}x{height}+-10000+-10000")  # Position off-screen immediately
+    dialog.withdraw()  # Also withdraw for safety
 
     # Set icon while window is withdrawn
     icon_path = os.path.join(base_dir, 'Images', 'exe_icon.ico')
@@ -172,10 +167,19 @@ def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=N
     # Handle window close button (X)
     dialog.protocol("WM_DELETE_WINDOW", lambda: (result.__setitem__(0, None), dialog.destroy()))
 
-    # Process pending events and show the window
+    # Process pending events and prepare to show the window
     dialog.update_idletasks()
+
+    # Calculate center position
+    screen_width = dialog.winfo_screenwidth()
+    screen_height = dialog.winfo_screenheight()
+    x = (screen_width - width) // 2
+    y = (screen_height - height) // 2
+
+    # Restore window decorations and move to center position
+    dialog.overrideredirect(False)
+    dialog.geometry(f"{width}x{height}+{x}+{y}")
     dialog.deiconify()
-    dialog.attributes('-alpha', 1)  # Restore visibility after window is ready
 
     # Schedule icon setting after CTkToplevel finishes its internal setup
     # CTkToplevel sets its icon asynchronously, so we need to override it after
