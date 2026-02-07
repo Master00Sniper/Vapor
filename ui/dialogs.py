@@ -59,12 +59,11 @@ def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=N
     height = 320 + (message.count('\n') * 12)
     height = min(height, 500)  # Cap max height
 
-    # Create popup window - use overrideredirect and off-screen position to prevent any flash
-    # This must happen before CTkToplevel can render anything visible
+    # Create popup window - make fully transparent IMMEDIATELY to prevent any flash
+    # Use wm_attributes (lower level) which may execute faster than attributes()
     dialog = ctk.CTkToplevel(parent) if parent else ctk.CTk()
-    dialog.overrideredirect(True)  # Remove window decorations to prevent any flash
-    dialog.geometry(f"{width}x{height}+-10000+-10000")  # Position off-screen immediately
-    dialog.withdraw()  # Also withdraw for safety
+    dialog.wm_attributes('-alpha', 0)  # Make invisible at tk level immediately
+    dialog.withdraw()  # Also withdraw
 
     # Set icon while window is withdrawn
     icon_path = os.path.join(base_dir, 'Images', 'exe_icon.ico')
@@ -167,19 +166,19 @@ def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=N
     # Handle window close button (X)
     dialog.protocol("WM_DELETE_WINDOW", lambda: (result.__setitem__(0, None), dialog.destroy()))
 
-    # Process pending events and prepare to show the window
-    dialog.update_idletasks()
-
-    # Calculate center position
+    # Calculate center position and set geometry while still invisible
     screen_width = dialog.winfo_screenwidth()
     screen_height = dialog.winfo_screenheight()
     x = (screen_width - width) // 2
     y = (screen_height - height) // 2
-
-    # Restore window decorations and move to center position
-    dialog.overrideredirect(False)
     dialog.geometry(f"{width}x{height}+{x}+{y}")
+
+    # Process all pending events to ensure geometry is applied
+    dialog.update_idletasks()
+
+    # Now show the window and make it visible
     dialog.deiconify()
+    dialog.wm_attributes('-alpha', 1)  # Restore visibility
 
     # Schedule icon setting after CTkToplevel finishes its internal setup
     # CTkToplevel sets its icon asynchronously, so we need to override it after
