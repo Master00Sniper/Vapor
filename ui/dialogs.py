@@ -171,11 +171,9 @@ def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=N
     # Handle window close button (X)
     dialog.protocol("WM_DELETE_WINDOW", lambda: (result.__setitem__(0, None), dialog.destroy()))
 
-    # Apply icon again to ensure it sticks, then show the window
-    set_vapor_icon(dialog)
-    dialog.update_idletasks()  # Process all pending events before showing
-
-    # Now show the window
+    # Process pending events and show the window
+    # Icon was already set while withdrawn - don't re-set it to avoid flicker
+    dialog.update_idletasks()
     dialog.deiconify()
     dialog.lift()
     dialog.attributes('-topmost', True)
