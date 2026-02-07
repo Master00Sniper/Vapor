@@ -54,10 +54,11 @@ def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=N
     """
     result = [None]  # Use list to allow modification in nested function
 
-    # Create popup window
+    # Create popup window - start hidden to prevent icon flash
     dialog = ctk.CTkToplevel(parent) if parent else ctk.CTk()
+    dialog.withdraw()  # Hide window until fully configured
 
-    # Set icon immediately to minimize flash of default icon
+    # Set icon while window is hidden to prevent flash of default icon
     icon_path = os.path.join(base_dir, 'Images', 'exe_icon.ico')
     if os.path.exists(icon_path):
         try:
@@ -170,8 +171,9 @@ def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=N
     # Handle window close button (X)
     dialog.protocol("WM_DELETE_WINDOW", lambda: (result.__setitem__(0, None), dialog.destroy()))
 
-    # Set icon and bring to front
+    # Apply icon again to ensure it sticks, then show the window
     set_vapor_icon(dialog)
+    dialog.deiconify()  # Show window now that it's fully configured with icon
     dialog.lift()
     dialog.attributes('-topmost', True)
     dialog.after(100, lambda: dialog.attributes('-topmost', False))
