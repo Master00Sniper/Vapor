@@ -54,18 +54,23 @@ def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=N
     """
     result = [None]  # Use list to allow modification in nested function
 
-    # Create popup window - position off-screen initially to prevent icon flash
+    # Create popup window - withdraw immediately to prevent any flash
     dialog = ctk.CTkToplevel(parent) if parent else ctk.CTk()
+    dialog.withdraw()  # Hide immediately before window manager can display it
 
     # Calculate size based on message length
     width = 500
     height = 320 + (message.count('\n') * 12)
     height = min(height, 500)  # Cap max height
 
-    # Position off-screen initially while we set up the icon
-    dialog.geometry(f"{width}x{height}+-10000+-10000")
+    # Set geometry while withdrawn
+    screen_width = dialog.winfo_screenwidth()
+    screen_height = dialog.winfo_screenheight()
+    x = (screen_width - width) // 2
+    y = (screen_height - height) // 2
+    dialog.geometry(f"{width}x{height}+{x}+{y}")
 
-    # Set icon while window is off-screen
+    # Set icon while window is withdrawn
     icon_path = os.path.join(base_dir, 'Images', 'exe_icon.ico')
     if os.path.exists(icon_path):
         try:
@@ -166,16 +171,12 @@ def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=N
     # Handle window close button (X)
     dialog.protocol("WM_DELETE_WINDOW", lambda: (result.__setitem__(0, None), dialog.destroy()))
 
-    # Apply icon again to ensure it sticks, then move to center of screen
+    # Apply icon again to ensure it sticks, then show the window
     set_vapor_icon(dialog)
-    dialog.update_idletasks()  # Process icon change before showing window
+    dialog.update_idletasks()  # Process all pending events before showing
 
-    # Now move the window to center of screen
-    screen_width = dialog.winfo_screenwidth()
-    screen_height = dialog.winfo_screenheight()
-    x = (screen_width - width) // 2
-    y = (screen_height - height) // 2
-    dialog.geometry(f"{width}x{height}+{x}+{y}")
+    # Now show the window
+    dialog.deiconify()
     dialog.lift()
     dialog.attributes('-topmost', True)
     dialog.after(100, lambda: dialog.attributes('-topmost', False))
