@@ -54,11 +54,11 @@ def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=N
     """
     result = [None]  # Use list to allow modification in nested function
 
-    # Create popup window - start hidden to prevent icon flash
+    # Create popup window - start fully transparent to prevent icon flash
     dialog = ctk.CTkToplevel(parent) if parent else ctk.CTk()
-    dialog.withdraw()  # Hide window until fully configured
+    dialog.attributes('-alpha', 0)  # Make window invisible during setup
 
-    # Set icon while window is hidden to prevent flash of default icon
+    # Set icon while window is invisible
     icon_path = os.path.join(base_dir, 'Images', 'exe_icon.ico')
     if os.path.exists(icon_path):
         try:
@@ -174,7 +174,7 @@ def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=N
     # Apply icon again to ensure it sticks, then show the window
     set_vapor_icon(dialog)
     dialog.update_idletasks()  # Process icon change before showing window
-    dialog.deiconify()  # Show window now that it's fully configured with icon
+    dialog.attributes('-alpha', 1)  # Make window visible now that icon is set
     dialog.lift()
     dialog.attributes('-topmost', True)
     dialog.after(100, lambda: dialog.attributes('-topmost', False))
