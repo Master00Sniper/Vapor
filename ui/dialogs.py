@@ -54,8 +54,9 @@ def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=N
     """
     result = [None]  # Use list to allow modification in nested function
 
-    # Create popup window - withdraw immediately to prevent any flash
+    # Create popup window - make invisible immediately to prevent any flash
     dialog = ctk.CTkToplevel(parent) if parent else ctk.CTk()
+    dialog.attributes('-alpha', 0)  # Make fully transparent before anything renders
     dialog.withdraw()  # Hide immediately before window manager can display it
 
     # Calculate size based on message length
@@ -174,6 +175,7 @@ def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=N
     # Process pending events and show the window
     dialog.update_idletasks()
     dialog.deiconify()
+    dialog.attributes('-alpha', 1)  # Restore visibility after window is ready
 
     # Schedule icon setting after CTkToplevel finishes its internal setup
     # CTkToplevel sets its icon asynchronously, so we need to override it after
