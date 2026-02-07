@@ -185,8 +185,8 @@ def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=N
                     dialog.iconbitmap(icon_path)
             except Exception:
                 pass
-        # Try multiple times to catch whenever CTkToplevel sets its icon
-        for delay in [1, 10, 50, 100, 200, 500]:
+        # Try multiple times with tight intervals to minimize visible flash
+        for delay in [1, 2, 5, 10, 15, 20, 30, 50, 75, 100, 150, 200]:
             dialog.after(delay, set_icon)
 
     dialog.lift()
