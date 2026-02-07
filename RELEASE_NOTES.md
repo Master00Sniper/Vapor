@@ -16,3 +16,4 @@
 
 - Fixed fuzzy taskbar icon by adding higher resolution sizes (up to 256x256) to the application icon
 - Fixed CPU temperature monitoring not working in compiled builds
+- Fixed popup dialogs briefly flashing before appearing
