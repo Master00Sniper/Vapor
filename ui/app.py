@@ -25,7 +25,7 @@ from ui.constants import (
     TAB_PREFERENCES, TAB_HELP, TAB_ABOUT,
     BUILT_IN_APPS, BUILT_IN_RESOURCE_APPS
 )
-from ui.dialogs import show_vapor_dialog, set_vapor_icon
+from ui.dialogs import show_vapor_dialog, set_dark_title_bar
 from ui.restart import restart_vapor
 from ui.tabs import (
     build_notifications_tab, build_resources_tab, build_thermal_tab,
@@ -275,13 +275,24 @@ def on_save():
             parent=state.root
         )
         if response == "install":
-            # Show installing message with progress bar
-            installing_dialog = ctk.CTkToplevel(state.root)
+            # Show installing message with progress bar - use tk.Toplevel for smooth appearance
+            installing_dialog = tk.Toplevel(state.root)
+            installing_dialog.withdraw()  # Hide immediately to prevent flash
             installing_dialog.title("Vapor - Installing Driver")
             installing_dialog.geometry("400x160")
             installing_dialog.resizable(False, False)
             installing_dialog.transient(state.root)
+            installing_dialog.configure(bg='#2b2b2b')
 
+            # Set icon while hidden
+            icon_path = os.path.join(base_dir, 'Images', 'exe_icon.ico')
+            if os.path.exists(icon_path):
+                try:
+                    installing_dialog.iconbitmap(icon_path)
+                except Exception:
+                    pass
+
+            # Calculate center position
             installing_dialog.update_idletasks()
             x = state.root.winfo_x() + (state.root.winfo_width() - 400) // 2
             y = state.root.winfo_y() + (state.root.winfo_height() - 160) // 2
@@ -299,8 +310,10 @@ def on_save():
                                         font=("Calibri", 11), text_color="gray")
             status_label.pack(padx=20, pady=(5, 15))
 
-            installing_dialog.update()
-            set_vapor_icon(installing_dialog)
+            # Show the window smoothly
+            installing_dialog.update_idletasks()
+            installing_dialog.deiconify()
+            set_dark_title_bar(installing_dialog)
             installing_dialog.lift()
             installing_dialog.attributes('-topmost', True)
             installing_dialog.after(100, lambda: installing_dialog.attributes('-topmost', False))
@@ -505,12 +518,24 @@ def check_pending_pawnio_install():
     )
 
     if response == "install":
-        installing_dialog = ctk.CTkToplevel(state.root)
+        # Use tk.Toplevel for smooth appearance without flash
+        installing_dialog = tk.Toplevel(state.root)
+        installing_dialog.withdraw()  # Hide immediately to prevent flash
         installing_dialog.title("Vapor - Installing Driver")
         installing_dialog.geometry("400x160")
         installing_dialog.resizable(False, False)
         installing_dialog.transient(state.root)
+        installing_dialog.configure(bg='#2b2b2b')
 
+        # Set icon while hidden
+        icon_path = os.path.join(base_dir, 'Images', 'exe_icon.ico')
+        if os.path.exists(icon_path):
+            try:
+                installing_dialog.iconbitmap(icon_path)
+            except Exception:
+                pass
+
+        # Calculate center position
         installing_dialog.update_idletasks()
         x = state.root.winfo_x() + (state.root.winfo_width() - 400) // 2
         y = state.root.winfo_y() + (state.root.winfo_height() - 160) // 2
@@ -528,8 +553,10 @@ def check_pending_pawnio_install():
                                     font=("Calibri", 11), text_color="gray")
         status_label.pack(padx=20, pady=(5, 15))
 
-        installing_dialog.update()
-        set_vapor_icon(installing_dialog)
+        # Show the window smoothly
+        installing_dialog.update_idletasks()
+        installing_dialog.deiconify()
+        set_dark_title_bar(installing_dialog)
         installing_dialog.lift()
         installing_dialog.attributes('-topmost', True)
         installing_dialog.after(100, lambda: installing_dialog.attributes('-topmost', False))

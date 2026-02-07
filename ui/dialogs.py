@@ -29,36 +29,6 @@ def set_dark_title_bar(window):
         pass  # Silently fail on non-Windows or older Windows
 
 
-def set_vapor_icon(window):
-    """Set the Vapor icon on a window. Call this after window is created."""
-    icon_path = os.path.join(base_dir, 'Images', 'exe_icon.ico')
-    if not os.path.exists(icon_path):
-        return
-
-    def apply_icon():
-        try:
-            if window.winfo_exists():
-                window.iconbitmap(icon_path)
-        except Exception:
-            pass
-
-    # Try setting icon immediately
-    try:
-        window.iconbitmap(icon_path)
-    except Exception:
-        pass
-
-    # CTkToplevel windows often need the icon set after they're fully rendered
-    # Schedule multiple attempts to ensure it sticks
-    try:
-        window.after(10, apply_icon)
-        window.after(50, apply_icon)
-        window.after(100, apply_icon)
-        window.after(200, apply_icon)
-    except Exception:
-        pass
-
-
 def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=None):
     """
     Show a Vapor-themed dialog popup that matches the app's style.
