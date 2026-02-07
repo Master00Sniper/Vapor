@@ -5,6 +5,7 @@
 import os
 import shutil
 import subprocess
+import sys
 import time
 import tkinter as tk
 import customtkinter as ctk
@@ -146,24 +147,23 @@ If issues persist, submit a bug report below with logs attached."""
     reset_title.pack(pady=(10, 5), anchor='center')
 
     reset_hint = ctk.CTkLabel(master=help_scroll_frame,
-                              text="Use \"Reset Settings File\" if Vapor is behaving unexpectedly or you want to start fresh.\n"
-                                   "Use \"Reset All Data\" if you want to completely clear all Vapor data including\n"
-                                   "temperature history and cached game images.",
+                              text="Use \"Reset Settings\" if Vapor is behaving unexpectedly or you want to start fresh.\n"
+                                   "Use \"Reset All Data\" to completely clear all Vapor data including temperature\n"
+                                   "history and cached game images. Both options will restart Vapor automatically.",
                               font=("Calibri", 13), text_color="gray60", justify="center")
     reset_hint.pack(pady=(0, 10), anchor='center')
 
     def reset_settings_and_restart():
-        """Delete settings file and close Vapor."""
+        """Delete settings file and restart Vapor."""
         debug_log("Reset settings requested", "Reset")
         response = show_vapor_dialog(
             title="Reset Settings",
-            message="This will delete all settings and close Vapor.\n\n"
+            message="This will delete all settings and restart Vapor.\n\n"
                     "Your settings will be reset to defaults.\n"
-                    "You will need to start Vapor again manually.\n"
                     "Are you sure?",
             dialog_type="warning",
             buttons=[
-                {"text": "Reset & Stop", "value": True, "color": "orange"},
+                {"text": "Reset & Restart", "value": True, "color": "orange"},
                 {"text": "Cancel", "value": False, "color": "gray"}
             ],
             parent=state.root
@@ -178,7 +178,17 @@ If issues persist, submit a bug report below with logs attached."""
             except Exception as e:
                 debug_log(f"Error deleting settings: {e}", "Reset")
 
-            debug_log("Stopping Vapor after settings reset", "Reset")
+            # Start a new instance of Vapor before shutting down
+            debug_log("Restarting Vapor after settings reset", "Reset")
+            try:
+                executable = sys.executable
+                debug_log(f"Starting new Vapor instance: {executable}", "Reset")
+                subprocess.Popen([executable], creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP)
+                debug_log("New Vapor instance started", "Reset")
+            except Exception as e:
+                debug_log(f"Failed to restart Vapor: {e}", "Reset")
+
+            # Terminate the current instance
             if state.main_pid:
                 try:
                     debug_log(f"Terminating main Vapor process (PID: {state.main_pid})", "Reset")
@@ -192,7 +202,7 @@ If issues persist, submit a bug report below with logs attached."""
             debug_log("User cancelled reset settings", "Reset")
 
     def reset_all_data_and_restart():
-        """Delete settings file, temperature data, and cached images, then close Vapor."""
+        """Delete settings file, temperature data, and cached images, then restart Vapor."""
         debug_log("Reset all data requested", "Reset")
         response = show_vapor_dialog(
             title="Reset All Data",
@@ -201,11 +211,11 @@ If issues persist, submit a bug report below with logs attached."""
                     "• All temperature history\n"
                     "• Lifetime max temperatures for all games\n"
                     "• All cached game images\n\n"
-                    "This cannot be undone. Vapor will close and you will\n"
-                    "need to start it again manually. Are you sure?",
+                    "This cannot be undone. Vapor will restart with\n"
+                    "fresh defaults. Are you sure?",
             dialog_type="warning",
             buttons=[
-                {"text": "Delete All & Stop", "value": True, "color": "red"},
+                {"text": "Delete All & Restart", "value": True, "color": "red"},
                 {"text": "Cancel", "value": False, "color": "gray"}
             ],
             parent=state.root
@@ -236,7 +246,17 @@ If issues persist, submit a bug report below with logs attached."""
             except Exception as e:
                 debug_log(f"Error deleting images: {e}", "Reset")
 
-            debug_log("Stopping Vapor after all data reset", "Reset")
+            # Start a new instance of Vapor before shutting down
+            debug_log("Restarting Vapor after all data reset", "Reset")
+            try:
+                executable = sys.executable
+                debug_log(f"Starting new Vapor instance: {executable}", "Reset")
+                subprocess.Popen([executable], creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP)
+                debug_log("New Vapor instance started", "Reset")
+            except Exception as e:
+                debug_log(f"Failed to restart Vapor: {e}", "Reset")
+
+            # Terminate the current instance
             if state.main_pid:
                 try:
                     debug_log(f"Terminating main Vapor process (PID: {state.main_pid})", "Reset")
@@ -252,13 +272,13 @@ If issues persist, submit a bug report below with logs attached."""
     reset_buttons_frame = ctk.CTkFrame(master=help_scroll_frame, fg_color="transparent")
     reset_buttons_frame.pack(pady=(5, 20), anchor='center')
 
-    rebuild_button = ctk.CTkButton(master=reset_buttons_frame, text="Reset Settings File",
+    rebuild_button = ctk.CTkButton(master=reset_buttons_frame, text="Reset Settings",
                                    command=reset_settings_and_restart, corner_radius=10,
                                    fg_color="#e67e22", hover_color="#d35400", text_color="white", width=160,
                                    font=("Calibri", 14))
     rebuild_button.pack(side='left', padx=5)
 
-    reset_all_button = ctk.CTkButton(master=reset_buttons_frame, text="Reset All Data",
+    reset_all_button = ctk.CTkButton(master=reset_buttons_frame, text="Delete All Data",
                                      command=reset_all_data_and_restart, corner_radius=10,
                                      fg_color="#c9302c", hover_color="#a02622", text_color="white", width=160,
                                      font=("Calibri", 14))
