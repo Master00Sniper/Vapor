@@ -172,9 +172,17 @@ def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=N
     dialog.protocol("WM_DELETE_WINDOW", lambda: (result.__setitem__(0, None), dialog.destroy()))
 
     # Process pending events and show the window
-    # Icon was already set while withdrawn - don't re-set it to avoid flicker
     dialog.update_idletasks()
     dialog.deiconify()
+
+    # Set icon AFTER deiconify to override CTkToplevel's internal icon setting
+    icon_path = os.path.join(base_dir, 'Images', 'exe_icon.ico')
+    if os.path.exists(icon_path):
+        try:
+            dialog.iconbitmap(icon_path)
+        except Exception:
+            pass
+
     dialog.lift()
     dialog.attributes('-topmost', True)
     dialog.after(100, lambda: dialog.attributes('-topmost', False))
