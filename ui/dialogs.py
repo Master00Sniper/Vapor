@@ -173,6 +173,7 @@ def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=N
 
     # Apply icon again to ensure it sticks, then show the window
     set_vapor_icon(dialog)
+    dialog.update_idletasks()  # Process icon change before showing window
     dialog.deiconify()  # Show window now that it's fully configured with icon
     dialog.lift()
     dialog.attributes('-topmost', True)
