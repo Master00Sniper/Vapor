@@ -2,6 +2,7 @@
 # Vapor-styled dialog popups.
 
 import os
+import tkinter as tk
 import customtkinter as ctk
 
 from utils import base_dir
@@ -59,11 +60,23 @@ def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=N
     height = 320 + (message.count('\n') * 12)
     height = min(height, 500)  # Cap max height
 
-    # Create popup window - make fully transparent IMMEDIATELY to prevent any flash
-    # Use wm_attributes (lower level) which may execute faster than attributes()
-    dialog = ctk.CTkToplevel(parent) if parent else ctk.CTk()
-    dialog.wm_attributes('-alpha', 0)  # Make invisible at tk level immediately
-    dialog.withdraw()  # Also withdraw
+    # Use plain tkinter Toplevel for full control - withdraw BEFORE it can render
+    # CTkToplevel causes a flash because its __init__ does too much before we can hide it
+    if parent:
+        dialog = tk.Toplevel(parent)
+    else:
+        dialog = ctk.CTk()
+    dialog.withdraw()  # Hide immediately - this works because tk.Toplevel is simpler
+
+    # Calculate center position
+    screen_width = dialog.winfo_screenwidth()
+    screen_height = dialog.winfo_screenheight()
+    x = (screen_width - width) // 2
+    y = (screen_height - height) // 2
+    dialog.geometry(f"{width}x{height}+{x}+{y}")
+
+    # Set dark theme background to match CTk style
+    dialog.configure(bg='#2b2b2b')
 
     # Set icon while window is withdrawn
     icon_path = os.path.join(base_dir, 'Images', 'exe_icon.ico')
@@ -166,34 +179,11 @@ def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=N
     # Handle window close button (X)
     dialog.protocol("WM_DELETE_WINDOW", lambda: (result.__setitem__(0, None), dialog.destroy()))
 
-    # Calculate center position and set geometry while still invisible
-    screen_width = dialog.winfo_screenwidth()
-    screen_height = dialog.winfo_screenheight()
-    x = (screen_width - width) // 2
-    y = (screen_height - height) // 2
-    dialog.geometry(f"{width}x{height}+{x}+{y}")
-
-    # Process all pending events to ensure geometry is applied
+    # Process all pending events to ensure content is laid out
     dialog.update_idletasks()
 
-    # Now show the window and make it visible
+    # Now show the window - using plain tk.Toplevel means no flash
     dialog.deiconify()
-    dialog.wm_attributes('-alpha', 1)  # Restore visibility
-
-    # Schedule icon setting after CTkToplevel finishes its internal setup
-    # CTkToplevel sets its icon asynchronously, so we need to override it after
-    icon_path = os.path.join(base_dir, 'Images', 'exe_icon.ico')
-    if os.path.exists(icon_path):
-        def set_icon():
-            try:
-                if dialog.winfo_exists():
-                    dialog.iconbitmap(icon_path)
-            except Exception:
-                pass
-        # Try every 5ms from 5-200ms to catch whenever CTkToplevel sets its icon
-        for delay in range(5, 205, 5):
-            dialog.after(delay, set_icon)
-
     dialog.lift()
     dialog.attributes('-topmost', True)
     dialog.after(100, lambda: dialog.attributes('-topmost', False))
