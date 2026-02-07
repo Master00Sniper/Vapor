@@ -634,11 +634,13 @@ def run_settings_ui():
     state.root.geometry(f"{window_width}x{window_height}+{x}+{y}")
     state.root.resizable(False, False)
 
-    # Set window icon
+    # Set window icon - also set as default for all child windows (Toplevel dialogs)
     icon_path = os.path.join(base_dir, 'Images', 'exe_icon.ico')
     if os.path.exists(icon_path):
         try:
             state.root.iconbitmap(icon_path)
+            # Set as default icon for all future windows to prevent icon flash on dialogs
+            state.root.iconbitmap(default=icon_path)
         except Exception as e:
             print(f"Error setting icon: {e}")
 
