@@ -54,11 +54,18 @@ def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=N
     """
     result = [None]  # Use list to allow modification in nested function
 
-    # Create popup window - start fully transparent to prevent icon flash
+    # Create popup window - position off-screen initially to prevent icon flash
     dialog = ctk.CTkToplevel(parent) if parent else ctk.CTk()
-    dialog.attributes('-alpha', 0)  # Make window invisible during setup
 
-    # Set icon while window is invisible
+    # Calculate size based on message length
+    width = 500
+    height = 320 + (message.count('\n') * 12)
+    height = min(height, 500)  # Cap max height
+
+    # Position off-screen initially while we set up the icon
+    dialog.geometry(f"{width}x{height}+-10000+-10000")
+
+    # Set icon while window is off-screen
     icon_path = os.path.join(base_dir, 'Images', 'exe_icon.ico')
     if os.path.exists(icon_path):
         try:
@@ -68,18 +75,6 @@ def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=N
 
     dialog.title(f"Vapor - {title}")
     dialog.resizable(False, False)
-
-    # Calculate size based on message length
-    width = 500
-    height = 320 + (message.count('\n') * 12)
-    height = min(height, 500)  # Cap max height
-
-    # Center on screen
-    screen_width = dialog.winfo_screenwidth()
-    screen_height = dialog.winfo_screenheight()
-    x = (screen_width - width) // 2
-    y = (screen_height - height) // 2
-    dialog.geometry(f"{width}x{height}+{x}+{y}")
 
     # Make dialog modal
     if parent:
@@ -171,10 +166,16 @@ def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=N
     # Handle window close button (X)
     dialog.protocol("WM_DELETE_WINDOW", lambda: (result.__setitem__(0, None), dialog.destroy()))
 
-    # Apply icon again to ensure it sticks, then show the window
+    # Apply icon again to ensure it sticks, then move to center of screen
     set_vapor_icon(dialog)
     dialog.update_idletasks()  # Process icon change before showing window
-    dialog.attributes('-alpha', 1)  # Make window visible now that icon is set
+
+    # Now move the window to center of screen
+    screen_width = dialog.winfo_screenwidth()
+    screen_height = dialog.winfo_screenheight()
+    x = (screen_width - width) // 2
+    y = (screen_height - height) // 2
+    dialog.geometry(f"{width}x{height}+{x}+{y}")
     dialog.lift()
     dialog.attributes('-topmost', True)
     dialog.after(100, lambda: dialog.attributes('-topmost', False))
