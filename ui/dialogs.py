@@ -186,7 +186,8 @@ def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=N
             except Exception:
                 pass
         # Try multiple times with tight intervals to minimize visible flash
-        for delay in [1, 2, 5, 10, 15, 20, 30, 50, 75, 100, 150, 200]:
+        # Focus on 20-50ms range where CTkToplevel likely sets its icon
+        for delay in [1, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 60, 75, 100]:
             dialog.after(delay, set_icon)
 
     dialog.lift()
