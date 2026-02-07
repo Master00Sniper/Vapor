@@ -1,11 +1,32 @@
 # ui/dialogs.py
 # Vapor-styled dialog popups.
 
+import ctypes
 import os
+import sys
 import tkinter as tk
 import customtkinter as ctk
 
 from utils import base_dir
+
+
+def set_dark_title_bar(window):
+    """Set the Windows title bar to dark mode. Only works on Windows 10/11."""
+    if sys.platform != 'win32':
+        return
+
+    try:
+        hwnd = ctypes.windll.user32.GetParent(window.winfo_id())
+        # DWMWA_USE_IMMERSIVE_DARK_MODE = 20 (Windows 10 20H1+)
+        # For older Windows 10, use attribute 19
+        DWMWA_USE_IMMERSIVE_DARK_MODE = 20
+        value = ctypes.c_int(1)
+        ctypes.windll.dwmapi.DwmSetWindowAttribute(
+            hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE,
+            ctypes.byref(value), ctypes.sizeof(value)
+        )
+    except Exception:
+        pass  # Silently fail on non-Windows or older Windows
 
 
 def set_vapor_icon(window):
@@ -184,6 +205,7 @@ def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=N
 
     # Now show the window - using plain tk.Toplevel means no flash
     dialog.deiconify()
+    set_dark_title_bar(dialog)  # Apply dark title bar after window is shown
     dialog.lift()
     dialog.attributes('-topmost', True)
     dialog.after(100, lambda: dialog.attributes('-topmost', False))
