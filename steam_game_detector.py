@@ -790,13 +790,19 @@ def kill_processes_async(process_names, killed_processes, purpose=""):
     thread.start()
 
 
-def _get_visible_windows():
-    """Get a set of all currently visible window handles that have titles."""
+def _get_visible_windows(require_title=True):
+    """Get a set of all currently visible window handles.
+
+    Args:
+        require_title: If True, only include windows that have a title.
+                      If False, include all visible top-level windows.
+    """
     windows = set()
     def enum_callback(hwnd, results):
         try:
-            if win32gui.IsWindowVisible(hwnd) and win32gui.GetWindowText(hwnd):
-                results.add(hwnd)
+            if win32gui.IsWindowVisible(hwnd):
+                if not require_title or win32gui.GetWindowText(hwnd):
+                    results.add(hwnd)
         except Exception:
             pass
         return True
@@ -813,14 +819,16 @@ def _minimize_new_windows(pre_launch_windows, app_names, max_wait=30):
     """
     vapor_pid = os.getpid()
     minimized = set()
+    skipped_vapor = set()
 
-    log(f"Window snapshot: {len(pre_launch_windows)} windows before launch", "RELAUNCH")
+    log(f"Window snapshot: {len(pre_launch_windows)} windows before launch (Vapor PID: {vapor_pid})", "RELAUNCH")
 
     start_time = time.time()
     while time.time() - start_time < max_wait:
         time.sleep(3)
         try:
-            current_windows = _get_visible_windows()
+            # Include windows without titles - UWP apps may not have titles immediately
+            current_windows = _get_visible_windows(require_title=False)
             new_windows = current_windows - pre_launch_windows - minimized
 
             elapsed = int(time.time() - start_time)
@@ -831,25 +839,50 @@ def _minimize_new_windows(pre_launch_windows, app_names, max_wait=30):
 
             for hwnd in new_windows:
                 try:
-                    # Don't minimize Vapor's own windows (e.g., session details popup)
                     _, window_pid = win32gui.GetWindowThreadProcessId(hwnd)
+                    title = win32gui.GetWindowText(hwnd) or "(no title)"
+                    class_name = win32gui.GetClassName(hwnd) or "(no class)"
+
+                    # Don't minimize Vapor's own windows (e.g., session details popup)
                     if window_pid == vapor_pid:
+                        if hwnd not in skipped_vapor:
+                            log(f"[{elapsed}s] Skipping Vapor window: '{title}' class='{class_name}' (hwnd={hwnd}, PID={window_pid})", "RELAUNCH")
+                            skipped_vapor.add(hwnd)
                         pre_launch_windows.add(hwnd)
                         continue
 
-                    title = win32gui.GetWindowText(hwnd)
-                    win32gui.ShowWindow(hwnd, win32con.SW_MINIMIZE)
+                    # Skip windows with no title and generic system class names
+                    if title == "(no title)" and class_name in ("tooltips_class32", "IME", "MSCTFIME UI"):
+                        pre_launch_windows.add(hwnd)
+                        continue
+
+                    log(f"[{elapsed}s] Minimizing window: '{title}' class='{class_name}' (hwnd={hwnd}, PID={window_pid})", "RELAUNCH")
+
+                    # Try multiple minimization approaches for robustness
+                    # Method 1: ShowWindow with SW_MINIMIZE
+                    try:
+                        win32gui.ShowWindow(hwnd, win32con.SW_MINIMIZE)
+                    except Exception as e1:
+                        log(f"ShowWindow failed for '{title}': {e1}", "RELAUNCH")
+                        # Method 2: PostMessage WM_SYSCOMMAND SC_MINIMIZE
+                        try:
+                            WM_SYSCOMMAND = 0x0112
+                            SC_MINIMIZE = 0xF020
+                            win32gui.PostMessage(hwnd, WM_SYSCOMMAND, SC_MINIMIZE, 0)
+                        except Exception as e2:
+                            log(f"PostMessage also failed for '{title}': {e2}", "RELAUNCH")
+
                     minimized.add(hwnd)
                     log(f"Minimized new window: '{title}' (PID: {window_pid})", "RELAUNCH")
-                except Exception:
-                    pass
-        except Exception:
-            pass
+                except Exception as e:
+                    log(f"[{elapsed}s] Error processing window hwnd={hwnd}: {e}", "RELAUNCH")
+        except Exception as e:
+            log(f"Error in minimize loop: {e}", "RELAUNCH")
 
     if minimized:
         log(f"Minimized {len(minimized)} relaunched app window(s) total", "RELAUNCH")
     else:
-        log(f"No new windows found to minimize for {app_names}", "RELAUNCH")
+        log(f"No new windows found to minimize for {app_names} (skipped {len(skipped_vapor)} Vapor window(s))", "RELAUNCH")
 
 
 def relaunch_processes(killed_processes, relaunch_on_exit, purpose=""):
@@ -860,7 +893,8 @@ def relaunch_processes(killed_processes, relaunch_on_exit, purpose=""):
         return
 
     # Snapshot all visible windows BEFORE launching anything
-    pre_launch_windows = _get_visible_windows()
+    # Include titleless windows to avoid minimizing pre-existing system windows
+    pre_launch_windows = _get_visible_windows(require_title=False)
 
     launched_names = []
     log(f"Relaunching {len(killed_processes)} {purpose} process(es)...", "RELAUNCH")
