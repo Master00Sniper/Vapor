@@ -175,7 +175,8 @@ def build_preferences_tab(parent_frame):
                     {"text": "Leave It On", "value": False, "color": "green"},
                     {"text": "Stop Sending", "value": True, "color": "red"}
                 ],
-                parent=state.root
+                parent=state.root,
+                width=530
             )
             if not response:
                 # User chose to leave it on - revert the toggle

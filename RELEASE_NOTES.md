@@ -17,4 +17,6 @@
 - Fixed fuzzy taskbar icon by adding higher resolution sizes (up to 256x256) to the application icon
 - Fixed CPU temperature monitoring not working in compiled builds
 - Fixed popup dialogs briefly flashing before appearing
-- Fixed CPU driver install popup being too cramped for its text content
+- Fixed CPU temperature popup dialogs cutting off text at the edges
+- Fixed driver installation progress window briefly showing a white background
+- Fixed telemetry confirmation popup buttons being slightly squished

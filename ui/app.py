@@ -230,7 +230,9 @@ def on_save():
                 {"text": "Restart as Admin", "value": True, "color": "green"},
                 {"text": "Cancel", "value": False, "color": "gray"}
             ],
-            parent=state.root
+            parent=state.root,
+            width=550,
+            height=450
         )
         if response is True:
             set_pending_pawnio_check(True)
@@ -273,6 +275,7 @@ def on_save():
                 {"text": "Not Now", "value": "cancel", "color": "gray"}
             ],
             parent=state.root,
+            width=550,
             height=450
         )
         if response == "install":
@@ -299,20 +302,24 @@ def on_save():
             y = state.root.winfo_y() + (state.root.winfo_height() - 160) // 2
             installing_dialog.geometry(f"+{x}+{y}")
 
-            msg_label = ctk.CTkLabel(installing_dialog, text="Installing PawnIO driver...",
+            # Wrap content in CTkFrame for consistent dark background
+            content_frame = ctk.CTkFrame(master=installing_dialog, fg_color="#2b2b2b")
+            content_frame.pack(fill="both", expand=True)
+
+            msg_label = ctk.CTkLabel(content_frame, text="Installing PawnIO driver...",
                                      font=("Calibri", 13), justify="center")
             msg_label.pack(padx=20, pady=(25, 10))
 
-            progress_bar = ctk.CTkProgressBar(installing_dialog, width=300)
+            progress_bar = ctk.CTkProgressBar(content_frame, width=300)
             progress_bar.pack(padx=20, pady=10)
             progress_bar.set(0)
 
-            status_label = ctk.CTkLabel(installing_dialog, text="Please wait while the driver is installed...",
+            status_label = ctk.CTkLabel(content_frame, text="Please wait while the driver is installed...",
                                         font=("Calibri", 11), text_color="gray")
             status_label.pack(padx=20, pady=(5, 15))
 
-            # Show the window smoothly
-            installing_dialog.update_idletasks()
+            # Force full widget rendering before showing
+            installing_dialog.update()
             installing_dialog.deiconify()
             set_dark_title_bar(installing_dialog)
             installing_dialog.lift()
@@ -516,6 +523,7 @@ def check_pending_pawnio_install():
             {"text": "Not Now", "value": "cancel", "color": "gray"}
         ],
         parent=state.root,
+        width=550,
         height=450
     )
 
@@ -543,20 +551,24 @@ def check_pending_pawnio_install():
         y = state.root.winfo_y() + (state.root.winfo_height() - 160) // 2
         installing_dialog.geometry(f"+{x}+{y}")
 
-        msg_label = ctk.CTkLabel(installing_dialog, text="Installing PawnIO driver...",
+        # Wrap content in CTkFrame for consistent dark background
+        content_frame = ctk.CTkFrame(master=installing_dialog, fg_color="#2b2b2b")
+        content_frame.pack(fill="both", expand=True)
+
+        msg_label = ctk.CTkLabel(content_frame, text="Installing PawnIO driver...",
                                  font=("Calibri", 13), justify="center")
         msg_label.pack(padx=20, pady=(25, 10))
 
-        progress_bar = ctk.CTkProgressBar(installing_dialog, width=300)
+        progress_bar = ctk.CTkProgressBar(content_frame, width=300)
         progress_bar.pack(padx=20, pady=10)
         progress_bar.set(0)
 
-        status_label = ctk.CTkLabel(installing_dialog, text="Please wait while the driver is installed...",
+        status_label = ctk.CTkLabel(content_frame, text="Please wait while the driver is installed...",
                                     font=("Calibri", 11), text_color="gray")
         status_label.pack(padx=20, pady=(5, 15))
 
-        # Show the window smoothly
-        installing_dialog.update_idletasks()
+        # Force full widget rendering before showing
+        installing_dialog.update()
         installing_dialog.deiconify()
         set_dark_title_bar(installing_dialog)
         installing_dialog.lift()
