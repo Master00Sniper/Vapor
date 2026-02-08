@@ -481,6 +481,11 @@ class TemperatureTracker:
         self._cpu_critical_triggered = False
         self._gpu_warning_triggered = False
         self._gpu_critical_triggered = False
+        # Consecutive polls above threshold (require 3 sustained hits to trigger)
+        self._cpu_warning_count = 0
+        self._cpu_critical_count = 0
+        self._gpu_warning_count = 0
+        self._gpu_critical_count = 0
         self._game_name = None
 
     def start_monitoring(self, stop_event, enable_cpu=False, enable_gpu=True,
@@ -509,11 +514,15 @@ class TemperatureTracker:
         self._enable_gpu_alert = enable_gpu_alert
         self._gpu_warning_threshold = gpu_warning_threshold
         self._gpu_critical_threshold = gpu_critical_threshold
-        # Reset alert triggers for new session
+        # Reset alert triggers and sustained hit counters for new session
         self._cpu_warning_triggered = False
         self._cpu_critical_triggered = False
         self._gpu_warning_triggered = False
         self._gpu_critical_triggered = False
+        self._cpu_warning_count = 0
+        self._cpu_critical_count = 0
+        self._gpu_warning_count = 0
+        self._gpu_critical_count = 0
         self._game_name = game_name
 
         # Only start monitoring if at least one thermal type is enabled
@@ -616,41 +625,61 @@ class TemperatureTracker:
                     self.max_gpu_temp = gpu_temp
                     log(f"New max GPU temp: {gpu_temp}°C", "TEMP")
 
-            # Check CPU temperature alerts (warning and critical levels)
+            # Check CPU temperature alerts (require 3 sustained polls above threshold)
             if self._enable_cpu_alert and cpu_temp is not None:
                 game_info = f" while playing {self._game_name}" if self._game_name else ""
-                # Check critical first (higher priority)
-                if not self._cpu_critical_triggered and cpu_temp >= self._cpu_critical_threshold:
-                    self._cpu_critical_triggered = True
-                    self._cpu_warning_triggered = True  # Also mark warning as triggered
-                    log(f"CPU CRITICAL alert: {cpu_temp}°C exceeds critical threshold of {self._cpu_critical_threshold}°C", "ALERT")
-                    show_temperature_alert(f"CRITICAL ALERT - CPU Temperature: {cpu_temp}°C{game_info}. "
-                                           f"Critical threshold of {self._cpu_critical_threshold}°C exceeded!",
-                                           is_critical=True)
+                # Check critical (higher priority)
+                if not self._cpu_critical_triggered:
+                    if cpu_temp >= self._cpu_critical_threshold:
+                        self._cpu_critical_count += 1
+                        if self._cpu_critical_count >= 3:
+                            self._cpu_critical_triggered = True
+                            self._cpu_warning_triggered = True  # Also mark warning as triggered
+                            log(f"CPU CRITICAL alert: {cpu_temp}°C sustained above critical threshold of {self._cpu_critical_threshold}°C for 3 polls", "ALERT")
+                            show_temperature_alert(f"CRITICAL ALERT - CPU Temperature: {cpu_temp}°C{game_info}. "
+                                                   f"Critical threshold of {self._cpu_critical_threshold}°C exceeded!",
+                                                   is_critical=True)
+                    else:
+                        self._cpu_critical_count = 0
                 # Check warning level
-                elif not self._cpu_warning_triggered and cpu_temp >= self._cpu_warning_threshold:
-                    self._cpu_warning_triggered = True
-                    log(f"CPU warning alert: {cpu_temp}°C exceeds warning threshold of {self._cpu_warning_threshold}°C", "ALERT")
-                    show_temperature_alert(f"CPU Temperature Warning: {cpu_temp}°C{game_info}. "
-                                           f"Warning threshold of {self._cpu_warning_threshold}°C exceeded.")
+                if not self._cpu_warning_triggered:
+                    if cpu_temp >= self._cpu_warning_threshold:
+                        self._cpu_warning_count += 1
+                        if self._cpu_warning_count >= 3:
+                            self._cpu_warning_triggered = True
+                            log(f"CPU warning alert: {cpu_temp}°C sustained above warning threshold of {self._cpu_warning_threshold}°C for 3 polls", "ALERT")
+                            show_temperature_alert(f"CPU Temperature Warning: {cpu_temp}°C{game_info}. "
+                                                   f"Warning threshold of {self._cpu_warning_threshold}°C exceeded.")
+                    else:
+                        self._cpu_warning_count = 0
 
-            # Check GPU temperature alerts (warning and critical levels)
+            # Check GPU temperature alerts (require 3 sustained polls above threshold)
             if self._enable_gpu_alert and gpu_temp is not None:
                 game_info = f" while playing {self._game_name}" if self._game_name else ""
-                # Check critical first (higher priority)
-                if not self._gpu_critical_triggered and gpu_temp >= self._gpu_critical_threshold:
-                    self._gpu_critical_triggered = True
-                    self._gpu_warning_triggered = True  # Also mark warning as triggered
-                    log(f"GPU CRITICAL alert: {gpu_temp}°C exceeds critical threshold of {self._gpu_critical_threshold}°C", "ALERT")
-                    show_temperature_alert(f"CRITICAL ALERT - GPU Temperature: {gpu_temp}°C{game_info}. "
-                                           f"Critical threshold of {self._gpu_critical_threshold}°C exceeded!",
-                                           is_critical=True)
+                # Check critical (higher priority)
+                if not self._gpu_critical_triggered:
+                    if gpu_temp >= self._gpu_critical_threshold:
+                        self._gpu_critical_count += 1
+                        if self._gpu_critical_count >= 3:
+                            self._gpu_critical_triggered = True
+                            self._gpu_warning_triggered = True  # Also mark warning as triggered
+                            log(f"GPU CRITICAL alert: {gpu_temp}°C sustained above critical threshold of {self._gpu_critical_threshold}°C for 3 polls", "ALERT")
+                            show_temperature_alert(f"CRITICAL ALERT - GPU Temperature: {gpu_temp}°C{game_info}. "
+                                                   f"Critical threshold of {self._gpu_critical_threshold}°C exceeded!",
+                                                   is_critical=True)
+                    else:
+                        self._gpu_critical_count = 0
                 # Check warning level
-                elif not self._gpu_warning_triggered and gpu_temp >= self._gpu_warning_threshold:
-                    self._gpu_warning_triggered = True
-                    log(f"GPU warning alert: {gpu_temp}°C exceeds warning threshold of {self._gpu_warning_threshold}°C", "ALERT")
-                    show_temperature_alert(f"GPU Temperature Warning: {gpu_temp}°C{game_info}. "
-                                           f"Warning threshold of {self._gpu_warning_threshold}°C exceeded.")
+                if not self._gpu_warning_triggered:
+                    if gpu_temp >= self._gpu_warning_threshold:
+                        self._gpu_warning_count += 1
+                        if self._gpu_warning_count >= 3:
+                            self._gpu_warning_triggered = True
+                            log(f"GPU warning alert: {gpu_temp}°C sustained above warning threshold of {self._gpu_warning_threshold}°C for 3 polls", "ALERT")
+                            show_temperature_alert(f"GPU Temperature Warning: {gpu_temp}°C{game_info}. "
+                                                   f"Warning threshold of {self._gpu_warning_threshold}°C exceeded.")
+                    else:
+                        self._gpu_warning_count = 0
 
             # Wait for next poll or stop event (internal event wakes immediately when game ends)
             if self._internal_stop:
