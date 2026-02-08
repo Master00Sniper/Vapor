@@ -671,7 +671,7 @@ def run_settings_ui():
     logical_screen_width = screen_width / scaling
 
     window_width = 700
-    window_height = int(logical_screen_height * 1.0)
+    window_height = int(logical_screen_height * 0.95)
     window_height = max(600, min(window_height, 1000))
 
     # Center on screen (position coordinates are physical pixels, not scaled by CTk)
