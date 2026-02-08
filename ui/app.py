@@ -272,7 +272,8 @@ def on_save():
                 {"text": "Install", "value": "install", "color": "green"},
                 {"text": "Not Now", "value": "cancel", "color": "gray"}
             ],
-            parent=state.root
+            parent=state.root,
+            height=450
         )
         if response == "install":
             # Show installing message with progress bar - use tk.Toplevel for smooth appearance
@@ -514,7 +515,8 @@ def check_pending_pawnio_install():
             {"text": "Install", "value": "install", "color": "green"},
             {"text": "Not Now", "value": "cancel", "color": "gray"}
         ],
-        parent=state.root
+        parent=state.root,
+        height=450
     )
 
     if response == "install":

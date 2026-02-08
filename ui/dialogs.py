@@ -29,7 +29,7 @@ def set_dark_title_bar(window):
         pass  # Silently fail on non-Windows or older Windows
 
 
-def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=None):
+def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=None, width=None, height=None):
     """
     Show a Vapor-themed dialog popup that matches the app's style.
 
@@ -40,6 +40,8 @@ def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=N
         buttons: List of button configs, e.g. [{"text": "Yes", "value": True, "color": "green"}, ...]
                  If None, defaults to a single "OK" button
         parent: Parent window (optional)
+        width: Custom dialog width (optional, defaults to 500)
+        height: Custom dialog height (optional, auto-calculated from message)
 
     Returns:
         The value associated with the clicked button, or None if closed
@@ -47,9 +49,11 @@ def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=N
     result = [None]  # Use list to allow modification in nested function
 
     # Calculate size based on message length
-    width = 500
-    height = 320 + (message.count('\n') * 12)
-    height = min(height, 500)  # Cap max height
+    if width is None:
+        width = 500
+    if height is None:
+        height = 320 + (message.count('\n') * 12)
+        height = min(height, 500)  # Cap max height
 
     # Use plain tkinter Toplevel for full control - withdraw BEFORE it can render
     # CTkToplevel causes a flash because its __init__ does too much before we can hide it
@@ -112,7 +116,7 @@ def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=N
         text=message,
         font=("Calibri", 14),
         justify="left",
-        wraplength=450
+        wraplength=width - 50
     )
     message_label.pack(pady=(0, 10))
 
