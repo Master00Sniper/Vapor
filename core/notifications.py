@@ -420,25 +420,38 @@ def show_detailed_summary(session_data):
 
         popup.protocol("WM_DELETE_WINDOW", on_close)
 
-        # Window dimensions - account for taskbar and smaller screens
+        # Window dimensions - account for DPI scaling, taskbar, and smaller screens
         window_width = 700
         screen_height = popup.winfo_screenheight()
         screen_width = popup.winfo_screenwidth()
 
-        # Reserve space for taskbar (~50px) and some margin
-        usable_height = screen_height - 80
+        # CustomTkinter applies DPI scaling to geometry() dimensions, so
+        # screen dimensions must be converted to logical units for correct sizing.
+        # Without this, windows overflow the screen at >100% display scaling.
+        try:
+            scaling = popup._get_window_scaling()
+        except Exception:
+            scaling = 1.0
 
-        # Use 85% of usable height, clamped between 500 and 950
+        logical_screen_height = screen_height / scaling
+        logical_screen_width = screen_width / scaling
+
+        # Reserve space for taskbar (~50px) and some margin, in logical units
+        usable_height = logical_screen_height - 80
+
+        # Use 85% of usable height, clamped between 400 and 950
         window_height = int(usable_height * 0.85)
-        window_height = max(500, min(window_height, 950))
+        window_height = max(400, min(window_height, 950))
 
         popup.geometry(f"{window_width}x{window_height}")
         popup.resizable(False, True)  # Allow vertical resizing
         popup.minsize(window_width, 400)  # Minimum height
 
-        # Center horizontally, position slightly above center vertically to avoid taskbar
-        x = (screen_width - window_width) // 2
-        y = max(20, (usable_height - window_height) // 2)
+        # Center on screen (position coordinates are physical pixels, not scaled by CTk)
+        physical_window_width = int(window_width * scaling)
+        physical_window_height = int(window_height * scaling)
+        x = (screen_width - physical_window_width) // 2
+        y = max(20, (screen_height - physical_window_height) // 2)
         popup.geometry(f"{window_width}x{window_height}+{x}+{y}")
 
         # IMPORTANT: Pack bottom bar FIRST so it reserves space at the bottom

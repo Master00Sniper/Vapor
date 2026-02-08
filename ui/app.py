@@ -659,12 +659,26 @@ def run_settings_ui():
     screen_width = state.root.winfo_screenwidth()
     screen_height = state.root.winfo_screenheight()
 
+    # CustomTkinter applies DPI scaling to geometry() dimensions, so
+    # screen dimensions must be converted to logical units for correct sizing.
+    # Without this, windows overflow the screen at >100% display scaling.
+    try:
+        scaling = state.root._get_window_scaling()
+    except Exception:
+        scaling = 1.0
+
+    logical_screen_height = screen_height / scaling
+    logical_screen_width = screen_width / scaling
+
     window_width = 700
-    window_height = int(screen_height * 0.85)
+    window_height = int(logical_screen_height * 0.85)
     window_height = max(600, min(window_height, 1000))
 
-    x = (screen_width - window_width) // 2
-    y = (screen_height - window_height) // 2
+    # Center on screen (position coordinates are physical pixels, not scaled by CTk)
+    physical_window_width = int(window_width * scaling)
+    physical_window_height = int(window_height * scaling)
+    x = (screen_width - physical_window_width) // 2
+    y = (screen_height - physical_window_height) // 2
 
     state.root.geometry(f"{window_width}x{window_height}+{x}+{y}")
     state.root.resizable(False, False)
