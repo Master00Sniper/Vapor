@@ -21,3 +21,5 @@
 - Fixed CPU temperature popup dialogs cutting off text at the edges
 - Fixed driver installation progress window briefly showing a white background
 - Fixed telemetry confirmation popup buttons being slightly squished
+- Fixed "Reset Settings" and "Delete All Data" buttons not restarting Vapor after reset
+- Fixed WMI temperature fallback failing in compiled builds due to missing module path

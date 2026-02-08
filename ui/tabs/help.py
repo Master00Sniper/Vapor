@@ -15,6 +15,7 @@ import requests
 from utils import log as debug_log, appdata_dir, SETTINGS_FILE
 from platform_utils import is_admin, is_pawnio_installed
 from ui.dialogs import show_vapor_dialog
+from ui.restart import restart_vapor
 import ui.state as state
 
 try:
@@ -178,25 +179,9 @@ If issues persist, submit a bug report below with logs attached."""
             except Exception as e:
                 debug_log(f"Error deleting settings: {e}", "Reset")
 
-            # Start a new instance of Vapor before shutting down
+            # Restart Vapor using the proper restart utility
             debug_log("Restarting Vapor after settings reset", "Reset")
-            try:
-                executable = sys.executable
-                debug_log(f"Starting new Vapor instance: {executable}", "Reset")
-                subprocess.Popen([executable], creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP)
-                debug_log("New Vapor instance started", "Reset")
-            except Exception as e:
-                debug_log(f"Failed to restart Vapor: {e}", "Reset")
-
-            # Terminate the current instance
-            if state.main_pid:
-                try:
-                    debug_log(f"Terminating main Vapor process (PID: {state.main_pid})", "Reset")
-                    main_process = psutil.Process(state.main_pid)
-                    main_process.terminate()
-                    debug_log("Main process terminated", "Reset")
-                except (psutil.NoSuchProcess, psutil.AccessDenied) as e:
-                    debug_log(f"Could not terminate: {e}", "Reset")
+            restart_vapor(state.main_pid, require_admin=False)
             state.root.destroy()
         else:
             debug_log("User cancelled reset settings", "Reset")
@@ -246,25 +231,9 @@ If issues persist, submit a bug report below with logs attached."""
             except Exception as e:
                 debug_log(f"Error deleting images: {e}", "Reset")
 
-            # Start a new instance of Vapor before shutting down
+            # Restart Vapor using the proper restart utility
             debug_log("Restarting Vapor after all data reset", "Reset")
-            try:
-                executable = sys.executable
-                debug_log(f"Starting new Vapor instance: {executable}", "Reset")
-                subprocess.Popen([executable], creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP)
-                debug_log("New Vapor instance started", "Reset")
-            except Exception as e:
-                debug_log(f"Failed to restart Vapor: {e}", "Reset")
-
-            # Terminate the current instance
-            if state.main_pid:
-                try:
-                    debug_log(f"Terminating main Vapor process (PID: {state.main_pid})", "Reset")
-                    main_process = psutil.Process(state.main_pid)
-                    main_process.terminate()
-                    debug_log("Main process terminated", "Reset")
-                except (psutil.NoSuchProcess, psutil.AccessDenied) as e:
-                    debug_log(f"Could not terminate: {e}", "Reset")
+            restart_vapor(state.main_pid, require_admin=False)
             state.root.destroy()
         else:
             debug_log("User cancelled reset all data", "Reset")

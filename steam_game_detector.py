@@ -16,6 +16,14 @@ try:
 except NameError:
     pass
 
+# Add Nuitka extraction directory to sys.path early for frozen builds.
+# This must happen before importing modules that depend on pywin32 (e.g., pywintypes for WMI).
+# Use realpath to resolve 8.3 short names (like ONEFIL~1) to full paths.
+if getattr(sys, 'frozen', False):
+    _frozen_base = os.path.realpath(os.path.dirname(sys.executable))
+    if _frozen_base not in sys.path:
+        sys.path.insert(0, _frozen_base)
+
 # Only enforce single instance for main app, not settings UI
 VAPOR_MUTEX = None  # Global mutex handle for single instance check
 if '--ui' not in sys.argv:

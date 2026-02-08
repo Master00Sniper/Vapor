@@ -68,8 +68,9 @@ if not HWMON_AVAILABLE:
         from System.Reflection import Assembly
 
         # Determine frozen base directory (Nuitka)
+        # Use realpath to resolve 8.3 short names for .NET assembly compatibility
         def get_frozen_base():
-            return os.path.dirname(sys.executable)
+            return os.path.realpath(os.path.dirname(sys.executable))
 
         # Determine lib folder path
         if getattr(sys, 'frozen', False):
