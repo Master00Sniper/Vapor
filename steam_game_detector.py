@@ -788,6 +788,43 @@ def kill_processes_async(process_names, killed_processes, purpose=""):
     thread.start()
 
 
+def _minimize_process_windows(pid, name, max_wait=10):
+    """
+    Wait for a relaunched process to create windows, then minimize them.
+    Many apps ignore STARTUPINFO's SW_SHOWMINIMIZED, so this ensures
+    they actually end up minimized after relaunch.
+    """
+    start_time = time.time()
+    while time.time() - start_time < max_wait:
+        time.sleep(1)
+        try:
+            windows = []
+            def enum_callback(hwnd, results):
+                try:
+                    if win32gui.IsWindowVisible(hwnd):
+                        _, window_pid = win32gui.GetWindowThreadProcessId(hwnd)
+                        if window_pid == pid:
+                            results.append(hwnd)
+                except Exception:
+                    pass
+                return True
+
+            win32gui.EnumWindows(enum_callback, windows)
+
+            if windows:
+                for hwnd in windows:
+                    try:
+                        win32gui.ShowWindow(hwnd, win32con.SW_MINIMIZE)
+                    except Exception:
+                        pass
+                log(f"Minimized {len(windows)} window(s) for {name}", "RELAUNCH")
+                return
+        except Exception:
+            pass
+
+    log(f"No windows found to minimize for {name} after {max_wait}s", "RELAUNCH")
+
+
 def relaunch_processes(killed_processes, relaunch_on_exit, purpose=""):
     """Relaunch previously terminated processes (minimized)."""
     purpose_str = f" ({purpose})" if purpose else ""
@@ -805,9 +842,16 @@ def relaunch_processes(killed_processes, relaunch_on_exit, purpose=""):
         try:
             startupinfo = subprocess.STARTUPINFO()
             startupinfo.dwFlags = subprocess.STARTF_USESHOWWINDOW
-            startupinfo.wShowWindow = win32con.SW_SHOWMINIMIZED
-            subprocess.Popen(path, startupinfo=startupinfo)
+            startupinfo.wShowWindow = win32con.SW_SHOWMINNOACTIVE
+            proc = subprocess.Popen(path, startupinfo=startupinfo)
             log(f"Relaunched {name}{purpose_str} (minimized)", "RELAUNCH")
+            # Many apps ignore STARTUPINFO show window flags, so also
+            # minimize their windows after they appear
+            threading.Thread(
+                target=_minimize_process_windows,
+                args=(proc.pid, name),
+                daemon=True
+            ).start()
             killed_processes.pop(name, None)
         except Exception as e:
             log(f"Failed to relaunch {name}: {e}", "ERROR")

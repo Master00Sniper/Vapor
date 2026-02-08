@@ -24,3 +24,4 @@
 - Fixed "Reset Settings" and "Delete All Data" buttons not restarting Vapor after reset
 - Fixed WMI temperature fallback failing in compiled builds due to missing module path
 - Fixed game session details and settings windows overflowing the screen at high DPI scaling (e.g., 125% zoom)
+- Fixed relaunched apps appearing full screen instead of minimized after a game session ends
