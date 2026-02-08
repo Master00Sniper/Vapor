@@ -790,78 +790,58 @@ def kill_processes_async(process_names, killed_processes, purpose=""):
     thread.start()
 
 
-def _minimize_process_windows(process_name, exe_path, max_wait=20):
-    """
-    Wait for a relaunched app to create windows, then minimize them.
-    Uses multiple strategies to find the right windows because many apps
-    (Electron, UWP) spawn child processes that own the actual windows:
-      1. Exact process name match
-      2. Related names (e.g., WhatsApp.Root.exe -> WhatsApp.exe)
-      3. Processes launched from the same directory as the original exe
-    """
-    # Build a set of process names to search for
-    search_names = {process_name.lower()}
-    # UWP launchers like WhatsApp.Root.exe spawn WhatsApp.exe
-    base = process_name.lower()
-    if '.root.' in base:
-        search_names.add(base.replace('.root', ''))
-    # Also search without any suffix before .exe (e.g., "SignalBeta.exe" -> "Signal.exe")
-    exe_dir = os.path.dirname(exe_path).lower() if exe_path else None
+def _get_visible_windows():
+    """Get a set of all currently visible window handles that have titles."""
+    windows = set()
+    def enum_callback(hwnd, results):
+        try:
+            if win32gui.IsWindowVisible(hwnd) and win32gui.GetWindowText(hwnd):
+                results.add(hwnd)
+        except Exception:
+            pass
+        return True
+    win32gui.EnumWindows(enum_callback, windows)
+    return windows
 
-    log(f"Searching for windows to minimize: names={search_names}, dir={exe_dir}", "RELAUNCH")
+
+def _minimize_new_windows(pre_launch_windows, app_names, max_wait=30):
+    """
+    Minimize any new visible windows that appeared after app launches.
+    Uses a window snapshot approach instead of process matching, which
+    avoids issues with UWP apps (AccessDenied on process info) and
+    Electron apps (windows owned by child renderer processes).
+    """
+    vapor_pid = os.getpid()
+    minimized = set()
 
     start_time = time.time()
     while time.time() - start_time < max_wait:
-        time.sleep(2)
+        time.sleep(3)
         try:
-            # Find all PIDs matching by name or exe directory
-            target_pids = set()
-            for proc in psutil.process_iter(['name', 'pid', 'exe']):
+            current_windows = _get_visible_windows()
+            new_windows = current_windows - pre_launch_windows - minimized
+
+            for hwnd in new_windows:
                 try:
-                    pname = (proc.info['name'] or '').lower()
-                    pexe = (proc.info['exe'] or '').lower()
+                    # Don't minimize Vapor's own windows (e.g., session details popup)
+                    _, window_pid = win32gui.GetWindowThreadProcessId(hwnd)
+                    if window_pid == vapor_pid:
+                        pre_launch_windows.add(hwnd)
+                        continue
 
-                    # Match by process name
-                    if pname in search_names:
-                        target_pids.add(proc.info['pid'])
-                    # Match by exe directory (catches child processes in same app folder)
-                    elif exe_dir and os.path.dirname(pexe) == exe_dir:
-                        target_pids.add(proc.info['pid'])
-                except (psutil.NoSuchProcess, psutil.AccessDenied):
-                    pass
-
-            if not target_pids:
-                continue
-
-            # Find visible windows belonging to any of those PIDs
-            windows = []
-            def enum_callback(hwnd, results):
-                try:
-                    if win32gui.IsWindowVisible(hwnd):
-                        _, window_pid = win32gui.GetWindowThreadProcessId(hwnd)
-                        if window_pid in target_pids:
-                            # Only minimize real app windows (have a title)
-                            title = win32gui.GetWindowText(hwnd)
-                            if title:
-                                results.append(hwnd)
+                    title = win32gui.GetWindowText(hwnd)
+                    win32gui.ShowWindow(hwnd, win32con.SW_MINIMIZE)
+                    minimized.add(hwnd)
+                    log(f"Minimized new window: '{title}'", "RELAUNCH")
                 except Exception:
                     pass
-                return True
-
-            win32gui.EnumWindows(enum_callback, windows)
-
-            if windows:
-                for hwnd in windows:
-                    try:
-                        win32gui.ShowWindow(hwnd, win32con.SW_MINIMIZE)
-                    except Exception:
-                        pass
-                log(f"Minimized {len(windows)} window(s) for {process_name}", "RELAUNCH")
-                return
         except Exception:
             pass
 
-    log(f"No windows found to minimize for {process_name} after {max_wait}s", "RELAUNCH")
+    if minimized:
+        log(f"Minimized {len(minimized)} relaunched app window(s) total", "RELAUNCH")
+    else:
+        log(f"No new windows found to minimize for {app_names}", "RELAUNCH")
 
 
 def relaunch_processes(killed_processes, relaunch_on_exit, purpose=""):
@@ -871,6 +851,10 @@ def relaunch_processes(killed_processes, relaunch_on_exit, purpose=""):
         log(f"Relaunch disabled for {purpose} apps - skipping", "RELAUNCH")
         return
 
+    # Snapshot all visible windows BEFORE launching anything
+    pre_launch_windows = _get_visible_windows()
+
+    launched_names = []
     log(f"Relaunching {len(killed_processes)} {purpose} process(es)...", "RELAUNCH")
     for name, path in list(killed_processes.items()):
         is_running = any(p.info['name'].lower() == name.lower() for p in psutil.process_iter(['name']))
@@ -884,17 +868,18 @@ def relaunch_processes(killed_processes, relaunch_on_exit, purpose=""):
             startupinfo.wShowWindow = win32con.SW_SHOWMINNOACTIVE
             subprocess.Popen(path, startupinfo=startupinfo)
             log(f"Relaunched {name}{purpose_str} (minimized)", "RELAUNCH")
-            # Many apps (Electron, UWP) ignore STARTUPINFO show window flags
-            # and spawn child processes that own the actual window, so
-            # search by process name, related names, and exe directory
-            threading.Thread(
-                target=_minimize_process_windows,
-                args=(name, path),
-                daemon=True
-            ).start()
+            launched_names.append(name)
             killed_processes.pop(name, None)
         except Exception as e:
             log(f"Failed to relaunch {name}: {e}", "ERROR")
+
+    # Single background thread to minimize any new windows that appear
+    if launched_names:
+        threading.Thread(
+            target=_minimize_new_windows,
+            args=(pre_launch_windows, launched_names),
+            daemon=True
+        ).start()
 
 
 # =============================================================================
