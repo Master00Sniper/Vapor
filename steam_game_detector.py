@@ -643,7 +643,9 @@ def set_startup(enabled):
 
         if enabled:
             if getattr(sys, 'frozen', False):
-                exe_path = sys.executable
+                # Use sys.argv[0] (actual Vapor.exe path), not sys.executable
+                # (python.exe in Nuitka temp folder)
+                exe_path = os.path.abspath(sys.argv[0])
             else:
                 exe_path = os.path.abspath(__file__)
 
@@ -788,23 +790,39 @@ def kill_processes_async(process_names, killed_processes, purpose=""):
     thread.start()
 
 
-def _minimize_process_windows(pid, name, max_wait=10):
+def _minimize_process_windows(process_name, max_wait=15):
     """
-    Wait for a relaunched process to create windows, then minimize them.
-    Many apps ignore STARTUPINFO's SW_SHOWMINIMIZED, so this ensures
-    they actually end up minimized after relaunch.
+    Wait for a relaunched app to create windows, then minimize them.
+    Searches by process name rather than PID because many apps (Electron,
+    UWP) spawn child processes that own the actual windows.
     """
     start_time = time.time()
     while time.time() - start_time < max_wait:
-        time.sleep(1)
+        time.sleep(2)
         try:
+            # Find all PIDs matching this process name (parent + children)
+            target_pids = set()
+            for proc in psutil.process_iter(['name', 'pid']):
+                try:
+                    if proc.info['name'].lower() == process_name.lower():
+                        target_pids.add(proc.info['pid'])
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    pass
+
+            if not target_pids:
+                continue
+
+            # Find visible windows belonging to any of those PIDs
             windows = []
             def enum_callback(hwnd, results):
                 try:
                     if win32gui.IsWindowVisible(hwnd):
                         _, window_pid = win32gui.GetWindowThreadProcessId(hwnd)
-                        if window_pid == pid:
-                            results.append(hwnd)
+                        if window_pid in target_pids:
+                            # Only minimize real app windows (have a title)
+                            title = win32gui.GetWindowText(hwnd)
+                            if title:
+                                results.append(hwnd)
                 except Exception:
                     pass
                 return True
@@ -817,12 +835,12 @@ def _minimize_process_windows(pid, name, max_wait=10):
                         win32gui.ShowWindow(hwnd, win32con.SW_MINIMIZE)
                     except Exception:
                         pass
-                log(f"Minimized {len(windows)} window(s) for {name}", "RELAUNCH")
+                log(f"Minimized {len(windows)} window(s) for {process_name}", "RELAUNCH")
                 return
         except Exception:
             pass
 
-    log(f"No windows found to minimize for {name} after {max_wait}s", "RELAUNCH")
+    log(f"No windows found to minimize for {process_name} after {max_wait}s", "RELAUNCH")
 
 
 def relaunch_processes(killed_processes, relaunch_on_exit, purpose=""):
@@ -843,13 +861,14 @@ def relaunch_processes(killed_processes, relaunch_on_exit, purpose=""):
             startupinfo = subprocess.STARTUPINFO()
             startupinfo.dwFlags = subprocess.STARTF_USESHOWWINDOW
             startupinfo.wShowWindow = win32con.SW_SHOWMINNOACTIVE
-            proc = subprocess.Popen(path, startupinfo=startupinfo)
+            subprocess.Popen(path, startupinfo=startupinfo)
             log(f"Relaunched {name}{purpose_str} (minimized)", "RELAUNCH")
-            # Many apps ignore STARTUPINFO show window flags, so also
-            # minimize their windows after they appear
+            # Many apps (Electron, UWP) ignore STARTUPINFO show window flags
+            # and spawn child processes that own the actual window, so
+            # search by process name and minimize after windows appear
             threading.Thread(
                 target=_minimize_process_windows,
-                args=(proc.pid, name),
+                args=(name,),
                 daemon=True
             ).start()
             killed_processes.pop(name, None)
@@ -1211,10 +1230,13 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
                                 # Show brief toast notification
                                 show_brief_summary(session_data)
 
-                        if notification_relaunch_on_exit:
-                            relaunch_processes(killed_notification, notification_relaunch_on_exit, "notification")
-                        if resource_relaunch_on_exit:
-                            relaunch_processes(killed_resource, resource_relaunch_on_exit, "resource")
+                        # Relaunch apps in background so they don't delay the session popup
+                        def _relaunch_all():
+                            if notification_relaunch_on_exit:
+                                relaunch_processes(killed_notification, notification_relaunch_on_exit, "notification")
+                            if resource_relaunch_on_exit:
+                                relaunch_processes(killed_resource, resource_relaunch_on_exit, "resource")
+                        threading.Thread(target=_relaunch_all, daemon=True).start()
 
                         if enable_after_power:
                             set_power_plan(after_power_plan)
