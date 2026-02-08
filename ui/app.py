@@ -275,7 +275,7 @@ def on_save():
                 {"text": "Not Now", "value": "cancel", "color": "gray"}
             ],
             parent=state.root,
-            width=550,
+            width=580,
             height=450
         )
         if response == "install":
@@ -523,7 +523,7 @@ def check_pending_pawnio_install():
             {"text": "Not Now", "value": "cancel", "color": "gray"}
         ],
         parent=state.root,
-        width=550,
+        width=580,
         height=450
     )
 
