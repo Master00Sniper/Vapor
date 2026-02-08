@@ -808,6 +808,15 @@ def run_settings_ui():
     if state.main_pid:
         state.root.after(1000, check_main_process)
 
+    # Clean up any existing game-started signal so we only respond to NEW game starts
+    # This prevents the settings window from immediately closing if opened mid-game
+    try:
+        if os.path.exists(GAME_STARTED_SIGNAL_FILE):
+            os.remove(GAME_STARTED_SIGNAL_FILE)
+            debug_log("Cleared existing game signal (settings opened mid-game)", "Settings")
+    except Exception:
+        pass
+
     # Start game started signal monitoring (auto-save/close when game starts)
     state.root.after(1000, check_game_started_signal)
 

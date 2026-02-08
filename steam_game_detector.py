@@ -810,6 +810,18 @@ def _get_visible_windows(require_title=True):
     return windows
 
 
+def _get_window_pid(hwnd):
+    """Get the process ID that owns a window handle using ctypes.
+
+    Uses ctypes directly instead of win32gui.GetWindowThreadProcessId
+    which is not available in Nuitka frozen builds.
+    """
+    import ctypes
+    pid = ctypes.c_ulong()
+    ctypes.windll.user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+    return pid.value
+
+
 def _minimize_new_windows(pre_launch_windows, app_names, max_wait=30):
     """
     Minimize any new visible windows that appeared after app launches.
@@ -839,7 +851,7 @@ def _minimize_new_windows(pre_launch_windows, app_names, max_wait=30):
 
             for hwnd in new_windows:
                 try:
-                    _, window_pid = win32gui.GetWindowThreadProcessId(hwnd)
+                    window_pid = _get_window_pid(hwnd)
                     title = win32gui.GetWindowText(hwnd) or "(no title)"
                     class_name = win32gui.GetClassName(hwnd) or "(no class)"
 

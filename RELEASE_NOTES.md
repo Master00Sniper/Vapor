@@ -28,3 +28,4 @@
 - Fixed game session details popup being delayed by app relaunch
 - Fixed "Launch at Startup" registry entry pointing to wrong executable in compiled builds
 - Fixed settings window immediately closing on startup due to stale game signal from previous session
+- Fixed settings window immediately closing when opened during an active game session
