@@ -120,11 +120,8 @@ def get_pawnio_installer_path():
         str: Full path to install_pawnio.ps1
     """
     if getattr(sys, 'frozen', False):
-        # Running as compiled executable (PyInstaller or Nuitka)
-        if hasattr(sys, '_MEIPASS'):
-            frozen_base = sys._MEIPASS
-        else:
-            frozen_base = os.path.dirname(sys.executable)
+        # Running as compiled Nuitka executable
+        frozen_base = os.path.dirname(sys.executable)
         return os.path.join(frozen_base, 'install_pawnio.ps1')
     else:
         # Running as script - use base_dir

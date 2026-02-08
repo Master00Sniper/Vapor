@@ -31,39 +31,46 @@ except Exception:
     PYADL_AVAILABLE = False
 
 # CPU temperature via WMI (requires LibreHardwareMonitor or OpenHardwareMonitor running)
+WMI_AVAILABLE = False
+_wmi_import_error = None
 try:
     import wmi
+    # Test that WMI actually works by creating an instance
+    _test_wmi = wmi.WMI()
+    del _test_wmi
     WMI_AVAILABLE = True
-except ImportError:
-    WMI_AVAILABLE = False
+except Exception as e:
+    # Catch all exceptions - in compiled builds, may fail with COM errors, not just ImportError
+    _wmi_import_error = str(e)
 
 # HardwareMonitor package (PyPI) - handles LibreHardwareMonitor + PawnIO driver
-# Note: This may fail in PyInstaller builds if DLLs aren't bundled, falls back to manual DLL loading
+# Note: This may fail in compiled builds if DLLs aren't bundled, falls back to manual DLL loading
 HWMON_AVAILABLE = False
 HWMON_COMPUTER = None
 CPU_TEMP_ERRORS_LOGGED = False  # Only log WMI/fallback errors once
+_hwmon_import_error = None
 try:
     from HardwareMonitor.Hardware import Computer, IVisitor, IComputer, IHardware, IParameter, ISensor
     from HardwareMonitor.Hardware import HardwareType, SensorType
     HWMON_AVAILABLE = True
-except Exception:
+except Exception as e:
     # Catches ImportError, FileNotFoundException, and any .NET exceptions
-    pass
+    _hwmon_import_error = str(e)
 
 # Fallback: LibreHardwareMonitorLib via pythonnet (bundled DLL approach)
 LHM_AVAILABLE = False
 LHM_COMPUTER = None
+_lhm_import_error = None
 if not HWMON_AVAILABLE:
     try:
         import clr
         import System
         from System.Reflection import Assembly
 
-        # Determine frozen base directory (PyInstaller or Nuitka)
+        # Determine frozen base directory (Nuitka)
+        # Use realpath to resolve 8.3 short names for .NET assembly compatibility
         def get_frozen_base():
-            if hasattr(sys, '_MEIPASS'):
-                return sys._MEIPASS
-            return os.path.dirname(sys.executable)
+            return os.path.realpath(os.path.dirname(sys.executable))
 
         # Determine lib folder path
         if getattr(sys, 'frozen', False):
@@ -99,8 +106,10 @@ if not HWMON_AVAILABLE:
             clr.AddReference(lhm_dll_path)
             from LibreHardwareMonitor.Hardware import Computer, HardwareType, SensorType
             LHM_AVAILABLE = True
-    except Exception:
-        pass
+        else:
+            _lhm_import_error = f"DLL not found at {lhm_dll_path}"
+    except Exception as e:
+        _lhm_import_error = str(e)
 
 
 # Visitor class for HardwareMonitor package (only defined if package available)
@@ -198,6 +207,7 @@ def get_gpu_temperature():
 def get_cpu_temperature():
     """
     Get current CPU temperature in Celsius.
+    Returns the highest temperature reported across all CPU temperature sensors.
     Tries HardwareMonitor package, LibreHardwareMonitor (bundled), and WMI fallbacks.
     Returns None if temperature cannot be read.
     """
@@ -220,28 +230,33 @@ def get_cpu_temperature():
             # Update all hardware using visitor
             HWMON_COMPUTER.Accept(HardwareUpdateVisitor())
 
-            # Look for CPU temperature
+            # Find the highest CPU temperature across all sensors
+            max_temp = None
             for hardware in HWMON_COMPUTER.Hardware:
                 if hardware.HardwareType == HardwareType.Cpu:
-                    # Check all temperature sensors
                     for sensor in hardware.Sensors:
                         if sensor.SensorType == SensorType.Temperature:
                             try:
                                 value = sensor.Value
                                 if value is not None and float(value) > 0:
-                                    return int(float(value))
+                                    temp = int(float(value))
+                                    if max_temp is None or temp > max_temp:
+                                        max_temp = temp
                             except Exception:
                                 pass
-                    # Check subhardware
                     for subhardware in hardware.SubHardware:
                         for sensor in subhardware.Sensors:
                             if sensor.SensorType == SensorType.Temperature:
                                 try:
                                     value = sensor.Value
                                     if value is not None and float(value) > 0:
-                                        return int(float(value))
+                                        temp = int(float(value))
+                                        if max_temp is None or temp > max_temp:
+                                            max_temp = temp
                                 except Exception:
                                     pass
+            if max_temp is not None:
+                return max_temp
         except Exception as e:
             log(f"HardwareMonitor read failed: {e}", "TEMP")
 
@@ -269,13 +284,12 @@ def get_cpu_temperature():
                 for subhardware in hardware.SubHardware:
                     subhardware.Update()
 
-            # Look for CPU temperature
+            # Find the highest CPU temperature across all sensors
+            max_temp = None
             for hardware in LHM_COMPUTER.Hardware:
                 if hardware.HardwareType == HardwareType.Cpu:
-                    # Check all temperature sensors
                     for sensor in hardware.Sensors:
                         if sensor.SensorType == SensorType.Temperature:
-                            # Try multiple ways to get the value (pythonnet nullable handling)
                             try:
                                 value = sensor.Value
                                 # Handle .NET nullable - try GetValueOrDefault if available
@@ -284,10 +298,11 @@ def get_cpu_temperature():
                                 elif hasattr(value, 'Value'):
                                     value = value.Value
                                 if value is not None and float(value) > 0:
-                                    return int(float(value))
+                                    temp = int(float(value))
+                                    if max_temp is None or temp > max_temp:
+                                        max_temp = temp
                             except Exception:
                                 pass
-                    # Check subhardware
                     for subhardware in hardware.SubHardware:
                         for sensor in subhardware.Sensors:
                             if sensor.SensorType == SensorType.Temperature:
@@ -298,40 +313,48 @@ def get_cpu_temperature():
                                     elif hasattr(value, 'Value'):
                                         value = value.Value
                                     if value is not None and float(value) > 0:
-                                        return int(float(value))
+                                        temp = int(float(value))
+                                        if max_temp is None or temp > max_temp:
+                                            max_temp = temp
                                 except Exception:
                                     pass
+            if max_temp is not None:
+                return max_temp
         except Exception as e:
             log(f"LibreHardwareMonitorLib read failed: {e}", "TEMP")
 
     # Fallback: Try WMI with external LibreHardwareMonitor/OpenHardwareMonitor
     global CPU_TEMP_ERRORS_LOGGED
     if WMI_AVAILABLE:
-        # Try LibreHardwareMonitor WMI
+        # Try LibreHardwareMonitor WMI - find highest CPU temp
         try:
             w = wmi.WMI(namespace="root\\LibreHardwareMonitor")
             sensors = w.Sensor()
+            max_temp = None
             for sensor in sensors:
                 if sensor.SensorType == "Temperature" and "CPU" in sensor.Name:
-                    if "Package" in sensor.Name or "Core" in sensor.Name:
-                        return int(sensor.Value)
-            for sensor in sensors:
-                if sensor.SensorType == "Temperature" and "CPU" in sensor.Name:
-                    return int(sensor.Value)
+                    if sensor.Value and sensor.Value > 0:
+                        temp = int(sensor.Value)
+                        if max_temp is None or temp > max_temp:
+                            max_temp = temp
+            if max_temp is not None:
+                return max_temp
         except Exception:
             pass  # WMI namespace not available
 
-        # Try OpenHardwareMonitor WMI
+        # Try OpenHardwareMonitor WMI - find highest CPU temp
         try:
             w = wmi.WMI(namespace="root\\OpenHardwareMonitor")
             sensors = w.Sensor()
+            max_temp = None
             for sensor in sensors:
                 if sensor.SensorType == "Temperature" and "CPU" in sensor.Name:
-                    if "Package" in sensor.Name or "Core" in sensor.Name:
-                        return int(sensor.Value)
-            for sensor in sensors:
-                if sensor.SensorType == "Temperature" and "CPU" in sensor.Name:
-                    return int(sensor.Value)
+                    if sensor.Value and sensor.Value > 0:
+                        temp = int(sensor.Value)
+                        if max_temp is None or temp > max_temp:
+                            max_temp = temp
+            if max_temp is not None:
+                return max_temp
         except Exception:
             pass  # WMI namespace not available
 
@@ -459,6 +482,11 @@ class TemperatureTracker:
         self._cpu_critical_triggered = False
         self._gpu_warning_triggered = False
         self._gpu_critical_triggered = False
+        # Consecutive polls above threshold (require 3 sustained hits to trigger)
+        self._cpu_warning_count = 0
+        self._cpu_critical_count = 0
+        self._gpu_warning_count = 0
+        self._gpu_critical_count = 0
         self._game_name = None
 
     def start_monitoring(self, stop_event, enable_cpu=False, enable_gpu=True,
@@ -487,11 +515,15 @@ class TemperatureTracker:
         self._enable_gpu_alert = enable_gpu_alert
         self._gpu_warning_threshold = gpu_warning_threshold
         self._gpu_critical_threshold = gpu_critical_threshold
-        # Reset alert triggers for new session
+        # Reset alert triggers and sustained hit counters for new session
         self._cpu_warning_triggered = False
         self._cpu_critical_triggered = False
         self._gpu_warning_triggered = False
         self._gpu_critical_triggered = False
+        self._cpu_warning_count = 0
+        self._cpu_critical_count = 0
+        self._gpu_warning_count = 0
+        self._gpu_critical_count = 0
         self._game_name = game_name
 
         # Only start monitoring if at least one thermal type is enabled
@@ -594,41 +626,61 @@ class TemperatureTracker:
                     self.max_gpu_temp = gpu_temp
                     log(f"New max GPU temp: {gpu_temp}°C", "TEMP")
 
-            # Check CPU temperature alerts (warning and critical levels)
+            # Check CPU temperature alerts (require 3 sustained polls above threshold)
             if self._enable_cpu_alert and cpu_temp is not None:
                 game_info = f" while playing {self._game_name}" if self._game_name else ""
-                # Check critical first (higher priority)
-                if not self._cpu_critical_triggered and cpu_temp >= self._cpu_critical_threshold:
-                    self._cpu_critical_triggered = True
-                    self._cpu_warning_triggered = True  # Also mark warning as triggered
-                    log(f"CPU CRITICAL alert: {cpu_temp}°C exceeds critical threshold of {self._cpu_critical_threshold}°C", "ALERT")
-                    show_temperature_alert(f"CRITICAL ALERT - CPU Temperature: {cpu_temp}°C{game_info}. "
-                                           f"Critical threshold of {self._cpu_critical_threshold}°C exceeded!",
-                                           is_critical=True)
+                # Check critical (higher priority)
+                if not self._cpu_critical_triggered:
+                    if cpu_temp >= self._cpu_critical_threshold:
+                        self._cpu_critical_count += 1
+                        if self._cpu_critical_count >= 3:
+                            self._cpu_critical_triggered = True
+                            self._cpu_warning_triggered = True  # Also mark warning as triggered
+                            log(f"CPU CRITICAL alert: {cpu_temp}°C sustained above critical threshold of {self._cpu_critical_threshold}°C for 3 polls", "ALERT")
+                            show_temperature_alert(f"CRITICAL ALERT - CPU Temperature: {cpu_temp}°C{game_info}. "
+                                                   f"Critical threshold of {self._cpu_critical_threshold}°C exceeded!",
+                                                   is_critical=True)
+                    else:
+                        self._cpu_critical_count = 0
                 # Check warning level
-                elif not self._cpu_warning_triggered and cpu_temp >= self._cpu_warning_threshold:
-                    self._cpu_warning_triggered = True
-                    log(f"CPU warning alert: {cpu_temp}°C exceeds warning threshold of {self._cpu_warning_threshold}°C", "ALERT")
-                    show_temperature_alert(f"CPU Temperature Warning: {cpu_temp}°C{game_info}. "
-                                           f"Warning threshold of {self._cpu_warning_threshold}°C exceeded.")
+                if not self._cpu_warning_triggered:
+                    if cpu_temp >= self._cpu_warning_threshold:
+                        self._cpu_warning_count += 1
+                        if self._cpu_warning_count >= 3:
+                            self._cpu_warning_triggered = True
+                            log(f"CPU warning alert: {cpu_temp}°C sustained above warning threshold of {self._cpu_warning_threshold}°C for 3 polls", "ALERT")
+                            show_temperature_alert(f"CPU Temperature Warning: {cpu_temp}°C{game_info}. "
+                                                   f"Warning threshold of {self._cpu_warning_threshold}°C exceeded.")
+                    else:
+                        self._cpu_warning_count = 0
 
-            # Check GPU temperature alerts (warning and critical levels)
+            # Check GPU temperature alerts (require 3 sustained polls above threshold)
             if self._enable_gpu_alert and gpu_temp is not None:
                 game_info = f" while playing {self._game_name}" if self._game_name else ""
-                # Check critical first (higher priority)
-                if not self._gpu_critical_triggered and gpu_temp >= self._gpu_critical_threshold:
-                    self._gpu_critical_triggered = True
-                    self._gpu_warning_triggered = True  # Also mark warning as triggered
-                    log(f"GPU CRITICAL alert: {gpu_temp}°C exceeds critical threshold of {self._gpu_critical_threshold}°C", "ALERT")
-                    show_temperature_alert(f"CRITICAL ALERT - GPU Temperature: {gpu_temp}°C{game_info}. "
-                                           f"Critical threshold of {self._gpu_critical_threshold}°C exceeded!",
-                                           is_critical=True)
+                # Check critical (higher priority)
+                if not self._gpu_critical_triggered:
+                    if gpu_temp >= self._gpu_critical_threshold:
+                        self._gpu_critical_count += 1
+                        if self._gpu_critical_count >= 3:
+                            self._gpu_critical_triggered = True
+                            self._gpu_warning_triggered = True  # Also mark warning as triggered
+                            log(f"GPU CRITICAL alert: {gpu_temp}°C sustained above critical threshold of {self._gpu_critical_threshold}°C for 3 polls", "ALERT")
+                            show_temperature_alert(f"CRITICAL ALERT - GPU Temperature: {gpu_temp}°C{game_info}. "
+                                                   f"Critical threshold of {self._gpu_critical_threshold}°C exceeded!",
+                                                   is_critical=True)
+                    else:
+                        self._gpu_critical_count = 0
                 # Check warning level
-                elif not self._gpu_warning_triggered and gpu_temp >= self._gpu_warning_threshold:
-                    self._gpu_warning_triggered = True
-                    log(f"GPU warning alert: {gpu_temp}°C exceeds warning threshold of {self._gpu_warning_threshold}°C", "ALERT")
-                    show_temperature_alert(f"GPU Temperature Warning: {gpu_temp}°C{game_info}. "
-                                           f"Warning threshold of {self._gpu_warning_threshold}°C exceeded.")
+                if not self._gpu_warning_triggered:
+                    if gpu_temp >= self._gpu_warning_threshold:
+                        self._gpu_warning_count += 1
+                        if self._gpu_warning_count >= 3:
+                            self._gpu_warning_triggered = True
+                            log(f"GPU warning alert: {gpu_temp}°C sustained above warning threshold of {self._gpu_warning_threshold}°C for 3 polls", "ALERT")
+                            show_temperature_alert(f"GPU Temperature Warning: {gpu_temp}°C{game_info}. "
+                                                   f"Warning threshold of {self._gpu_warning_threshold}°C exceeded.")
+                    else:
+                        self._gpu_warning_count = 0
 
             # Wait for next poll or stop event (internal event wakes immediately when game ends)
             if self._internal_stop:

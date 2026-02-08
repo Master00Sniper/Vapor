@@ -16,6 +16,14 @@ try:
 except NameError:
     pass
 
+# Add Nuitka extraction directory to sys.path early for frozen builds.
+# This must happen before importing modules that depend on pywin32 (e.g., pywintypes for WMI).
+# Use realpath to resolve 8.3 short names (like ONEFIL~1) to full paths.
+if getattr(sys, 'frozen', False):
+    _frozen_base = os.path.realpath(os.path.dirname(sys.executable))
+    if _frozen_base not in sys.path:
+        sys.path.insert(0, _frozen_base)
+
 # Only enforce single instance for main app, not settings UI
 VAPOR_MUTEX = None  # Global mutex handle for single instance check
 if '--ui' not in sys.argv:
@@ -27,36 +35,109 @@ if '--ui' not in sys.argv:
         sys.exit(0)
 
 
-    def cleanup_stale_mei_folders():
+    def cleanup_stale_nuitka_folders():
         """
-        Remove leftover PyInstaller _MEI folders from previous crashes.
-        Must run early to prevent the PyInstaller warning dialog.
+        Remove leftover Nuitka onefile folders from previous Vapor crashes.
+        Only cleans up Vapor folders (identified by containing steam_game_detector files).
         """
         try:
             import shutil
             import tempfile
             temp_dir = tempfile.gettempdir()
-            current_mei = getattr(sys, '_MEIPASS', None)
+            # Use realpath to resolve 8.3 short names (like ONXXXX~1) to full names
+            current_dir = os.path.realpath(os.path.dirname(sys.executable)) if getattr(sys, 'frozen', False) else None
 
             for item in os.listdir(temp_dir):
-                if item.startswith('_MEI'):
-                    mei_path = os.path.join(temp_dir, item)
+                # Nuitka onefile folders start with "onefile_"
+                if item.startswith('onefile_'):
+                    folder_path = os.path.realpath(os.path.join(temp_dir, item))
                     # Don't delete our own folder
-                    if current_mei and mei_path == current_mei:
+                    if current_dir and folder_path.lower() == current_dir.lower():
                         continue
                     # Only delete if it's a directory
-                    if os.path.isdir(mei_path):
-                        try:
-                            shutil.rmtree(mei_path)
-                        except (PermissionError, OSError):
-                            # Folder is in use by another process, skip it
-                            pass
+                    if os.path.isdir(folder_path):
+                        # Check if this is a Vapor folder by looking for our specific files
+                        images_folder = os.path.join(folder_path, 'Images')
+                        # Only delete if it looks like a Vapor installation
+                        if os.path.exists(images_folder):
+                            try:
+                                shutil.rmtree(folder_path)
+                            except (PermissionError, OSError):
+                                # Folder is in use by another process, skip it
+                                pass
         except Exception:
             pass  # Don't let cleanup errors prevent app from starting
 
 
     if getattr(sys, 'frozen', False):
-        cleanup_stale_mei_folders()
+        cleanup_stale_nuitka_folders()
+
+
+# =============================================================================
+# Early Admin Check (before splash screen for faster startup)
+# =============================================================================
+# Only check for main app, not settings UI or already elevated
+if '--ui' not in sys.argv and '--elevated' not in sys.argv:
+    import ctypes
+    import json
+
+    def _early_is_admin():
+        """Quick admin check using only ctypes (no heavy imports)."""
+        try:
+            return ctypes.windll.shell32.IsUserAnAdmin() != 0
+        except Exception:
+            return False
+
+    def _early_needs_admin():
+        """Check if CPU thermal monitoring requires admin elevation."""
+        try:
+            # Build settings path (same logic as utils/constants.py)
+            appdata_dir = os.path.join(os.getenv('APPDATA'), 'Vapor')
+            settings_file = os.path.join(appdata_dir, 'vapor_settings.json')
+
+            if os.path.exists(settings_file):
+                with open(settings_file, 'r') as f:
+                    settings = json.load(f)
+                return settings.get('enable_cpu_thermal', False)
+        except Exception:
+            pass
+        return False
+
+    def _early_request_elevation():
+        """Request admin elevation before splash screen."""
+        try:
+            if getattr(sys, 'frozen', False):
+                # Nuitka: use sys.argv[0] for the executable path
+                executable = sys.argv[0]
+                work_dir = os.path.dirname(sys.argv[0])
+                existing_params = ' '.join(sys.argv[1:])
+                params = f'{existing_params} --elevated'.strip()
+            else:
+                python_dir = os.path.dirname(sys.executable)
+                pythonw_exe = os.path.join(python_dir, 'pythonw.exe')
+                executable = pythonw_exe if os.path.exists(pythonw_exe) else sys.executable
+                script_path = os.path.abspath(__file__)
+                params = f'"{script_path}" --elevated'
+                work_dir = os.path.dirname(script_path)
+
+            result = ctypes.windll.shell32.ShellExecuteW(
+                None, "runas", executable, params, work_dir, 1
+            )
+            return result > 32  # Success if > 32
+        except Exception:
+            return False
+
+    # Check if we need admin BEFORE showing splash
+    if not _early_is_admin() and _early_needs_admin():
+        if _early_request_elevation():
+            # Release mutex before exiting so elevated instance can acquire it
+            if VAPOR_MUTEX:
+                try:
+                    import win32api
+                    win32api.CloseHandle(VAPOR_MUTEX)
+                except Exception:
+                    pass
+            sys.exit(0)  # Exit - elevated instance will start fresh with splash
 
 
 # =============================================================================
@@ -119,12 +200,9 @@ def show_splash_screen():
         import tkinter as tk
         from PIL import Image, ImageTk
 
-        # Determine base directory
+        # Determine base directory (Nuitka or script execution)
         if getattr(sys, 'frozen', False):
-            if hasattr(sys, '_MEIPASS'):
-                base_dir = sys._MEIPASS
-            else:
-                base_dir = os.path.dirname(sys.executable)
+            base_dir = os.path.dirname(sys.executable)
         else:
             base_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -253,7 +331,10 @@ import win11toast
 # Core modules
 from core import (
     # Temperature monitoring
-    NVML_AVAILABLE, PYADL_AVAILABLE, WMI_AVAILABLE, HWMON_AVAILABLE, LHM_AVAILABLE,
+    NVML_AVAILABLE, PYADL_AVAILABLE,
+    WMI_AVAILABLE, _wmi_import_error,
+    HWMON_AVAILABLE, _hwmon_import_error,
+    LHM_AVAILABLE, _lhm_import_error,
     get_gpu_temperature, get_cpu_temperature, show_temperature_alert,
     TemperatureTracker, temperature_tracker,
     TEMP_HISTORY_DIR, get_temp_history_path, load_temp_history, save_temp_history, get_lifetime_max_temps,
@@ -292,14 +373,9 @@ def request_admin_restart():
     try:
         # Get the executable path and working directory
         if getattr(sys, 'frozen', False):
-            # PyInstaller: sys.executable is Vapor.exe
-            # Nuitka: sys.executable is python.exe in temp, use sys.argv[0] instead
-            if hasattr(sys, '_MEIPASS'):
-                executable = sys.executable
-                work_dir = os.path.dirname(sys.executable)
-            else:
-                executable = sys.argv[0]
-                work_dir = os.path.dirname(sys.argv[0])
+            # Nuitka: use sys.argv[0] for the executable path
+            executable = sys.argv[0]
+            work_dir = os.path.dirname(sys.argv[0])
             # Add --elevated flag to skip splash screen on restart
             existing_params = ' '.join(sys.argv[1:])
             params = f'{existing_params} --elevated'.strip()
@@ -418,10 +494,7 @@ except (AttributeError, ValueError):
 
 # Set working directory for frozen executable compatibility
 if getattr(sys, 'frozen', False):
-    if hasattr(sys, '_MEIPASS'):
-        application_path = sys._MEIPASS
-    else:
-        application_path = os.path.dirname(sys.executable)
+    application_path = os.path.dirname(sys.executable)
 else:
     application_path = os.path.dirname(os.path.abspath(__file__))
 os.chdir(application_path)
@@ -432,7 +505,8 @@ from utils import (
     base_dir, appdata_dir, SETTINGS_FILE, DEBUG_LOG_FILE,
     MAX_LOG_SIZE, TRAY_ICON_PATH, PROTECTED_PROCESSES, log,
     load_settings as load_settings_dict, save_settings as save_settings_dict,
-    create_default_settings as create_default_settings_shared, DEFAULT_SETTINGS
+    create_default_settings as create_default_settings_shared, DEFAULT_SETTINGS,
+    GAME_STARTED_SIGNAL_FILE
 )
 
 # Import platform utilities (admin checks, PawnIO driver)
@@ -569,7 +643,9 @@ def set_startup(enabled):
 
         if enabled:
             if getattr(sys, 'frozen', False):
-                exe_path = sys.executable
+                # Use sys.argv[0] (actual Vapor.exe path), not sys.executable
+                # (python.exe in Nuitka temp folder)
+                exe_path = os.path.abspath(sys.argv[0])
             else:
                 exe_path = os.path.abspath(__file__)
 
@@ -714,6 +790,113 @@ def kill_processes_async(process_names, killed_processes, purpose=""):
     thread.start()
 
 
+def _get_visible_windows(require_title=True):
+    """Get a set of all currently visible window handles.
+
+    Args:
+        require_title: If True, only include windows that have a title.
+                      If False, include all visible top-level windows.
+    """
+    windows = set()
+    def enum_callback(hwnd, results):
+        try:
+            if win32gui.IsWindowVisible(hwnd):
+                if not require_title or win32gui.GetWindowText(hwnd):
+                    results.add(hwnd)
+        except Exception:
+            pass
+        return True
+    win32gui.EnumWindows(enum_callback, windows)
+    return windows
+
+
+def _get_window_pid(hwnd):
+    """Get the process ID that owns a window handle using ctypes.
+
+    Uses ctypes directly instead of win32gui.GetWindowThreadProcessId
+    which is not available in Nuitka frozen builds.
+    """
+    import ctypes
+    pid = ctypes.c_ulong()
+    ctypes.windll.user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+    return pid.value
+
+
+def _minimize_new_windows(pre_launch_windows, app_names, max_wait=30):
+    """
+    Minimize any new visible windows that appeared after app launches.
+    Uses a window snapshot approach instead of process matching, which
+    avoids issues with UWP apps (AccessDenied on process info) and
+    Electron apps (windows owned by child renderer processes).
+    """
+    vapor_pid = os.getpid()
+    minimized = set()
+    skipped_vapor = set()
+
+    log(f"Window snapshot: {len(pre_launch_windows)} windows before launch (Vapor PID: {vapor_pid})", "RELAUNCH")
+
+    start_time = time.time()
+    while time.time() - start_time < max_wait:
+        time.sleep(3)
+        try:
+            # Include windows without titles - UWP apps may not have titles immediately
+            current_windows = _get_visible_windows(require_title=False)
+            new_windows = current_windows - pre_launch_windows - minimized
+
+            elapsed = int(time.time() - start_time)
+            if new_windows:
+                log(f"[{elapsed}s] Found {len(new_windows)} new window(s) (current={len(current_windows)}, snapshot={len(pre_launch_windows)})", "RELAUNCH")
+            else:
+                log(f"[{elapsed}s] No new windows yet (current={len(current_windows)}, snapshot={len(pre_launch_windows)})", "RELAUNCH")
+
+            for hwnd in new_windows:
+                try:
+                    window_pid = _get_window_pid(hwnd)
+                    title = win32gui.GetWindowText(hwnd) or "(no title)"
+                    class_name = win32gui.GetClassName(hwnd) or "(no class)"
+
+                    # Don't minimize Vapor's own windows (e.g., session details popup)
+                    if window_pid == vapor_pid:
+                        if hwnd not in skipped_vapor:
+                            log(f"[{elapsed}s] Skipping Vapor window: '{title}' class='{class_name}' (hwnd={hwnd}, PID={window_pid})", "RELAUNCH")
+                            skipped_vapor.add(hwnd)
+                        pre_launch_windows.add(hwnd)
+                        continue
+
+                    # Skip windows with no title and generic system class names
+                    if title == "(no title)" and class_name in ("tooltips_class32", "IME", "MSCTFIME UI"):
+                        pre_launch_windows.add(hwnd)
+                        continue
+
+                    log(f"[{elapsed}s] Minimizing window: '{title}' class='{class_name}' (hwnd={hwnd}, PID={window_pid})", "RELAUNCH")
+
+                    # Try multiple minimization approaches for robustness
+                    # Method 1: ShowWindow with SW_MINIMIZE
+                    try:
+                        win32gui.ShowWindow(hwnd, win32con.SW_MINIMIZE)
+                    except Exception as e1:
+                        log(f"ShowWindow failed for '{title}': {e1}", "RELAUNCH")
+                        # Method 2: PostMessage WM_SYSCOMMAND SC_MINIMIZE
+                        try:
+                            WM_SYSCOMMAND = 0x0112
+                            SC_MINIMIZE = 0xF020
+                            win32gui.PostMessage(hwnd, WM_SYSCOMMAND, SC_MINIMIZE, 0)
+                        except Exception as e2:
+                            log(f"PostMessage also failed for '{title}': {e2}", "RELAUNCH")
+
+                    minimized.add(hwnd)
+                    log(f"Minimized new window: '{title}' (PID: {window_pid})", "RELAUNCH")
+                except Exception as e:
+                    log(f"[{elapsed}s] Error processing window hwnd={hwnd}: {e}", "RELAUNCH")
+        except Exception as e:
+            log(f"Error in minimize loop: {e}", "RELAUNCH")
+
+    if minimized:
+        log(f"Minimized {len(minimized)} relaunched app window(s) total", "RELAUNCH")
+    else:
+        log(f"No new windows found to minimize for {app_names} (skipped {len(skipped_vapor)} Vapor window(s))", "RELAUNCH")
+
+
 def relaunch_processes(killed_processes, relaunch_on_exit, purpose=""):
     """Relaunch previously terminated processes (minimized)."""
     purpose_str = f" ({purpose})" if purpose else ""
@@ -721,6 +904,11 @@ def relaunch_processes(killed_processes, relaunch_on_exit, purpose=""):
         log(f"Relaunch disabled for {purpose} apps - skipping", "RELAUNCH")
         return
 
+    # Snapshot all visible windows BEFORE launching anything
+    # Include titleless windows to avoid minimizing pre-existing system windows
+    pre_launch_windows = _get_visible_windows(require_title=False)
+
+    launched_names = []
     log(f"Relaunching {len(killed_processes)} {purpose} process(es)...", "RELAUNCH")
     for name, path in list(killed_processes.items()):
         is_running = any(p.info['name'].lower() == name.lower() for p in psutil.process_iter(['name']))
@@ -731,12 +919,21 @@ def relaunch_processes(killed_processes, relaunch_on_exit, purpose=""):
         try:
             startupinfo = subprocess.STARTUPINFO()
             startupinfo.dwFlags = subprocess.STARTF_USESHOWWINDOW
-            startupinfo.wShowWindow = win32con.SW_SHOWMINIMIZED
+            startupinfo.wShowWindow = win32con.SW_SHOWMINNOACTIVE
             subprocess.Popen(path, startupinfo=startupinfo)
             log(f"Relaunched {name}{purpose_str} (minimized)", "RELAUNCH")
+            launched_names.append(name)
             killed_processes.pop(name, None)
         except Exception as e:
             log(f"Failed to relaunch {name}: {e}", "ERROR")
+
+    # Single background thread to minimize any new windows that appear
+    if launched_names:
+        threading.Thread(
+            target=_minimize_new_windows,
+            args=(pre_launch_windows, launched_names),
+            daemon=True
+        ).start()
 
 
 # =============================================================================
@@ -871,14 +1068,23 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
 
     # Launch settings on start if enabled, if first run, or if pending reopen
     if is_first_run or launch_settings_on_start or pending_settings_reopen:
+        # Clean up any stale game-started signal file from a previous session
+        # (e.g., if Vapor crashed while a game was running). Without this,
+        # the settings window would detect the stale file and immediately close.
+        try:
+            if os.path.exists(GAME_STARTED_SIGNAL_FILE):
+                os.remove(GAME_STARTED_SIGNAL_FILE)
+                log("Cleaned up stale game started signal file", "INIT")
+        except Exception:
+            pass
+
         # Wait for splash screen to finish before showing settings window
         wait_for_splash_complete()
         log("Launching settings window on startup...", "INIT")
         try:
             if getattr(sys, 'frozen', False):
-                # PyInstaller uses sys.executable, Nuitka uses sys.argv[0]
-                exe_path = sys.executable if hasattr(sys, '_MEIPASS') else sys.argv[0]
-                subprocess.Popen([exe_path, '--ui', str(os.getpid())])
+                # Nuitka: use sys.argv[0] for the executable path
+                subprocess.Popen([sys.argv[0], '--ui', str(os.getpid())])
             else:
                 subprocess.Popen([sys.executable, __file__, '--ui', str(os.getpid())])
         except Exception as e:
@@ -1094,10 +1300,13 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
                                 # Show brief toast notification
                                 show_brief_summary(session_data)
 
-                        if notification_relaunch_on_exit:
-                            relaunch_processes(killed_notification, notification_relaunch_on_exit, "notification")
-                        if resource_relaunch_on_exit:
-                            relaunch_processes(killed_resource, resource_relaunch_on_exit, "resource")
+                        # Relaunch apps in background so they don't delay the session popup
+                        def _relaunch_all():
+                            if notification_relaunch_on_exit:
+                                relaunch_processes(killed_notification, notification_relaunch_on_exit, "notification")
+                            if resource_relaunch_on_exit:
+                                relaunch_processes(killed_resource, resource_relaunch_on_exit, "resource")
+                        threading.Thread(target=_relaunch_all, daemon=True).start()
 
                         if enable_after_power:
                             set_power_plan(after_power_plan)
@@ -1116,6 +1325,14 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
                     log("=" * 40, "GAME")
                     log(f"GAME STARTED: {game_name} (AppID {current_app_id})", "GAME")
                     log("=" * 40, "GAME")
+
+                    # Signal settings UI to close (if open)
+                    try:
+                        with open(GAME_STARTED_SIGNAL_FILE, 'w') as f:
+                            f.write(str(current_app_id))
+                        log("Created game started signal for settings UI", "GAME")
+                    except Exception as e:
+                        log(f"Failed to create game started signal: {e}", "GAME")
 
                     if previous_app_id == 0:
                         start_time = time.time()
@@ -1184,9 +1401,8 @@ def open_settings(icon, query):
     log("Opening settings UI...", "UI")
     try:
         if getattr(sys, 'frozen', False):
-            # PyInstaller uses sys.executable, Nuitka uses sys.argv[0]
-            exe_path = sys.executable if hasattr(sys, '_MEIPASS') else sys.argv[0]
-            proc = subprocess.Popen([exe_path, '--ui', str(os.getpid())])
+            # Nuitka: use sys.argv[0] for the executable path
+            proc = subprocess.Popen([sys.argv[0], '--ui', str(os.getpid())])
         else:
             proc = subprocess.Popen([sys.executable, __file__, '--ui', str(os.getpid())])
         _child_processes.append(proc)
@@ -1279,12 +1495,8 @@ if __name__ == '__main__':
 
         # Pass the actual Vapor executable path for restart functionality
         if getattr(sys, 'frozen', False):
-            # PyInstaller: sys.executable is Vapor.exe
-            # Nuitka: sys.executable is python.exe in temp, use sys.argv[0] instead
-            if hasattr(sys, '_MEIPASS'):
-                os.environ['VAPOR_EXE_PATH'] = sys.executable
-            else:
-                os.environ['VAPOR_EXE_PATH'] = sys.argv[0]
+            # Nuitka: use sys.argv[0] for the executable path
+            os.environ['VAPOR_EXE_PATH'] = sys.argv[0]
         else:
             # When running from source, pass the script path
             os.environ['VAPOR_EXE_PATH'] = os.path.abspath(__file__)
@@ -1299,16 +1511,12 @@ if __name__ == '__main__':
             stop_event = threading.Event()
             _stop_event = stop_event  # Make accessible to signal handler (module-level var)
 
-            # Log PyInstaller details for debugging restart issues
+            # Log startup details for debugging
             log(f"=== Vapor Startup ===", "INIT")
             log(f"PID: {os.getpid()}", "INIT")
             log(f"sys.executable: {sys.executable}", "INIT")
             log(f"sys.frozen: {getattr(sys, 'frozen', False)}", "INIT")
-            log(f"sys._MEIPASS: {getattr(sys, '_MEIPASS', 'N/A')}", "INIT")
-            log(f"ENV _MEIPASS: {os.environ.get('_MEIPASS', 'N/A')}", "INIT")
-            log(f"ENV _MEIPASS2: {os.environ.get('_MEIPASS2', 'N/A')}", "INIT")
-            log(f"ENV VAPOR_EXE_PATH: {os.environ.get('VAPOR_EXE_PATH', 'N/A')}", "INIT")
-            log(f"TEMP: {os.environ.get('TEMP', 'N/A')}", "INIT")
+            log(f"sys.argv[0]: {sys.argv[0]}", "INIT")
             log(f"Working dir: {os.getcwd()}", "INIT")
 
             # Check if this is the first run (no settings file exists)
@@ -1317,27 +1525,18 @@ if __name__ == '__main__':
                 log("First run detected - creating default settings file", "INIT")
                 create_default_settings()
 
-            # Check if CPU thermal monitoring is enabled and we need admin privileges
-            if os.path.exists(SETTINGS_FILE):
-                try:
-                    with open(SETTINGS_FILE, 'r') as f:
-                        startup_settings = json.load(f)
-                    if startup_settings.get('enable_cpu_thermal', False) and not is_admin():
-                        log("CPU thermal monitoring enabled but not running as admin - requesting elevation", "INIT")
-                        if request_admin_restart():
-                            # Release mutex before exiting so elevated instance can acquire it
-                            if VAPOR_MUTEX:
-                                try:
-                                    win32api.CloseHandle(VAPOR_MUTEX)
-                                except Exception:
-                                    pass
-                            sys.exit(0)  # Exit current instance, elevated one will start
-                except Exception as e:
-                    log(f"Error checking thermal settings: {e}", "ERROR")
+            # Note: Admin elevation check now happens BEFORE splash screen for faster startup
+            # (see "Early Admin Check" section near top of file)
 
             # Log temperature monitoring library availability
             log(f"Temperature libraries - NVIDIA: {NVML_AVAILABLE}, AMD: {PYADL_AVAILABLE}, "
-                f"LHM DLL: {LHM_AVAILABLE}, WMI: {WMI_AVAILABLE}", "TEMP")
+                f"HWMON: {HWMON_AVAILABLE}, LHM DLL: {LHM_AVAILABLE}, WMI: {WMI_AVAILABLE}", "TEMP")
+            if not HWMON_AVAILABLE and _hwmon_import_error:
+                log(f"HardwareMonitor unavailable: {_hwmon_import_error}", "TEMP")
+            if not LHM_AVAILABLE and _lhm_import_error:
+                log(f"LHM DLL unavailable: {_lhm_import_error}", "TEMP")
+            if not WMI_AVAILABLE and _wmi_import_error:
+                log(f"WMI unavailable: {_wmi_import_error}", "TEMP")
             log(f"Admin privileges: {is_admin()}", "INIT")
 
             # Send anonymous telemetry (startup ping)

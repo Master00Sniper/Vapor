@@ -8,14 +8,9 @@ import sys
 # Path Configuration
 # =============================================================================
 
-# Base directory - handles frozen (PyInstaller/Nuitka) and script execution
+# Base directory - handles frozen (Nuitka) and script execution
 if getattr(sys, 'frozen', False):
-    # PyInstaller sets _MEIPASS, Nuitka doesn't
-    if hasattr(sys, '_MEIPASS'):
-        base_dir = sys._MEIPASS
-    else:
-        # Nuitka - use executable directory
-        base_dir = os.path.dirname(sys.executable)
+    base_dir = os.path.dirname(sys.executable)
 else:
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -30,6 +25,7 @@ os.makedirs(appdata_dir, exist_ok=True)
 SETTINGS_FILE = os.path.join(appdata_dir, 'vapor_settings.json')
 DEBUG_LOG_FILE = os.path.join(appdata_dir, 'vapor_logs.log')
 TRAY_ICON_PATH = os.path.join(base_dir, 'Images', 'tray_icon.png')
+GAME_STARTED_SIGNAL_FILE = os.path.join(appdata_dir, 'game_started.signal')
 
 # =============================================================================
 # Logging Configuration

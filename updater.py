@@ -14,7 +14,7 @@ import os
 
 GITHUB_OWNER = "Master00Sniper"
 GITHUB_REPO = "Vapor"
-CURRENT_VERSION = "0.3.6"  # Single source of truth for app version
+CURRENT_VERSION = "0.3.7"  # Single source of truth for app version
 
 # Cloudflare Worker proxy (handles GitHub API authentication)
 PROXY_BASE_URL = "https://vapor-proxy.mortonapps.com"
@@ -341,13 +341,9 @@ def perform_update(new_exe_path):
     Uses a VBScript wrapper to run the update batch file silently (no window flash).
     """
     # Determine the actual Vapor.exe path
-    # PyInstaller: sys.executable is Vapor.exe
-    # Nuitka: sys.executable is python.exe in temp, use sys.argv[0] instead
+    # Nuitka: use sys.argv[0] for the executable path
     if getattr(sys, 'frozen', False):
-        if hasattr(sys, '_MEIPASS'):
-            current_exe = sys.executable
-        else:
-            current_exe = sys.argv[0]
+        current_exe = sys.argv[0]
     else:
         current_exe = sys.executable
     current_exe_dir = os.path.dirname(current_exe)

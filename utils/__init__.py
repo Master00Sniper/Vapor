@@ -9,6 +9,7 @@ from utils.constants import (
     MAX_LOG_SIZE,
     TRAY_ICON_PATH,
     PROTECTED_PROCESSES,
+    GAME_STARTED_SIGNAL_FILE,
 )
 from utils.logging import log
 from utils.settings import (
