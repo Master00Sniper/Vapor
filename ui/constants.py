@@ -53,7 +53,7 @@ BUILT_IN_RESOURCE_APPS = [
     {'display_name': 'Dropbox', 'processes': ['Dropbox.exe'],
      'icon_path': os.path.join(base_dir, 'Images', 'dropbox_icon.png')},
     # Gaming Utilities (indices 8-11)
-    {'display_name': 'Wallpaper Engine', 'processes': ['wallpaper64.exe'],
+    {'display_name': 'Wallpaper Engine', 'processes': ['wallpaper64.exe', 'wallpaper32.exe'],
      'icon_path': os.path.join(base_dir, 'Images', 'wallpaperengine_icon.png')},
     {'display_name': 'iCUE', 'processes': ['iCUE.exe'],
      'icon_path': os.path.join(base_dir, 'Images', 'icue_icon.png')},
