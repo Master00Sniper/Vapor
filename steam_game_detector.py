@@ -814,12 +814,20 @@ def _minimize_new_windows(pre_launch_windows, app_names, max_wait=30):
     vapor_pid = os.getpid()
     minimized = set()
 
+    log(f"Window snapshot: {len(pre_launch_windows)} windows before launch", "RELAUNCH")
+
     start_time = time.time()
     while time.time() - start_time < max_wait:
         time.sleep(3)
         try:
             current_windows = _get_visible_windows()
             new_windows = current_windows - pre_launch_windows - minimized
+
+            elapsed = int(time.time() - start_time)
+            if new_windows:
+                log(f"[{elapsed}s] Found {len(new_windows)} new window(s) (current={len(current_windows)}, snapshot={len(pre_launch_windows)})", "RELAUNCH")
+            else:
+                log(f"[{elapsed}s] No new windows yet (current={len(current_windows)}, snapshot={len(pre_launch_windows)})", "RELAUNCH")
 
             for hwnd in new_windows:
                 try:
@@ -832,7 +840,7 @@ def _minimize_new_windows(pre_launch_windows, app_names, max_wait=30):
                     title = win32gui.GetWindowText(hwnd)
                     win32gui.ShowWindow(hwnd, win32con.SW_MINIMIZE)
                     minimized.add(hwnd)
-                    log(f"Minimized new window: '{title}'", "RELAUNCH")
+                    log(f"Minimized new window: '{title}' (PID: {window_pid})", "RELAUNCH")
                 except Exception:
                     pass
         except Exception:
