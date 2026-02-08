@@ -302,20 +302,17 @@ def on_save():
             y = state.root.winfo_y() + (state.root.winfo_height() - 160) // 2
             installing_dialog.geometry(f"+{x}+{y}")
 
-            # Wrap content in CTkFrame for consistent dark background
-            content_frame = ctk.CTkFrame(master=installing_dialog, fg_color="#2b2b2b")
-            content_frame.pack(fill="both", expand=True)
-
-            msg_label = ctk.CTkLabel(content_frame, text="Installing PawnIO driver...",
-                                     font=("Calibri", 13), justify="center")
+            # Use plain tk widgets for instant rendering (CTk widgets flash white)
+            msg_label = tk.Label(installing_dialog, text="Installing PawnIO driver...",
+                                 font=("Calibri", 13), fg="white", bg="#2b2b2b")
             msg_label.pack(padx=20, pady=(25, 10))
 
-            progress_bar = ctk.CTkProgressBar(content_frame, width=300)
+            progress_bar = ctk.CTkProgressBar(installing_dialog, width=300)
             progress_bar.pack(padx=20, pady=10)
             progress_bar.set(0)
 
-            status_label = ctk.CTkLabel(content_frame, text="Please wait while the driver is installed...",
-                                        font=("Calibri", 11), text_color="gray")
+            status_label = tk.Label(installing_dialog, text="Please wait while the driver is installed...",
+                                    font=("Calibri", 11), fg="gray", bg="#2b2b2b")
             status_label.pack(padx=20, pady=(5, 15))
 
             # Force full widget rendering before showing
@@ -551,20 +548,17 @@ def check_pending_pawnio_install():
         y = state.root.winfo_y() + (state.root.winfo_height() - 160) // 2
         installing_dialog.geometry(f"+{x}+{y}")
 
-        # Wrap content in CTkFrame for consistent dark background
-        content_frame = ctk.CTkFrame(master=installing_dialog, fg_color="#2b2b2b")
-        content_frame.pack(fill="both", expand=True)
-
-        msg_label = ctk.CTkLabel(content_frame, text="Installing PawnIO driver...",
-                                 font=("Calibri", 13), justify="center")
+        # Use plain tk widgets for instant rendering (CTk widgets flash white)
+        msg_label = tk.Label(installing_dialog, text="Installing PawnIO driver...",
+                             font=("Calibri", 13), fg="white", bg="#2b2b2b")
         msg_label.pack(padx=20, pady=(25, 10))
 
-        progress_bar = ctk.CTkProgressBar(content_frame, width=300)
+        progress_bar = ctk.CTkProgressBar(installing_dialog, width=300)
         progress_bar.pack(padx=20, pady=10)
         progress_bar.set(0)
 
-        status_label = ctk.CTkLabel(content_frame, text="Please wait while the driver is installed...",
-                                    font=("Calibri", 11), text_color="gray")
+        status_label = tk.Label(installing_dialog, text="Please wait while the driver is installed...",
+                                font=("Calibri", 11), fg="gray", bg="#2b2b2b")
         status_label.pack(padx=20, pady=(5, 15))
 
         # Force full widget rendering before showing
