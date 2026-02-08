@@ -89,8 +89,12 @@ def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=N
         dialog.transient(parent)
     dialog.grab_set()
 
+    # Outer frame covers the tk.Toplevel background to prevent white flash
+    outer_frame = ctk.CTkFrame(master=dialog, fg_color="#2b2b2b")
+    outer_frame.pack(fill="both", expand=True)
+
     # Main content frame (expandable)
-    content_frame = ctk.CTkFrame(master=dialog, fg_color="transparent")
+    content_frame = ctk.CTkFrame(master=outer_frame, fg_color="transparent")
     content_frame.pack(fill="both", expand=True, padx=25, pady=(25, 10))
 
     # Title label with appropriate color based on type
@@ -121,11 +125,11 @@ def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=N
     message_label.pack(pady=(0, 10))
 
     # Separator line above buttons (matching settings UI style)
-    separator = ctk.CTkFrame(master=dialog, height=2, fg_color="gray50")
+    separator = ctk.CTkFrame(master=outer_frame, height=2, fg_color="gray50")
     separator.pack(fill="x", padx=40, pady=(10, 0))
 
     # Button frame at bottom (matching settings UI style)
-    button_frame = ctk.CTkFrame(master=dialog, fg_color="transparent")
+    button_frame = ctk.CTkFrame(master=outer_frame, fg_color="transparent")
     button_frame.pack(pady=20, fill='x', padx=40)
 
     # Default buttons if none specified
@@ -174,10 +178,10 @@ def show_vapor_dialog(title, message, dialog_type="info", buttons=None, parent=N
     # Handle window close button (X)
     dialog.protocol("WM_DELETE_WINDOW", lambda: (result.__setitem__(0, None), dialog.destroy()))
 
-    # Process all pending events to ensure content is laid out
-    dialog.update_idletasks()
+    # Force full rendering of CTk widgets before showing
+    dialog.update()
 
-    # Now show the window - using plain tk.Toplevel means no flash
+    # Now show the fully-rendered window
     dialog.deiconify()
     set_dark_title_bar(dialog)  # Apply dark title bar after window is shown
     dialog.lift()
