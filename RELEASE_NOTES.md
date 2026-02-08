@@ -27,3 +27,4 @@
 - Fixed relaunched apps (WhatsApp, Signal, Teams, etc.) not minimizing after a game session ends
 - Fixed game session details popup being delayed by app relaunch
 - Fixed "Launch at Startup" registry entry pointing to wrong executable in compiled builds
+- Fixed settings window immediately closing on startup due to stale game signal from previous session

@@ -1022,6 +1022,16 @@ def monitor_steam_games(stop_event, killed_notification, killed_resource, is_fir
 
     # Launch settings on start if enabled, if first run, or if pending reopen
     if is_first_run or launch_settings_on_start or pending_settings_reopen:
+        # Clean up any stale game-started signal file from a previous session
+        # (e.g., if Vapor crashed while a game was running). Without this,
+        # the settings window would detect the stale file and immediately close.
+        try:
+            if os.path.exists(GAME_STARTED_SIGNAL_FILE):
+                os.remove(GAME_STARTED_SIGNAL_FILE)
+                log("Cleaned up stale game started signal file", "INIT")
+        except Exception:
+            pass
+
         # Wait for splash screen to finish before showing settings window
         wait_for_splash_complete()
         log("Launching settings window on startup...", "INIT")
