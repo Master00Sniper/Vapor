@@ -109,7 +109,7 @@ Features include app management, audio controls, power plan switching, Game Mode
     separator4 = ctk.CTkFrame(master=about_scroll_frame, height=2, fg_color="gray50")
     separator4.pack(fill="x", padx=40, pady=15)
 
-    supporters_title = ctk.CTkLabel(master=about_scroll_frame, text="Vapor Supporters", font=("Calibri", 15, "bold"))
+    supporters_title = ctk.CTkLabel(master=about_scroll_frame, text="Vapor (MortonApps) Supporters", font=("Calibri", 15, "bold"))
     supporters_title.pack(pady=(5, 5), anchor='center')
 
     supporters_label = ctk.CTkLabel(master=about_scroll_frame,
