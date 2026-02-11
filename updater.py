@@ -169,10 +169,13 @@ def send_telemetry(event="app_start"):
         try:
             payload = {
                 "event": event,
-                "version": CURRENT_VERSION,
-                "os": _get_os_info(),
                 "install_id": _get_or_create_install_id()
             }
+
+            # Only include version/os on app_start - they don't change mid-session
+            if event == "app_start":
+                payload["version"] = CURRENT_VERSION
+                payload["os"] = _get_os_info()
 
             response = requests.post(
                 f"{PROXY_BASE_URL}/telemetry",
