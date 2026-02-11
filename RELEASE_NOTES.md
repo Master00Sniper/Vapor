@@ -1,4 +1,9 @@
-## What's New in v0.3.8
+## What's New in v0.3.9
+
+### Improvements
+
+- Reduced unnecessary telemetry writes for better backend efficiency
+- Renamed "Vapor Supporters" to "Vapor (MortonApps) Supporters" on the About tab
 
 ### Bug Fixes
 
