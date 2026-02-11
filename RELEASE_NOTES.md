@@ -2,8 +2,8 @@
 
 ### Improvements
 
-- Reduced unnecessary telemetry KV writes by only sending version/OS data on app start, not on heartbeats
-- Updated website tagline styling
+- Reduced unnecessary telemetry writes for better backend efficiency
+- Renamed "Vapor Supporters" to "Vapor (MortonApps) Supporters" on the About tab
 
 ### Bug Fixes
 
