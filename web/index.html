@@ -183,32 +183,11 @@
             z-index: 1;
         }
 
-        .hero-logo-img {
-            width: 120px;
-            height: 120px;
-            margin-bottom: 1rem;
-            filter: drop-shadow(0 0 30px var(--accent-glow));
-        }
-
-        /* Vapor title styled like splash screen */
-        .vapor-title {
-            font-family: 'Oswald', sans-serif;
-            font-size: clamp(4rem, 12vw, 8rem);
-            font-weight: 700;
-            letter-spacing: 0.1em;
-            margin-bottom: 0.5rem;
-            background: linear-gradient(180deg,
-                var(--metallic-light) 0%,
-                var(--metallic-light) 20%,
-                var(--metallic-mid) 40%,
-                var(--metallic-dark) 60%,
-                var(--metallic-mid) 80%,
-                var(--metallic-light) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            filter: drop-shadow(0 0 10px var(--accent)) drop-shadow(0 0 30px var(--accent-glow));
-            text-transform: uppercase;
+        .hero-logo {
+            width: 480px;
+            max-width: 85vw;
+            margin-bottom: 0;
+            filter: drop-shadow(0 0 40px var(--accent-glow));
         }
 
         .hero-tagline {
@@ -664,13 +643,8 @@
                 padding: 5rem 1.5rem 3rem;
             }
 
-            .hero-logo-img {
-                width: 80px;
-                height: 80px;
-            }
-
-            .vapor-title {
-                letter-spacing: 0.05em;
+            .hero-logo {
+                width: 320px;
             }
 
             .hero-tagline {
@@ -721,8 +695,7 @@
 
     <section class="hero">
         <div class="hero-content">
-            <img src="images/tray_icon.png" alt="Vapor Logo" class="hero-logo-img">
-            <h1 class="vapor-title">Vapor</h1>
+            <img src="images/Vapor_splash_transparent.png" alt="Vapor" class="hero-logo">
             <h2 class="hero-tagline">Your Personal Gaming Assistant</h2>
             <p>Ever wish you could just launch a game and have everything else get out of the way? Vapor is a lightweight Windows utility that watches for Steam game launches and applies your preferred settings automatically—so you can jump straight into the action.</p>
             <div class="cta-buttons">
