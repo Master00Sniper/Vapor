@@ -11,6 +11,7 @@
 
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Vapor - Gaming Optimizer by Morton Apps">
     <meta property="og:url" content="https://vapor.mortonapps.com/">
     <meta property="og:title" content="Vapor - Your Personal Gaming Assistant">
     <meta property="og:description" content="A lightweight Windows utility that automatically optimizes your PC when you launch a Steam game. Close distracting apps, adjust audio, monitor temps, and more.">
@@ -45,7 +46,7 @@
             "name": "Morton Apps",
             "url": "https://mortonapps.com"
         },
-        "softwareVersion": "0.3.7",
+        "softwareVersion": "0.3.9",
         "license": "https://opensource.org/licenses/GPL-3.0",
         "screenshot": "https://vapor.mortonapps.com/images/screenshot_preferences.png",
         "featureList": [
@@ -66,6 +67,17 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Oswald:wght@700&display=swap" rel="stylesheet">
     <style>
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            border: 0;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -710,7 +722,8 @@
 
     <section class="hero">
         <div class="hero-content">
-            <img src="images/Vapor_splash_transparent.png" alt="Vapor" class="hero-logo">
+            <img src="images/Vapor_splash_transparent.png" alt="Vapor - PC Gaming Optimizer for Steam" class="hero-logo">
+            <h1 class="sr-only">Vapor - Your Personal Gaming Assistant</h1>
             <h2 class="hero-tagline">Your Personal Gaming Assistant</h2>
             <p>Ever wish you could just launch a game and have everything else get out of the way? Vapor is a lightweight Windows utility that watches for Steam game launches and applies your preferred settings automatically—so you can jump straight into the action.</p>
             <div class="cta-buttons">
@@ -876,7 +889,7 @@
             <a href="https://x.com/master00sniper">Twitter</a>
             <a href="https://ko-fi.com/master00sniper">Ko-fi</a>
         </div>
-        <p class="copyright">&copy; 2025 Vapor. Licensed under GPL v3.</p>
+        <p class="copyright">&copy; 2025-2026 Vapor. Licensed under GPL v3.</p>
     </footer>
 
     <!-- Lightbox -->
