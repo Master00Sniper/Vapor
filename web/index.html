@@ -11,17 +11,18 @@
 
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Vapor - Gaming Optimizer by Morton Apps">
     <meta property="og:url" content="https://vapor.mortonapps.com/">
     <meta property="og:title" content="Vapor - Your Personal Gaming Assistant">
     <meta property="og:description" content="A lightweight Windows utility that automatically optimizes your PC when you launch a Steam game. Close distracting apps, adjust audio, monitor temps, and more.">
-    <meta property="og:image" content="https://vapor.mortonapps.com/images/vapor_background.png">
+    <meta property="og:image" content="https://vapor.mortonapps.com/images/mortonapps_opengraph.jpg">
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:url" content="https://vapor.mortonapps.com/">
     <meta name="twitter:title" content="Vapor - Your Personal Gaming Assistant">
     <meta name="twitter:description" content="A lightweight Windows utility that automatically optimizes your PC when you launch a Steam game. Close distracting apps, adjust audio, monitor temps, and more.">
-    <meta name="twitter:image" content="https://vapor.mortonapps.com/images/vapor_background.png">
+    <meta name="twitter:image" content="https://vapor.mortonapps.com/images/mortonapps_opengraph.jpg">
     <meta name="twitter:creator" content="@master00sniper">
 
     <!-- Structured Data -->
@@ -45,7 +46,7 @@
             "name": "Morton Apps",
             "url": "https://mortonapps.com"
         },
-        "softwareVersion": "0.3.7",
+        "softwareVersion": "0.3.9",
         "license": "https://opensource.org/licenses/GPL-3.0",
         "screenshot": "https://vapor.mortonapps.com/images/screenshot_preferences.png",
         "featureList": [
@@ -66,6 +67,17 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Oswald:wght@700&display=swap" rel="stylesheet">
     <style>
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            border: 0;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -111,24 +123,21 @@
         }
 
         .logo {
-            font-family: 'Oswald', sans-serif;
-            font-size: 1.5rem;
-            font-weight: 700;
             text-decoration: none;
             display: flex;
             align-items: center;
             gap: 0.5rem;
-            background: linear-gradient(180deg, var(--metallic-light) 0%, var(--metallic-mid) 50%, var(--metallic-dark) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            text-shadow: 0 0 20px var(--accent-glow);
-            filter: drop-shadow(0 0 3px var(--accent));
         }
 
-        .logo img {
+        .logo-icon {
             width: 32px;
             height: 32px;
+        }
+
+        .logo-text {
+            height: 28px;
+            width: auto;
+            filter: drop-shadow(0 0 3px var(--accent));
         }
 
         .nav-links {
@@ -183,32 +192,11 @@
             z-index: 1;
         }
 
-        .hero-logo-img {
-            width: 120px;
-            height: 120px;
-            margin-bottom: 1rem;
-            filter: drop-shadow(0 0 30px var(--accent-glow));
-        }
-
-        /* Vapor title styled like splash screen */
-        .vapor-title {
-            font-family: 'Oswald', sans-serif;
-            font-size: clamp(4rem, 12vw, 8rem);
-            font-weight: 700;
-            letter-spacing: 0.1em;
-            margin-bottom: 0.5rem;
-            background: linear-gradient(180deg,
-                var(--metallic-light) 0%,
-                var(--metallic-light) 20%,
-                var(--metallic-mid) 40%,
-                var(--metallic-dark) 60%,
-                var(--metallic-mid) 80%,
-                var(--metallic-light) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            filter: drop-shadow(0 0 10px var(--accent)) drop-shadow(0 0 30px var(--accent-glow));
-            text-transform: uppercase;
+        .hero-logo {
+            width: 480px;
+            max-width: 85vw;
+            margin-bottom: 0;
+            filter: drop-shadow(0 0 40px var(--accent-glow));
         }
 
         .hero-tagline {
@@ -585,14 +573,32 @@
             border-top: 1px solid var(--border);
         }
 
+        .morton-logo {
+            width: 80px;
+            height: auto;
+            margin-bottom: 1rem;
+            border-radius: 12px;
+            transition: filter 0.3s;
+        }
+
+        .morton-logo:hover {
+            filter: drop-shadow(0 0 12px var(--accent-glow));
+        }
+
         .morton-callout p {
             color: var(--text-secondary);
             font-size: 1rem;
             margin-bottom: 0.75rem;
         }
 
-        .morton-callout p strong {
+        .morton-callout p strong a {
             color: var(--text-primary);
+            text-decoration: none;
+            font-weight: 700;
+        }
+
+        .morton-callout p strong a:hover {
+            color: var(--accent-hover);
         }
 
         .morton-link {
@@ -664,13 +670,8 @@
                 padding: 5rem 1.5rem 3rem;
             }
 
-            .hero-logo-img {
-                width: 80px;
-                height: 80px;
-            }
-
-            .vapor-title {
-                letter-spacing: 0.05em;
+            .hero-logo {
+                width: 320px;
             }
 
             .hero-tagline {
@@ -705,8 +706,8 @@
 <body>
     <nav>
         <a href="#" class="logo">
-            <img src="images/tray_icon.png" alt="Vapor">
-            VAPOR
+            <img src="images/tray_icon.png" alt="Vapor" class="logo-icon">
+            <img src="images/Vapor_splash_transparent.png" alt="Vapor" class="logo-text">
         </a>
         <ul class="nav-links">
             <li><a href="#features">Features</a></li>
@@ -721,8 +722,8 @@
 
     <section class="hero">
         <div class="hero-content">
-            <img src="images/tray_icon.png" alt="Vapor Logo" class="hero-logo-img">
-            <h1 class="vapor-title">Vapor</h1>
+            <img src="images/Vapor_splash_transparent.png" alt="Vapor - PC Gaming Optimizer for Steam" class="hero-logo">
+            <h1 class="sr-only">Vapor - Your Personal Gaming Assistant</h1>
             <h2 class="hero-tagline">Your Personal Gaming Assistant</h2>
             <p>Ever wish you could just launch a game and have everything else get out of the way? Vapor is a lightweight Windows utility that watches for Steam game launches and applies your preferred settings automatically—so you can jump straight into the action.</p>
             <div class="cta-buttons">
@@ -875,7 +876,8 @@
     </section>
 
     <section class="morton-callout">
-        <p>Vapor is a <strong>Morton Apps</strong> project</p>
+        <a href="https://mortonapps.com"><img src="images/mortonapps_logo_transparent.png" alt="Morton Apps" class="morton-logo"></a>
+        <p>Vapor is a <strong><a href="https://mortonapps.com">MortonApps</a></strong> project</p>
         <a href="https://mortonapps.com" class="morton-link">Explore more apps <span class="arrow">&rarr;</span></a>
     </section>
 
@@ -887,7 +889,7 @@
             <a href="https://x.com/master00sniper">Twitter</a>
             <a href="https://ko-fi.com/master00sniper">Ko-fi</a>
         </div>
-        <p class="copyright">&copy; 2025 Vapor. Licensed under GPL v3.</p>
+        <p class="copyright">&copy; 2025-2026 Vapor. Licensed under GPL v3.</p>
     </footer>
 
     <!-- Lightbox -->
