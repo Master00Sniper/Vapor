@@ -111,24 +111,21 @@
         }
 
         .logo {
-            font-family: 'Oswald', sans-serif;
-            font-size: 1.5rem;
-            font-weight: 700;
             text-decoration: none;
             display: flex;
             align-items: center;
             gap: 0.5rem;
-            background: linear-gradient(180deg, var(--metallic-light) 0%, var(--metallic-mid) 50%, var(--metallic-dark) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            text-shadow: 0 0 20px var(--accent-glow);
-            filter: drop-shadow(0 0 3px var(--accent));
         }
 
-        .logo img {
+        .logo-icon {
             width: 32px;
             height: 32px;
+        }
+
+        .logo-text {
+            height: 28px;
+            width: auto;
+            filter: drop-shadow(0 0 3px var(--accent));
         }
 
         .nav-links {
@@ -679,8 +676,8 @@
 <body>
     <nav>
         <a href="#" class="logo">
-            <img src="images/tray_icon.png" alt="Vapor">
-            VAPOR
+            <img src="images/tray_icon.png" alt="Vapor" class="logo-icon">
+            <img src="images/Vapor_splash_transparent.png" alt="Vapor" class="logo-text">
         </a>
         <ul class="nav-links">
             <li><a href="#features">Features</a></li>
