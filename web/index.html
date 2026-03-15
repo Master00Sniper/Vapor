@@ -46,7 +46,7 @@
             "name": "Morton Apps",
             "url": "https://mortonapps.com"
         },
-        "softwareVersion": "0.3.9",
+        "softwareVersion": "1.0.0",
         "license": "https://opensource.org/licenses/GPL-3.0",
         "screenshot": "https://vapor.mortonapps.com/images/screenshot_preferences.png",
         "featureList": [
@@ -59,6 +59,40 @@
             "Relaunch apps when gaming ends"
         ],
         "keywords": "steam, gaming, windows, utility, optimization, discord, close apps, game mode"
+    }
+    </script>
+
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+            {
+                "@type": "Question",
+                "name": "What does Vapor do when I launch a Steam game?",
+                "acceptedAnswer": { "@type": "Answer", "text": "Vapor automatically closes distracting apps (Discord, Chrome, Slack, etc.), adjusts your audio levels, switches your power plan to High Performance, and monitors CPU/GPU temperatures. When you quit the game, everything is restored." }
+            },
+            {
+                "@type": "Question",
+                "name": "Is Vapor a free alternative to Razer Cortex?",
+                "acceptedAnswer": { "@type": "Answer", "text": "Yes. Vapor is completely free, open source, and lightweight. It focuses on automating your gaming setup — closing apps, managing audio, and switching power plans — without the bloat of paid gaming optimizers." }
+            },
+            {
+                "@type": "Question",
+                "name": "Does Vapor work with all Steam games?",
+                "acceptedAnswer": { "@type": "Answer", "text": "Yes. Vapor detects any Steam game launch automatically. You configure your preferences once and they apply to every game you play." }
+            },
+            {
+                "@type": "Question",
+                "name": "Will Vapor slow down my PC?",
+                "acceptedAnswer": { "@type": "Answer", "text": "No. Vapor is extremely lightweight and runs in the system tray. It actually improves gaming performance by closing resource-heavy apps and optimizing power settings when you play." }
+            },
+            {
+                "@type": "Question",
+                "name": "Can I choose which apps Vapor closes?",
+                "acceptedAnswer": { "@type": "Answer", "text": "Yes. You have full control over which messaging apps and resource-heavy apps to close. You can also set different volume levels, power plans, and temperature alerts." }
+            }
+        ]
     }
     </script>
 
@@ -511,6 +545,61 @@
             color: var(--text-secondary);
         }
 
+        /* FAQ Section */
+        .faq {
+            padding: 6rem 2rem;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border);
+        }
+
+        .faq-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .faq-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .faq-item summary {
+            padding: 1.25rem 1.5rem;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 1rem;
+            list-style: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .faq-item summary::after {
+            content: '+';
+            font-size: 1.25rem;
+            color: var(--accent);
+            flex-shrink: 0;
+            margin-left: 1rem;
+        }
+
+        .faq-item[open] summary::after {
+            content: '−';
+        }
+
+        .faq-item summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .faq-item p {
+            padding: 0 1.5rem 1.25rem;
+            color: var(--text-secondary);
+            line-height: 1.7;
+        }
+
         /* Download Section */
         .download {
             padding: 6rem 2rem;
@@ -858,6 +947,34 @@
                 <img src="images/screenshot_game_details.png" alt="Game Session Details">
                 <div class="caption">Detailed stats after every gaming session</div>
             </div>
+        </div>
+    </section>
+
+    <section class="faq" id="faq">
+        <div class="section-header">
+            <h2>Frequently Asked Questions</h2>
+        </div>
+        <div class="faq-list">
+            <details class="faq-item">
+                <summary>What does Vapor do when I launch a Steam game?</summary>
+                <p>Vapor automatically closes distracting apps (Discord, Chrome, Slack, etc.), adjusts your audio levels, switches your power plan to High Performance, and monitors CPU/GPU temperatures. When you quit the game, everything is restored.</p>
+            </details>
+            <details class="faq-item">
+                <summary>Is Vapor a free alternative to Razer Cortex?</summary>
+                <p>Yes. Vapor is completely free, open source, and lightweight. It focuses on automating your gaming setup — closing apps, managing audio, and switching power plans — without the bloat of paid gaming optimizers.</p>
+            </details>
+            <details class="faq-item">
+                <summary>Does Vapor work with all Steam games?</summary>
+                <p>Yes. Vapor detects any Steam game launch automatically. You configure your preferences once and they apply to every game you play.</p>
+            </details>
+            <details class="faq-item">
+                <summary>Will Vapor slow down my PC?</summary>
+                <p>No. Vapor is extremely lightweight and runs in the system tray. It actually improves gaming performance by closing resource-heavy apps and optimizing power settings when you play.</p>
+            </details>
+            <details class="faq-item">
+                <summary>Can I choose which apps Vapor closes?</summary>
+                <p>Yes. You have full control over which messaging apps and resource-heavy apps to close. You can also set different volume levels, power plans, and temperature alerts.</p>
+            </details>
         </div>
     </section>
 
