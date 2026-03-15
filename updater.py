@@ -14,7 +14,7 @@ import os
 
 GITHUB_OWNER = "Master00Sniper"
 GITHUB_REPO = "Vapor"
-CURRENT_VERSION = "0.3.9"  # Single source of truth for app version
+CURRENT_VERSION = "1.0.0"  # Single source of truth for app version
 
 # Cloudflare Worker proxy (handles GitHub API authentication)
 PROXY_BASE_URL = "https://vapor-proxy.mortonapps.com"
