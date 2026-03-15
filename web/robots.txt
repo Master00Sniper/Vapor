@@ -1,4 +1,5 @@
 User-agent: *
 Allow: /
+Disallow: /stats.html
 
 Sitemap: https://vapor.mortonapps.com/sitemap.xml
