@@ -33,7 +33,26 @@
             justify-content: center;
             text-align: center;
             padding: 2rem;
+            position: relative;
+            overflow: hidden;
         }
+        body::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: url('images/vapor_background.png') center center no-repeat;
+            background-size: cover;
+            opacity: 0.15;
+            pointer-events: none;
+        }
+        body::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(ellipse at center, rgba(204, 32, 32, 0.15) 0%, transparent 50%);
+            pointer-events: none;
+        }
+        h1, p, .btn { position: relative; z-index: 1; }
         h1 {
             font-family: 'Oswald', sans-serif;
             font-size: 3rem;
