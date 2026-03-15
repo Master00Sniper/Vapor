@@ -128,9 +128,9 @@
         /* Stats Grid */
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            grid-template-columns: repeat(3, 1fr);
             gap: 1.5rem;
-            margin-bottom: 3rem;
+            margin-bottom: 0;
         }
 
         .stat-card {
@@ -365,31 +365,30 @@
                 <div class="stats-grid">
             `;
 
-            // Dynamically create stat cards from the data
-            if (typeof data === 'object') {
-                const statMappings = {
-                    'total_users': { label: 'Total Users', icon: '👥' },
-                    'total_installs': { label: 'Total Installs', icon: '📦' },
-                    'active_users': { label: 'Active Users', icon: '🟢' },
-                    'daily_active': { label: 'Daily Active', icon: '📅' },
-                    'weekly_active': { label: 'Weekly Active', icon: '📆' },
-                    'monthly_active': { label: 'Monthly Active', icon: '🗓️' },
-                    'total_sessions': { label: 'Total Sessions', icon: '🎮' },
-                    'total_events': { label: 'Total Events', icon: '📊' },
-                    'app_starts': { label: 'App Starts', icon: '🚀' },
-                    'heartbeats': { label: 'Heartbeats', icon: '💓' }
-                };
+            // Daily stats row
+            const dailyStats = [
+                { key: 'daily_active_users', label: 'Daily Active Users' },
+                { key: 'app_starts', label: 'Daily App Starts' },
+                { key: 'heartbeats', label: 'Daily Heartbeats' }
+            ];
+            for (const stat of dailyStats) {
+                const val = data[stat.key];
+                if (val !== undefined) {
+                    html += `<div class="stat-card"><div class="label">${stat.label}</div><div class="value">${formatValue(val)}</div></div>`;
+                }
+            }
+            html += '</div>';
 
-                for (const [key, value] of Object.entries(data)) {
-                    if (typeof value === 'number' || typeof value === 'string') {
-                        const mapping = statMappings[key] || { label: formatLabel(key), icon: '📈' };
-                        html += `
-                            <div class="stat-card">
-                                <div class="label">${mapping.label}</div>
-                                <div class="value">${formatValue(value)}</div>
-                            </div>
-                        `;
-                    }
+            // WAU / MAU row
+            const periodStats = [
+                { key: 'weekly_active_users', label: 'Weekly Active Users' },
+                { key: 'monthly_active_users', label: 'Monthly Active Users' }
+            ];
+            html += '<div class="stats-grid" style="grid-template-columns: repeat(2, 1fr); margin-top: 1rem;">';
+            for (const stat of periodStats) {
+                const val = data[stat.key];
+                if (val !== undefined) {
+                    html += `<div class="stat-card"><div class="label">${stat.label}</div><div class="value">${formatValue(val)}</div></div>`;
                 }
             }
 
