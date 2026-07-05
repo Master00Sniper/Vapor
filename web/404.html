@@ -12,6 +12,7 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
             --bg-primary: #0a0a0a;
+            --bg-secondary: #111111;
             --bg-card: #1a1a1a;
             --text-primary: #ffffff;
             --text-secondary: #888888;
@@ -35,6 +36,11 @@
             padding: 2rem;
             position: relative;
             overflow: hidden;
+        }
+        main {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
         body::before {
             content: '';
@@ -64,6 +70,9 @@
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }
+        h1, h2 {
+            text-wrap: balance;
+        }
         p {
             color: var(--text-secondary);
             font-size: 1.1rem;
@@ -89,11 +98,53 @@
             transform: translateY(-2px);
             box-shadow: 0 0 30px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.3);
         }
+        footer {
+            padding: 3rem 2rem;
+            border-top: 1px solid var(--border);
+            text-align: center;
+            background: var(--bg-secondary);
+            width: 100%;
+            position: relative;
+            z-index: 1;
+        }
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+        .footer-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.2s;
+        }
+        .footer-links a:hover {
+            color: var(--accent-hover);
+        }
+        .copyright {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
     </style>
 </head>
 <body>
-    <h1>Game Over</h1>
-    <p>This page doesn't exist. Maybe it was closed by Vapor to free up resources.</p>
-    <a href="/" class="btn">Back to Home</a>
+    <main>
+        <h1>Game Over</h1>
+        <p>This page doesn't exist. Maybe it was closed by Vapor to free up resources.</p>
+        <a href="/" class="btn">Back to Home</a>
+    </main>
+
+    <footer>
+        <div class="footer-links">
+            <a href="https://github.com/Master00Sniper/Vapor" target="_blank" rel="noopener">GitHub</a>
+            <a href="https://mortonapps.itch.io/vapor" target="_blank" rel="noopener">itch.io</a>
+            <a href="https://github.com/Master00Sniper/Vapor/issues" target="_blank" rel="noopener">Report a Bug</a>
+            <a href="https://x.com/master00sniper" target="_blank" rel="noopener">Twitter</a>
+            <a href="https://ko-fi.com/master00sniper" target="_blank" rel="noopener">Ko-fi</a>
+        </div>
+        <p class="copyright">&copy; 2025-2026 Vapor. Licensed under GPL v3.</p>
+    </footer>
 </body>
 </html>

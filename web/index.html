@@ -244,6 +244,10 @@
             background-clip: text;
         }
 
+        h1, h2 {
+            text-wrap: balance;
+        }
+
         .hero p {
             font-size: 1.1rem;
             color: var(--text-secondary);
@@ -811,8 +815,8 @@
             <li><a href="#screenshots">Screenshots</a></li>
             <li><a href="#download">Download</a></li>
             <li><a href="policies">Privacy</a></li>
-            <li><a href="https://github.com/Master00Sniper/Vapor">GitHub</a></li>
-            <li><a href="https://ko-fi.com/master00sniper">Support</a></li>
+            <li><a href="https://github.com/Master00Sniper/Vapor" target="_blank" rel="noopener">GitHub</a></li>
+            <li><a href="https://ko-fi.com/master00sniper" target="_blank" rel="noopener">Support</a></li>
         </ul>
     </nav>
 
@@ -827,7 +831,7 @@
                     <svg width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
                     Download for Windows
                 </a>
-                <a href="https://github.com/Master00Sniper/Vapor" class="btn btn-secondary">
+                <a href="https://github.com/Master00Sniper/Vapor" class="btn btn-secondary" target="_blank" rel="noopener">
                     <svg width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
                     View on GitHub
                 </a>
@@ -850,12 +854,12 @@
                 <h3>Close Distractions</h3>
                 <p>Automatically close messaging apps when you start playing. They reopen when you're done.</p>
                 <div class="feature-apps">
-                    <img src="images/discord_icon.png" alt="Discord" title="Discord">
-                    <img src="images/slack_icon.png" alt="Slack" title="Slack">
-                    <img src="images/whatsapp_icon.png" alt="WhatsApp" title="WhatsApp">
-                    <img src="images/teams_icon.png" alt="Teams" title="Teams">
-                    <img src="images/telegram_icon.png" alt="Telegram" title="Telegram">
-                    <img src="images/signal_icon.png" alt="Signal" title="Signal">
+                    <img src="images/discord_icon.png" alt="Discord" title="Discord" loading="lazy">
+                    <img src="images/slack_icon.png" alt="Slack" title="Slack" loading="lazy">
+                    <img src="images/whatsapp_icon.png" alt="WhatsApp" title="WhatsApp" loading="lazy">
+                    <img src="images/teams_icon.png" alt="Teams" title="Teams" loading="lazy">
+                    <img src="images/telegram_icon.png" alt="Telegram" title="Telegram" loading="lazy">
+                    <img src="images/signal_icon.png" alt="Signal" title="Signal" loading="lazy">
                 </div>
             </div>
             <div class="feature-card">
@@ -863,11 +867,11 @@
                 <h3>Free Up Resources</h3>
                 <p>Close resource-heavy apps to give your game more RAM and CPU headroom.</p>
                 <div class="feature-apps">
-                    <img src="images/chrome_icon.png" alt="Chrome" title="Chrome">
-                    <img src="images/firefox_icon.png" alt="Firefox" title="Firefox">
-                    <img src="images/spotify_icon.png" alt="Spotify" title="Spotify">
-                    <img src="images/wallpaperengine_icon.png" alt="Wallpaper Engine" title="Wallpaper Engine">
-                    <img src="images/onedrive_icon.png" alt="OneDrive" title="OneDrive">
+                    <img src="images/chrome_icon.png" alt="Chrome" title="Chrome" loading="lazy">
+                    <img src="images/firefox_icon.png" alt="Firefox" title="Firefox" loading="lazy">
+                    <img src="images/spotify_icon.png" alt="Spotify" title="Spotify" loading="lazy">
+                    <img src="images/wallpaperengine_icon.png" alt="Wallpaper Engine" title="Wallpaper Engine" loading="lazy">
+                    <img src="images/onedrive_icon.png" alt="OneDrive" title="OneDrive" loading="lazy">
                 </div>
             </div>
             <div class="feature-card">
@@ -930,19 +934,19 @@
         </div>
         <div class="screenshots-grid">
             <div class="screenshot-card" onclick="openLightbox('images/screenshot_notifications.png')">
-                <img src="images/screenshot_notifications.png" alt="Notification Settings">
+                <img src="images/screenshot_notifications.png" alt="Notification Settings" loading="lazy">
                 <div class="caption">Notification App Management</div>
             </div>
             <div class="screenshot-card" onclick="openLightbox('images/screenshot_resources.png')">
-                <img src="images/screenshot_resources.png" alt="Resource Settings">
+                <img src="images/screenshot_resources.png" alt="Resource Settings" loading="lazy">
                 <div class="caption">Resource App Management</div>
             </div>
             <div class="screenshot-card" onclick="openLightbox('images/screenshot_thermal.png')">
-                <img src="images/screenshot_thermal.png" alt="Thermal Settings">
+                <img src="images/screenshot_thermal.png" alt="Thermal Settings" loading="lazy">
                 <div class="caption">Temperature Monitoring</div>
             </div>
             <div class="screenshot-card" onclick="openLightbox('images/screenshot_preferences.png')">
-                <img src="images/screenshot_preferences.png" alt="Preferences Settings">
+                <img src="images/screenshot_preferences.png" alt="Preferences Settings" loading="lazy">
                 <div class="caption">Preferences & Audio Settings</div>
             </div>
         </div>
@@ -951,7 +955,7 @@
             <h3>Game Session Summary</h3>
             <p style="color: var(--text-secondary); max-width: 500px; margin: 0 auto 1.5rem;">When you're done gaming, Vapor shows you a quick recap: total playtime, peak CPU and GPU temperatures, game title, and more—all at a glance.</p>
             <div class="screenshot-card" onclick="openLightbox('images/screenshot_game_details.png')">
-                <img src="images/screenshot_game_details.png" alt="Game Session Details">
+                <img src="images/screenshot_game_details.png" alt="Game Session Details" loading="lazy">
                 <div class="caption">Detailed stats after every gaming session</div>
             </div>
         </div>
@@ -1000,18 +1004,18 @@
     </section>
 
     <section class="morton-callout">
-        <a href="https://mortonapps.com"><img src="images/mortonapps_logo_transparent.png" alt="Morton Apps" class="morton-logo"></a>
+        <a href="https://mortonapps.com"><img src="images/mortonapps_logo_transparent.png" alt="Morton Apps" class="morton-logo" loading="lazy"></a>
         <p>Vapor is a <strong><a href="https://mortonapps.com">MortonApps</a></strong> project</p>
         <a href="https://mortonapps.com" class="morton-link">Explore more apps <span class="arrow">&rarr;</span></a>
     </section>
 
     <footer>
         <div class="footer-links">
-            <a href="https://github.com/Master00Sniper/Vapor">GitHub</a>
-            <a href="https://mortonapps.itch.io/vapor">itch.io</a>
-            <a href="https://github.com/Master00Sniper/Vapor/issues">Report a Bug</a>
-            <a href="https://x.com/master00sniper">Twitter</a>
-            <a href="https://ko-fi.com/master00sniper">Ko-fi</a>
+            <a href="https://github.com/Master00Sniper/Vapor" target="_blank" rel="noopener">GitHub</a>
+            <a href="https://mortonapps.itch.io/vapor" target="_blank" rel="noopener">itch.io</a>
+            <a href="https://github.com/Master00Sniper/Vapor/issues" target="_blank" rel="noopener">Report a Bug</a>
+            <a href="https://x.com/master00sniper" target="_blank" rel="noopener">Twitter</a>
+            <a href="https://ko-fi.com/master00sniper" target="_blank" rel="noopener">Ko-fi</a>
         </div>
         <p class="copyright">&copy; 2025-2026 Vapor. Licensed under GPL v3.</p>
     </footer>

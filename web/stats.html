@@ -266,11 +266,40 @@
 
         /* Footer */
         footer {
-            padding: 2rem;
+            padding: 3rem 2rem;
             text-align: center;
             border-top: 1px solid var(--border);
+            background: var(--bg-secondary);
             color: var(--text-secondary);
             font-size: 0.85rem;
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .footer-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.2s;
+        }
+
+        .footer-links a:hover {
+            color: var(--accent-hover);
+        }
+
+        .copyright {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+
+        h1, h2 {
+            text-wrap: balance;
         }
 
         /* Responsive */
@@ -301,8 +330,8 @@
         </a>
         <ul class="nav-links">
             <li><a href="/">Home</a></li>
-            <li><a href="https://github.com/Master00Sniper/Vapor">GitHub</a></li>
-            <li><a href="https://ko-fi.com/master00sniper">Support</a></li>
+            <li><a href="https://github.com/Master00Sniper/Vapor" target="_blank" rel="noopener">GitHub</a></li>
+            <li><a href="https://ko-fi.com/master00sniper" target="_blank" rel="noopener">Support</a></li>
         </ul>
     </nav>
 
@@ -322,7 +351,14 @@
     </main>
 
     <footer>
-        <p>Vapor Stats Dashboard - Not linked from main site</p>
+        <div class="footer-links">
+            <a href="https://github.com/Master00Sniper/Vapor" target="_blank" rel="noopener">GitHub</a>
+            <a href="https://mortonapps.itch.io/vapor" target="_blank" rel="noopener">itch.io</a>
+            <a href="https://github.com/Master00Sniper/Vapor/issues" target="_blank" rel="noopener">Report a Bug</a>
+            <a href="https://x.com/master00sniper" target="_blank" rel="noopener">Twitter</a>
+            <a href="https://ko-fi.com/master00sniper" target="_blank" rel="noopener">Ko-fi</a>
+        </div>
+        <p class="copyright">&copy; 2025-2026 Vapor. Licensed under GPL v3.</p>
     </footer>
 
     <script>
