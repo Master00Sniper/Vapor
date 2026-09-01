@@ -25,7 +25,7 @@ async function handleRequest(request) {
       headers: {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET, HEAD, POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Accept, User-Agent, X-Vapor-Auth',
+        'Access-Control-Allow-Headers': 'Content-Type, Accept, User-Agent, X-Vapor-Auth, X-Stats-Key',
         'Access-Control-Max-Age': '86400'
       }
     });
