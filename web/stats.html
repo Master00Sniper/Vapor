@@ -363,13 +363,17 @@
 
     <script>
         const API_URL = 'https://vapor-proxy.mortonapps.com/stats';
-        const AUTH_TOKEN = 'ombxslvdyyqvlkiiogwmjlkpocwqufaa';
+        // READ-ONLY key (2026-09-01). This page is public, so whatever key it
+        // carries is public too. It used to carry the app's WRITE key, which
+        // also authorised POST /telemetry - anyone viewing source could have
+        // fabricated usage numbers. This key only reads /stats.
+        const AUTH_TOKEN = 'vaporstats_6267cdd667d8f0bbcaded8feb7bc2dd9';
 
         async function fetchStats() {
             try {
                 const response = await fetch(API_URL, {
                     headers: {
-                        'X-Vapor-Auth': AUTH_TOKEN
+                        'X-Stats-Key': AUTH_TOKEN
                     }
                 });
 
