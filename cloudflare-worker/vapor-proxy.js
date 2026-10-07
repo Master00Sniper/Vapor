@@ -4,7 +4,12 @@ addEventListener('fetch', event => {
 
 // Known routes — reject everything else early
 const KNOWN_ROUTES = ['/download/latest', '/telemetry', '/stats'];
-const ALLOWED_REPO_PREFIX = '/repos/Master00Sniper/Vapor/';
+// Repos the GitHub proxy may reach, lowercase (GitHub paths are case-insensitive).
+// The repo moves from Master00Sniper to the gregmortonapps org (2026-10).
+// Installed apps keep calling the OLD owner path, and after the move GitHub's
+// release JSON hands out NEW-owner asset URLs, which the updater calls as-is,
+// so both owners are allowed, before and after the move.
+const ALLOWED_REPO_PREFIXES = ['/repos/master00sniper/vapor/', '/repos/gregmortonapps/vapor/'];
 
 // Rate limit: max requests per IP for the public download endpoint
 const DOWNLOAD_RATE_LIMIT = 30;   // requests per window
@@ -35,7 +40,7 @@ async function handleRequest(request) {
   // Early rejection — unknown routes get 404
   // =========================================
   const isKnownRoute = KNOWN_ROUTES.includes(url.pathname);
-  const isRepoProxy = url.pathname.startsWith(ALLOWED_REPO_PREFIX);
+  const isRepoProxy = ALLOWED_REPO_PREFIXES.some(p => url.pathname.toLowerCase().startsWith(p));
   if (!isKnownRoute && !isRepoProxy) {
     return new Response('Not Found', { status: 404 });
   }
@@ -262,16 +267,32 @@ async function handleRequest(request) {
   }
 
   try {
+    // A moved repo answers 301/307 pointing at /repositories/<id>/... fetch()
+    // follows that by itself for GET, but turns a POST into a GET on a 301, so
+    // a bug report would read the issue list and create nothing. Writes follow
+    // ONE redirect by hand with the same method and body, and only to
+    // api.github.com, so the PAT never leaves GitHub's API host.
+    const isWrite = ['POST', 'PUT', 'PATCH'].includes(request.method);
     const fetchOptions = {
       method: request.method,
-      headers: githubHeaders
+      headers: githubHeaders,
+      redirect: isWrite ? 'manual' : 'follow'
     };
 
-    if (['POST', 'PUT', 'PATCH'].includes(request.method)) {
+    if (isWrite) {
       fetchOptions.body = await request.text();
     }
 
-    const response = await fetch(githubUrl, fetchOptions);
+    let response = await fetch(githubUrl, fetchOptions);
+
+    const location = response.headers.get('Location');
+    if (isWrite && [301, 302, 307, 308].includes(response.status) && location) {
+      const next = new URL(location, githubUrl);
+      if (next.origin !== 'https://api.github.com') {
+        return new Response('Unexpected redirect from GitHub', { status: 424 });
+      }
+      response = await fetch(next.toString(), fetchOptions);
+    }
 
     const newResponse = new Response(response.body, response);
     newResponse.headers.set('Access-Control-Allow-Origin', '*');
